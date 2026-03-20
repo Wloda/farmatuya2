@@ -1,0 +1,26 @@
+# === Confidential docs (DO NOT PUBLISH) ===
+docs/
+
+# === macOS ===
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+Icon?
+.Spotlight-V100
+.Trashes
+
+# === Editors ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === Node (future-proofing) ===
+node_modules/
+npm-debug.log*
+
+# === Gemini/Agent ===
+.gemini/
+.agents/

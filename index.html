@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BW² — Dashboard de Inversión</title>
+  <meta name="description" content="Dashboard multi-sucursal para análisis de inversión en franquicia FarmaTuya">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="styles.css?v=bw3">
+  <script>
+    window.addEventListener('error',e=>document.title='ERR:'+e.message);
+    window.addEventListener('unhandledrejection',e=>document.title='REJ:'+e.reason);
+    if(!localStorage.getItem('bw2_workspace')){localStorage.removeItem('farmatuya_empresa');console.log('[BW2] clean slate')}
+    console.log('[BW2] inline script OK, localStorage keys:', Object.keys(localStorage));
+  </script>
+</head>
+<body>
+  <!-- ═══ ENTERPRISE HEADER ═══ -->
+  <header id="app-header">
+    <div class="header-left">
+      <button class="header-home-btn" id="btn-bw2-home" title="Inicio BW²"><img src="assets/bw2-logo.png" alt="BW²" class="header-bw2-logo"></button>
+      <img src="assets/nojom-bird.png" alt="NOJOM" class="header-logo">
+      <div class="header-brand"><span class="brand-name" id="header-brand-name">NOJOM</span><span class="subtitle" id="header-brand-subtitle">Dashboard de Inversión</span></div>
+    </div>
+    <div class="header-center" id="enterprise-header-info"></div>
+  </header>
+
+  <!-- ═══ MAIN NAV ═══ -->
+  <nav id="main-nav">
+    <button class="nav-btn active" data-view="portfolio">Portafolio<small>Tus sucursales de un vistazo</small></button>
+    <button class="nav-btn" data-view="consolidated">Consolidado<small>Números totales del negocio</small></button>
+    <button class="nav-btn" data-view="comparador">Comparar<small>Sucursales lado a lado</small></button>
+    <button class="nav-btn" data-view="empresa">Empresa<small>Capital, socios y config.</small></button>
+    <div class="nav-spacer"></div>
+    <button class="btn-add" id="btn-add-branch">+ Nueva Sucursal</button>
+  </nav>
+
+
+  <!-- ═══ VIEWS ═══ -->
+  <main id="main-content">
+
+    <!-- ═══ BW² HOME VIEW ═══ -->
+    <section id="view-bw2-home" style="display:none">
+      <div class="bw2-home">
+        <div class="bw2-header">
+          <div class="bw2-title-group">
+            <img src="assets/bw2-logo.png" alt="BW²" class="bw2-logo-img">
+            <p class="bw2-subtitle">Panel de Control — Empresas y Proyectos</p>
+          </div>
+          <button class="btn-primary" id="btn-create-empresa">+ Nueva Empresa</button>
+        </div>
+        <div id="bw2-empresas-grid" class="bw2-empresas-grid"></div>
+      </div>
+    </section>
+
+    <!-- ═══ PORTFOLIO VIEW ═══ -->
+    <section id="view-portfolio">
+      <div class="view-header"><h2>Portafolio de Sucursales</h2><p>Haz clic en 📊 <strong>Ver</strong> para explorar los detalles de cada sucursal</p></div>
+      <div class="portfolio-grid" id="portfolio-grid"></div>
+    </section>
+
+    <!-- ═══ BRANCH DETAIL VIEW ═══ -->
+    <section id="view-branch" style="display:none">
+      <div class="view-header">
+        <button class="btn-back" id="btn-back-portfolio">← Portafolio</button>
+        <div><h2 id="branch-detail-title">Sucursal</h2><p id="branch-detail-subtitle">—</p></div>
+      </div>
+
+      <!-- Branch Config Bar -->
+      <div class="branch-config-bar">
+        <div class="config-item">
+          <label>Formato</label>
+          <div class="neu-segmented small" id="branch-format-selector">
+            <button class="seg-btn" data-format="express">⚡ Express</button>
+            <button class="seg-btn" data-format="super">🏪 Súper</button>
+            <button class="seg-btn" data-format="integral">🏥 Integral</button>
+            <span class="seg-divider">|</span>
+            <button class="seg-btn" data-format="coolpet_estetica">🐾 Estética</button>
+            <button class="seg-btn" data-format="coolpet_farmaspot">🐕 FarmaSpot</button>
+            <button class="seg-btn" data-format="coolpet_farmavet">🏥 FarmaVet</button>
+          </div>
+        </div>
+        <div class="config-item">
+          <label>Escenario</label>
+          <div class="neu-segmented small" id="branch-scenario-selector">
+            <button class="seg-btn" data-scenario="conservative">🔴 Cons.</button>
+            <button class="seg-btn" data-scenario="base">🟡 Base</button>
+            <button class="seg-btn" data-scenario="upside">🟢 Upside</button>
+          </div>
+        </div>
+        <div class="config-item colonia-config">
+          <label>Ubicación</label>
+          <div id="colonia-display" class="colonia-display">—</div>
+          <input type="hidden" id="branch-colonia-input">
+          <div class="colonia-suggestions" id="colonia-suggestions" style="display:none"></div>
+          <div id="colonia-status" class="colonia-status"></div>
+        </div>
+      </div>
+
+      <!-- Branch KPI Strip -->
+      <section id="branch-kpi-bar">
+        <div class="kpi-strip" id="branch-kpi-strip"></div>
+      </section>
+
+      <!-- Branch Edit Panel -->
+      <section id="branch-edit-panel">
+        <div class="edit-panel-header">
+          <h3>Supuestos de Sucursal</h3>
+          <button class="btn-sm secondary" id="btn-reset-branch-defaults">🔄 Restablecer valores</button>
+        </div>
+
+        <!-- Investment -->
+        <div class="edit-section">
+          <h4 class="edit-section-title" data-toggle="edit-inv">Inversión <span class="toggle-arrow">▼</span></h4>
+          <div class="edit-grid" id="edit-inv"></div>
+        </div>
+
+        <!-- Fixed Costs -->
+        <div class="edit-section">
+          <h4 class="edit-section-title" data-toggle="edit-fc">Gastos Fijos <span class="toggle-arrow">▼</span></h4>
+          <div class="edit-grid" id="edit-fc"></div>
+        </div>
+
+        <!-- Variable Costs -->
+        <div class="edit-section">
+          <h4 class="edit-section-title" data-toggle="edit-vc">Costos Variables <span class="toggle-arrow">▼</span></h4>
+          <div class="edit-grid" id="edit-vc"></div>
+        </div>
+
+        <!-- Sales -->
+        <div class="edit-section">
+          <h4 class="edit-section-title" data-toggle="edit-sales">Ventas <span class="toggle-arrow">▼</span></h4>
+          <div class="edit-grid" id="edit-sales"></div>
+        </div>
+
+        <!-- Royalty (Súper only) -->
+        <div class="edit-section" id="branch-royalty-group" style="display:none">
+          <h4 class="edit-section-title">Modo Regalía (Súper)</h4>
+          <div class="neu-segmented small" id="branch-royalty-selector">
+            <button class="seg-btn active" data-royalty="variable_2_5">Variable 2.5%</button>
+            <button class="seg-btn" data-royalty="condonacion_6m">Cond. 6m</button>
+            <button class="seg-btn" data-royalty="pago_unico">Pago Único</button>
+          </div>
+        </div>
+
+        <div class="adv-audit" id="branch-audit-badges"></div>
+      </section>
+
+      <!-- Branch Tabs -->
+      <nav id="branch-tab-nav">
+        <button class="branch-tab-btn active" data-tab="resumen">Resumen</button>
+        <button class="branch-tab-btn" data-tab="ubicacion">Ubicación</button>
+        <button class="branch-tab-btn" data-tab="pnl">Resultados</button>
+        <button class="branch-tab-btn" data-tab="stress">Sensibilidad</button>
+      </nav>
+
+      <!-- Branch Tab Panels -->
+      <div id="btab-resumen" class="branch-tab-panel active">
+        <div class="row-2col">
+          <div class="neu-card"><h3 class="card-title">Viabilidad</h3><div id="branch-gauge"></div></div>
+          <div class="neu-card"><h3 class="card-title">Checklist Go / No-Go</h3><div id="branch-checklist"></div></div>
+        </div>
+        <div class="neu-card"><h3 class="card-title">Flujo de Caja (60 meses)</h3><div class="chart-box"><canvas id="chart-branch-cashflow"></canvas></div></div>
+        <div class="neu-card"><h3 class="card-title">Alertas</h3><div id="branch-alerts"></div></div>
+      </div>
+
+      <div id="btab-pnl" class="branch-tab-panel">
+        <div class="kpi-grid" id="branch-fin-kpis"></div>
+        <div class="row-2col">
+          <div class="neu-card"><h3 class="card-title">Ingresos vs EBITDA</h3><div class="chart-box"><canvas id="chart-branch-pnl"></canvas></div></div>
+          <div class="neu-card"><h3 class="card-title">Costos Fijos</h3><div class="chart-box-sm"><canvas id="chart-branch-donut"></canvas></div></div>
+        </div>
+        <div class="neu-card"><h3 class="card-title">Costos Variables (%)</h3><div class="chart-box-sm"><canvas id="chart-branch-cv"></canvas></div></div>
+        <div class="neu-card"><h3 class="card-title">Resumen Anual</h3><div class="table-scroll" id="branch-annual-table"></div></div>
+        <div class="neu-card"><h3 class="card-title">P&L Mensual <button class="expand-btn" id="branch-toggle-pnl">Expandir ▼</button></h3><div class="table-scroll collapsible collapsed" id="branch-pnl-table-full"></div></div>
+      </div>
+
+      <div id="btab-stress" class="branch-tab-panel">
+        <div class="kpi-grid" id="branch-stress-kpis"></div>
+        <div class="neu-card"><h3 class="card-title">Tornado (±20%)</h3><div class="chart-box"><canvas id="chart-branch-tornado"></canvas></div></div>
+      </div>
+
+      <div id="btab-ubicacion" class="branch-tab-panel">
+        <div class="neu-card">
+          <h3 class="card-title">Estudio de Ubicación y Entorno</h3>
+          <div class="loc-input-row">
+            <input type="text" class="input-text" id="loc-address-input" placeholder="Ej: Col. Roma Norte, CDMX" style="flex:1">
+            <button class="btn-action" id="btn-run-location-study">Actualizar estudio</button>
+          </div>
+          <div id="loc-status" class="loc-status"></div>
+        </div>
+        <div id="loc-results" style="display:none">
+          <div class="kpi-grid" id="loc-score-cards"></div>
+          <div class="row-2col">
+            <div class="neu-card">
+              <h3 class="card-title">Mapa</h3>
+              <div id="loc-map" style="height:280px;border-radius:var(--r-md);overflow:hidden"></div>
+            </div>
+            <div class="neu-card">
+              <h3 class="card-title">Indicadores Territoriales</h3>
+              <div id="loc-indicators"></div>
+            </div>
+          </div>
+          <div class="neu-card">
+            <h3 class="card-title">Establecimientos Cercanos (1 km) <button class="expand-btn" id="loc-toggle-detail">Expandir ▼</button></h3>
+            <div class="table-scroll collapsible collapsed" id="loc-nearby-detail"></div>
+          </div>
+          <div class="neu-card loc-meta">
+            <div id="loc-sources"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ CONSOLIDATED VIEW ═══ -->
+    <section id="view-consolidated" style="display:none">
+      <div class="view-header"><h2>Consolidado Empresa</h2><p>Métricas agregadas de todas las sucursales</p>
+        <label class="iva-toggle" title="Multiplicar los montos por 1.16 para ver con IVA incluido"><input type="checkbox" id="toggle-iva"><span class="iva-slider"></span><span class="iva-label" id="iva-label">Sin IVA</span></label>
+      </div>
+      <div class="kpi-grid" id="consol-kpis"></div>
+      <div class="neu-card"><h3 class="card-title">Flujo de Caja Consolidado (60 meses)</h3><div class="chart-box"><canvas id="chart-consol-cashflow"></canvas></div></div>
+      <div class="neu-card"><h3 class="card-title">Retorno por Socio</h3><div id="consol-partners"></div></div>
+      <div class="neu-card"><h3 class="card-title">Detalle por Sucursal</h3><div class="table-scroll" id="consol-branch-table"></div></div>
+
+      <!-- Opening Process Timeline -->
+      <div class="neu-card timeline-card">
+        <h3 class="card-title">🗓️ Proceso de Apertura — ¿Cuánto tarda abrir la siguiente?</h3>
+        <p class="timeline-subtitle">Tiempo total estimado: <strong>6 a 8 semanas</strong> desde la firma del contrato de arrendamiento</p>
+        <div class="timeline">
+          <div class="timeline-step" data-step="1">
+            <div class="step-marker">1</div>
+            <div class="step-content">
+              <div class="step-title">Pago Cuota de Marca</div>
+              <div class="step-desc">Pago durante la FIF para respetar la promoción correspondiente</div>
+              <div class="step-note">* Reembolsable si no se concreta la firma</div>
+            </div>
+          </div>
+          <div class="timeline-step" data-step="2">
+            <div class="step-marker">2</div>
+            <div class="step-content">
+              <div class="step-title">Firma de Contrato de Franquicia</div>
+              <div class="step-desc">Durante la FIF o máximo 30 días naturales después</div>
+              <div class="step-time">⏱️ 0–30 días</div>
+            </div>
+          </div>
+          <div class="timeline-step" data-step="3">
+            <div class="step-marker">3</div>
+            <div class="step-content">
+              <div class="step-title">Búsqueda y Decisión de Local</div>
+              <div class="step-desc">Arranque de búsqueda a partir de la firma del contrato de franquicia</div>
+              <div class="step-time">⏱️ 15–90 días</div>
+            </div>
+          </div>
+          <div class="timeline-step" data-step="4">
+            <div class="step-marker">4</div>
+            <div class="step-content">
+              <div class="step-title">Pago de Servicios y Equipamiento</div>
+              <div class="step-desc">Se paga al aprobarse el layout y plano del local</div>
+              <div class="step-time">⏱️ Al aprobar plano</div>
+            </div>
+          </div>
+          <div class="timeline-step" data-step="5">
+            <div class="step-marker">5</div>
+            <div class="step-content">
+              <div class="step-title">Pago de Inventario Inicial</div>
+              <div class="step-desc">Pagos escalonados: al abrir, a los 21 días, y a los 51 días</div>
+              <div class="step-note">* Conforme a proveedor</div>
+            </div>
+          </div>
+          <div class="timeline-step final" data-step="✓">
+            <div class="step-marker final">✓</div>
+            <div class="step-content">
+              <div class="step-title">¡Apertura!</div>
+              <div class="step-desc">6 a 8 semanas desde la firma del contrato de arrendamiento</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ COMPARADOR VIEW ═══ -->
+    <section id="view-comparador" style="display:none">
+      <div class="view-header"><h2>Comparador de Sucursales</h2><p>Métricas lado a lado</p></div>
+      <div class="neu-card"><h3 class="card-title">Métricas Comparativas</h3><div class="table-scroll" id="comparador-table"></div></div>
+      <div class="neu-card"><h3 class="card-title">Flujo Acumulado Comparado</h3><div class="chart-box"><canvas id="chart-comparador-cf"></canvas></div></div>
+    </section>
+
+    <!-- ═══ EMPRESA SETTINGS VIEW ═══ -->
+    <section id="view-empresa" style="display:none">
+      <div class="view-header"><h2>Sociedad y Socios</h2><p>Configuración central — los cambios recalculan automáticamente</p></div>
+      <!-- KPI summary strip -->
+      <div class="kpi-strip" id="empresa-kpis"></div>
+
+      <!-- Two-column layout: empresa + socios -->
+      <div class="empresa-layout">
+        <!-- Left: Company data -->
+        <div class="neu-card">
+          <h3 class="card-title">Datos de la Sociedad</h3>
+          <div class="form-group">
+            <label>Nombre / Razón Social</label>
+            <input type="text" class="input-text" id="emp-name" placeholder="NOJOM">
+            <small class="field-help">El nombre legal de tu sociedad holding</small>
+          </div>
+          <div class="form-group">
+            <label>Proyecto Activo</label>
+            <input type="text" class="input-text" id="emp-project-name" placeholder="FarmaTuya" style="font-weight:700;color:var(--accent)">
+            <small class="field-help">Franquicia o negocio que opera la sociedad</small>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Capital Total</label>
+              <input type="number" class="input-text" id="emp-capital" placeholder="3000000" step="100000">
+              <small class="field-help">Dinero total invertido entre todos los socios</small>
+            </div>
+            <div class="form-group">
+              <label>Reserva Corporativa</label>
+              <input type="number" class="input-text" id="emp-reserve" placeholder="200000" step="50000">
+              <small class="field-help">Colchón de seguridad que no se invierte</small>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Gastos Corporativos Mensuales</label>
+            <input type="number" class="input-text" id="emp-corp-expenses" placeholder="0" step="1000">
+            <small class="field-help">Gastos fijos de la empresa matriz al mes</small>
+          </div>
+          <button class="btn-sm primary" id="btn-save-empresa">Guardar Cambios</button>
+        </div>
+
+        <!-- Right: Partners -->
+        <div class="neu-card">
+          <h3 class="card-title">Socios <span id="equity-alert" class="equity-alert"></span></h3>
+          <div id="partners-table-container"></div>
+          <div class="partner-add-row">
+            <input type="text" class="input-text" id="add-partner-name" placeholder="Nombre">
+            <input type="number" class="input-text" id="add-partner-capital" placeholder="Capital" step="100000">
+            <input type="number" class="input-text" id="add-partner-equity" placeholder="%" min="0" max="100" step="1">
+            <button class="btn-sm primary" id="btn-add-partner">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="neu-card danger-zone">
+        <h3 class="card-title">Zona de Peligro</h3>
+        <p style="color:var(--text-3);margin-bottom:0.75rem">Reinicia todos los datos a los valores por defecto.</p>
+        <button class="btn-sm warn" id="btn-reset-empresa">Reiniciar Todo</button>
+      </div>
+    </section>
+
+    <!-- ═══ GLOSARIO VIEW ═══ -->
+    <section id="view-glosario" style="display:none">
+      <div class="view-header"><h2>Diccionario de Conceptos</h2><p>Explicaciones sencillas de los términos financieros del dashboard</p></div>
+      <div class="glosario-search"><input type="text" class="input-text" id="glosario-search" placeholder="Buscar concepto..."></div>
+      <div class="glosario-grid" id="glosario-grid"></div>
+    </section>
+  </main>
+
+  <!-- ═══ ADD BRANCH MODAL ═══ -->
+  <div class="modal-overlay" id="modal-add-branch" style="display:none">
+    <div class="modal-card">
+      <h3>Nueva Sucursal</h3>
+      <div class="modal-field">
+        <label>Formato</label>
+        <select id="modal-add-format" class="input-select">
+          <optgroup label="FarmaTuya">
+            <option value="express">⚡ Express</option>
+            <option value="super">🏪 Súper</option>
+            <option value="integral">🏥 Integral</option>
+          </optgroup>
+          <optgroup label="CoolPet">
+            <option value="coolpet_estetica">🐾 CoolPet Estética</option>
+            <option value="coolpet_farmaspot">🐕 CoolPet Farma Spot</option>
+            <option value="coolpet_farmavet">🏥 CoolPet Farma Vet</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Nombre</label>
+        <input type="text" id="modal-add-name" class="input-text" placeholder="Sucursal Centro">
+      </div>
+      <div class="modal-field">
+        <label>Colonia</label>
+        <input type="text" id="modal-add-colonia" class="input-text" placeholder="Col. Roma Norte">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-sm" onclick="window._closeModal()">Cancelar</button>
+        <button class="btn-sm primary" onclick="window._confirmAddBranch()">Crear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CONFIRM MODAL ═══ -->
+  <div class="modal-overlay" id="modal-confirm" style="display:none">
+    <div class="modal-card modal-confirm-card">
+      <h3 id="modal-confirm-title">¿Confirmar?</h3>
+      <div id="modal-confirm-body" class="modal-confirm-body"></div>
+      <div class="modal-actions">
+        <button class="btn-sm" id="modal-confirm-cancel">Cancelar</button>
+        <button class="btn-sm danger" id="modal-confirm-ok">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <footer id="app-footer"><p>BW² — Dashboard de Inversión · v8.0 · Multi-Empresa</p></footer>
+  <script type="module" src="app.js?v=bw3"></script>
+</body>
+</html>

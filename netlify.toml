@@ -1,0 +1,41 @@
+# BW² Dashboard — Netlify Configuration
+
+[build]
+  publish = "."
+  # No build command needed — pure static site
+
+# Redirect www → apex domain
+[[redirects]]
+  from = "https://www.bw2.ai/*"
+  to = "https://bw2.ai/:splat"
+  status = 301
+  force = true
+
+# SPA-style fallback (optional, keeps clean URLs)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security & performance headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
