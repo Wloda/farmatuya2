@@ -267,6 +267,7 @@ export const CONEVAL_REZAGO = {
 
 /**
  * Lookup rezago social data by estado + municipio
+ * Multi-strategy matching: exact → state+partial → broad partial
  * @param {string} municipio
  * @param {string} estado
  * @returns {{ grado: string, indice: number, fuente: string, nivel: string } | null}
@@ -274,19 +275,42 @@ export const CONEVAL_REZAGO = {
 export function lookupRezago(municipio, estado) {
   if (!municipio || !estado) return null;
 
-  // Normalize: trim, title case
+  // Normalize: trim, title case, strip accents for comparison
   const normalize = s => s.trim().replace(/\b\w/g, c => c.toUpperCase());
+  const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
   const key = `${normalize(estado)}|${normalize(municipio)}`;
 
-  const entry = CONEVAL_REZAGO[key];
-  if (!entry) {
-    // Try partial match
-    const partial = Object.entries(CONEVAL_REZAGO).find(([k]) =>
-      k.toLowerCase().includes(municipio.toLowerCase())
-    );
-    if (partial) return { ...partial[1], fuente: 'CONEVAL 2020', nivel: 'municipio' };
-    return null;
+  // Strategy 1: Exact key match
+  if (CONEVAL_REZAGO[key]) {
+    return { ...CONEVAL_REZAGO[key], fuente: 'CONEVAL 2020', nivel: 'municipio' };
   }
 
-  return { ...entry, fuente: 'CONEVAL 2020', nivel: 'municipio' };
+  // Strategy 2: Accent-stripped exact match
+  const keyNorm = stripAccents(key);
+  const accMatch = Object.entries(CONEVAL_REZAGO).find(([k]) => stripAccents(k) === keyNorm);
+  if (accMatch) return { ...accMatch[1], fuente: 'CONEVAL 2020', nivel: 'municipio' };
+
+  // Strategy 3: Same state + municipio starts with or contains
+  const estNorm = stripAccents(estado);
+  const munNorm = stripAccents(municipio);
+  const stateMatches = Object.entries(CONEVAL_REZAGO).filter(([k]) =>
+    stripAccents(k.split('|')[0]) === estNorm
+  );
+  // Try: registry municipio starts with search term, or vice versa
+  const startMatch = stateMatches.find(([k]) => {
+    const regMun = stripAccents(k.split('|')[1]);
+    return regMun.startsWith(munNorm) || munNorm.startsWith(regMun);
+  });
+  if (startMatch) return { ...startMatch[1], fuente: 'CONEVAL 2020', nivel: 'municipio' };
+
+  // Strategy 4: Broad partial match (any state, municipio contains)
+  const partial = Object.entries(CONEVAL_REZAGO).find(([k]) => {
+    const regMun = stripAccents(k.split('|')[1]);
+    return regMun === munNorm || regMun.includes(munNorm) || munNorm.includes(regMun);
+  });
+  if (partial) return { ...partial[1], fuente: 'CONEVAL 2020', nivel: 'municipio' };
+
+  return null;
 }
+

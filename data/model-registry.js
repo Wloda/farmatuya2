@@ -298,7 +298,7 @@ export const MODELS = {
     variableCosts: {
       cogs: 0.50, comVenta: 0.01, merma: 0.003, pubDir: 0.02,
       regalia: 0.030, bancario: 0.006,
-      cvTotal: 0.579, mc: 0.421
+      cvTotal: 0.569, mc: 0.431
     },
 
     sales: {
