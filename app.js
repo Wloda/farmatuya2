@@ -97,53 +97,65 @@ function renderCurrentView(){
   // Offset main content when sidebar is hidden (BW2 Home)
   const mainContent = $('main-content');
   const appFooter = $('app-footer');
-  if(mainContent) mainContent.style.marginLeft = isBW2Home ? '0' : '';
-  if(appFooter) appFooter.style.marginLeft = isBW2Home ? '0' : '';
+function renderCurrentView() {
+  const isBW2Home = state.view === 'bw2home';
+  const mainNav=$('main-nav');
+  const addBranchBtn=$('btn-add-branch');
+  const mainContent=$('main-content');
+  const appFooter=$('app-footer');
+
+  // ALWAYS show nav and margins
+  if(mainNav) mainNav.style.display = 'flex';
+  if(mainContent) mainContent.style.marginLeft = '';
+  if(appFooter) appFooter.style.marginLeft = '';
   if(colorLegend) colorLegend.remove();
+
+  const empresa=getEmpresa();
+
+  // Hide or show project-specific sidebar buttons
+  if(mainNav) {
+    mainNav.querySelectorAll('.nav-btn').forEach(btn => {
+      if(btn.dataset.view !== 'bw2home') {
+        btn.style.display = empresa ? '' : 'none';
+      }
+    });
+  }
 
   // Hide all views
   ['view-bw2-home','view-portfolio','view-branch','view-consolidated','view-comparador','view-empresa','view-glosario'].forEach(id=>{
     const el=$(id);if(el)el.style.display='none';
   });
 
-  if(isBW2Home) {
-    $('view-bw2-home').style.display='block';
-    renderBW2Home();
-    // Update header for BW² mode — hide empresa logo and brand
-    const hInfo=$('enterprise-header-info');
-    if(hInfo) hInfo.innerHTML='<span style="color:var(--text-3);font-size:0.85rem">Selecciona una empresa y proyecto</span>';
-    const headerLogo = document.querySelector('#app-header .header-logo');
-    const headerBrand = document.querySelector('#app-header .header-brand');
-    if(headerLogo) headerLogo.style.display = 'none';
-    if(headerBrand) headerBrand.style.display = 'none';
-    return;
-  }
-
-  // Show header elements when inside a project
   const headerLogo = document.querySelector('#app-header .header-logo');
   const headerBrand = document.querySelector('#app-header .header-brand');
-  if(headerLogo) headerLogo.style.display = '';
-  if(headerBrand) headerBrand.style.display = '';
+  const hInfo=$('enterprise-header-info');
 
-  const empresa=getEmpresa();
-  if(!empresa) { state.view='bw2home'; renderCurrentView(); return; }
+  if(isBW2Home || !empresa) {
+    $('view-bw2-home').style.display='block';
+    renderBW2Home();
+    if(hInfo) hInfo.innerHTML='<span style="color:var(--text-3);font-size:0.85rem">Selecciona una empresa y proyecto</span>';
+    if(headerLogo) headerLogo.style.display = 'none';
+    if(headerBrand) headerBrand.style.display = 'none';
+  } else {
+    if(headerLogo) headerLogo.style.display = '';
+    if(headerBrand) headerBrand.style.display = '';
+    updateEnterpriseHeader(empresa);
 
-  updateEnterpriseHeader(empresa);
-  const addBtn=$('btn-add-branch');
-  if(addBtn) addBtn.style.display = state.view==='portfolio' ? '' : 'none';
+    if(state.view==='portfolio') { $('view-portfolio').style.display='block'; renderPortfolio(empresa); }
+    else if(state.view==='branch'&&state.activeBranchId) { $('view-branch').style.display='block'; renderBranchDetail(empresa); }
+    else if(state.view==='consolidated') { $('view-consolidated').style.display='block'; renderConsolidated(empresa); }
+    else if(state.view==='comparador') { $('view-comparador').style.display='block'; renderComparador(empresa); }
+    else if(state.view==='empresa') { $('view-empresa').style.display='block'; renderEmpresaSettings(empresa); }
+    else if(state.view==='glosario') { $('view-glosario').style.display='block'; renderGlosario(); }
+    else { $('view-portfolio').style.display='block'; renderPortfolio(empresa); }
+  }
+
+  if(addBranchBtn) addBranchBtn.style.display = (empresa && state.view==='portfolio') ? '' : 'none';
 
   // Activate correct nav button
   document.querySelectorAll('#main-nav .nav-btn').forEach(b=>{
-    b.classList.toggle('active', b.dataset.view===state.view);
+    b.classList.toggle('active', b.dataset.view===(isBW2Home || !empresa ? 'bw2home' : state.view));
   });
-
-  if(state.view==='portfolio') { $('view-portfolio').style.display='block'; renderPortfolio(empresa); }
-  else if(state.view==='branch'&&state.activeBranchId) { $('view-branch').style.display='block'; renderBranchDetail(empresa); }
-  else if(state.view==='consolidated') { $('view-consolidated').style.display='block'; renderConsolidated(empresa); }
-  else if(state.view==='comparador') { $('view-comparador').style.display='block'; renderComparador(empresa); }
-  else if(state.view==='empresa') { $('view-empresa').style.display='block'; renderEmpresaSettings(empresa); }
-  else if(state.view==='glosario') { $('view-glosario').style.display='block'; renderGlosario(); }
-  else { $('view-portfolio').style.display='block'; renderPortfolio(empresa); }
 }
 
 function updateEnterpriseHeader(empresa){
@@ -600,6 +612,52 @@ window._deleteBranch = (id)=>{
 
 function selectNav(view){ document.querySelectorAll('#main-nav .nav-btn').forEach(b=>{b.classList.toggle('active',b.dataset.view===view);}); }
 
+/* ─── GEOCODING AUTOCOMPLETE HELPER ─── */
+function setupGeocodingAutocomplete(inputId, suggestionsId, statusId, onSelectCallback) {
+  const ci = $(inputId); const sugBox = $(suggestionsId); const statusEl = $(statusId);
+  let debounce = null;
+  if (!ci) return;
+  ci.addEventListener('input', () => {
+    clearTimeout(debounce); const q = ci.value.trim();
+    if (q.length < 3) { if(sugBox){sugBox.classList.remove('open');sugBox.innerHTML='';} if(statusEl)statusEl.innerHTML=''; return; }
+    if (statusEl) statusEl.innerHTML = '<span class="searching">🔍 Buscando...</span>';
+    debounce = setTimeout(async () => {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + ', México')}&format=json&limit=6&addressdetails=1&countrycodes=mx`;
+        const res = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+        const data = await res.json();
+        if (!data.length) {
+          if (sugBox) { sugBox.innerHTML = '<div class="colonia-suggestion"><span class="sug-main">Sin resultados</span></div>'; sugBox.classList.add('open'); }
+          if (statusEl) statusEl.innerHTML = '<span class="no-results">Sin resultados</span>'; return;
+        }
+        if (sugBox) {
+          sugBox.innerHTML = data.map((r, i) => {
+            const name = r.address?.suburb || r.address?.neighbourhood || r.address?.city || r.display_name.split(',')[0];
+            const detail = [r.address?.city || r.address?.town, r.address?.state].filter(Boolean).join(', ');
+            return `<div class="colonia-suggestion" data-name="${name}" data-full="${r.display_name}" data-lat="${r.lat}" data-lon="${r.lon}">
+              <div class="sug-main">${name}</div>
+              <div class="sug-detail">${detail || r.display_name}</div>
+            </div>`;
+          }).join('');
+          sugBox.classList.add('open');
+          if (statusEl) statusEl.innerHTML = '<span class="searching">↓ Selecciona una ubicación</span>';
+          sugBox.querySelectorAll('.colonia-suggestion').forEach(s => {
+            s.addEventListener('click', () => {
+              ci.value = s.dataset.name;
+              if (sugBox) sugBox.classList.remove('open');
+              if (statusEl) statusEl.innerHTML = `<span class="validated">✅ ${s.dataset.name}</span>`;
+              if (onSelectCallback) onSelectCallback(s.dataset.name, s.dataset.full, s.dataset.lat, s.dataset.lon);
+            });
+          });
+        }
+      } catch (e) {
+        if (statusEl) statusEl.innerHTML = '<span class="no-results">Error de conexión</span>';
+      }
+    }, 400);
+  });
+  document.addEventListener('click', (e) => { if (sugBox && !e.target.closest('.colonia-autocomplete')) sugBox.classList.remove('open'); });
+}
+
 /* ═══ ADD BRANCH MODAL ═══ */
 function showAddBranchModal(){
   const modal=$('modal-add-branch');if(!modal)return;
@@ -613,49 +671,9 @@ function showAddBranchModal(){
   if(statusEl) statusEl.innerHTML='';
 
   // Geocoding autocomplete for the modal colonia input
-  const ci=$('modal-add-colonia');
-  let debounce=null;
-  if(ci){
-    ci.oninput=()=>{
-      clearTimeout(debounce);
-      const q=ci.value.trim();
-      if(q.length<3){if(sugBox){sugBox.classList.remove('open');sugBox.innerHTML='';}if(statusEl)statusEl.innerHTML='';return;}
-      if(statusEl) statusEl.innerHTML='<span class="searching">🔍 Buscando...</span>';
-      debounce=setTimeout(async()=>{
-        try{
-          const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+', México')}&format=json&limit=6&addressdetails=1&countrycodes=mx`;
-          const res=await fetch(url,{headers:{'Accept-Language':'es'}});
-          const data=await res.json();
-          if(!data.length){
-            sugBox.innerHTML='<div class="colonia-suggestion"><span class="sug-main">Sin resultados</span></div>';
-            sugBox.classList.add('open');
-            if(statusEl) statusEl.innerHTML='<span class="no-results">Sin resultados</span>';
-            return;
-          }
-          sugBox.innerHTML=data.map((r,i)=>{
-            const name=r.address?.suburb||r.address?.neighbourhood||r.address?.city||r.display_name.split(',')[0];
-            const detail=[r.address?.city||r.address?.town,r.address?.state].filter(Boolean).join(', ');
-            return `<div class="colonia-suggestion" data-name="${name}" data-full="${r.display_name}">
-              <div class="sug-main">${name}</div>
-              <div class="sug-detail">${detail||r.display_name}</div>
-            </div>`;
-          }).join('');
-          sugBox.classList.add('open');
-          if(statusEl) statusEl.innerHTML='<span class="searching">↓ Selecciona una ubicación</span>';
-          sugBox.querySelectorAll('.colonia-suggestion').forEach(s=>{
-            s.addEventListener('click',()=>{
-              ci.value=s.dataset.name;
-              ci.dataset.full=s.dataset.full;
-              sugBox.classList.remove('open');
-              if(statusEl) statusEl.innerHTML=`<span class="validated">✅ ${s.dataset.name}</span>`;
-            });
-          });
-        }catch(e){
-          if(statusEl) statusEl.innerHTML='<span class="no-results">Error de conexión</span>';
-        }
-      },400);
-    };
-  }
+  setupGeocodingAutocomplete('modal-add-colonia', 'modal-add-suggestions', 'modal-add-colonia-status', (name, full) => {
+    $('modal-add-colonia').dataset.full = full;
+  });
 }
 window._closeModal=()=>{const m=$('modal-add-branch');if(m)m.style.display='none';};
 window._confirmAddBranch=()=>{
@@ -773,63 +791,16 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   });
   // Colonia autocomplete — geocoding suggestions
-  const ci=$('branch-colonia-input');
-  const sugBox=$('colonia-suggestions');
-  const colStatus=$('colonia-status');
-  let coloniaDebounce=null;
-  if(ci){
-    ci.addEventListener('input',()=>{
-      clearTimeout(coloniaDebounce);
-      const q=ci.value.trim();
-      if(q.length<3){sugBox.classList.remove('open');sugBox.innerHTML='';if(colStatus)colStatus.innerHTML='';return;}
-      if(colStatus)colStatus.innerHTML='<span class="searching">🔍 Buscando colonias...</span>';
-      coloniaDebounce=setTimeout(async()=>{
-        try{
-          const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+', México')}&format=json&limit=6&addressdetails=1&countrycodes=mx`;
-          const res=await fetch(url,{headers:{'Accept-Language':'es'}});
-          const data=await res.json();
-          if(!data.length){
-            sugBox.innerHTML='<div class="colonia-suggestion"><span class="sug-main">Sin resultados</span><div class="sug-detail">Intenta con otro nombre de colonia o ciudad</div></div>';
-            sugBox.classList.add('open');
-            if(colStatus)colStatus.innerHTML='<span class="no-results">No se encontraron resultados</span>';
-            return;
-          }
-          sugBox.innerHTML=data.map((r,i)=>{
-            const name=r.address?.suburb||r.address?.neighbourhood||r.address?.city||r.display_name.split(',')[0];
-            const detail=[r.address?.city||r.address?.town,r.address?.state].filter(Boolean).join(', ');
-            return `<div class="colonia-suggestion" data-idx="${i}" data-name="${name}" data-full="${r.display_name}" data-lat="${r.lat}" data-lon="${r.lon}">
-              <div class="sug-main">${name}</div>
-              <div class="sug-detail">${detail||r.display_name}</div>
-            </div>`;
-          }).join('');
-          sugBox.classList.add('open');
-          if(colStatus)colStatus.innerHTML='<span class="searching">↓ Selecciona una ubicación</span>';
-          // Click handlers for suggestions
-          sugBox.querySelectorAll('.colonia-suggestion').forEach(s=>{
-            s.addEventListener('click',()=>{
-              const name=s.dataset.name;
-              const full=s.dataset.full;
-              ci.value=name;
-              sugBox.classList.remove('open');
-              if(colStatus)colStatus.innerHTML=`<span class="validated">✅ ${name}</span>`;
-              if(state.activeBranchId){
-                updateBranch(state.activeBranchId,{colonia:name,coloniaFull:full});
-                // Sync to location study + auto-run
-                const locInput=$('loc-address-input');
-                if(locInput) locInput.value=name;
-                const studyBtn=$('btn-run-location-study');
-                if(studyBtn) studyBtn.click();
-              }
-            });
-          });
-        }catch(e){
-          if(colStatus)colStatus.innerHTML='<span class="no-results">Error de conexión</span>';
-        }
-      },400);
-    });
-    // Close suggestions on outside click
-    document.addEventListener('click',(e)=>{if(!e.target.closest('.colonia-autocomplete'))sugBox.classList.remove('open');});
-  }
+  setupGeocodingAutocomplete('branch-colonia-input', 'colonia-suggestions', 'colonia-status', (name, full) => {
+    if(state.activeBranchId){
+      updateBranch(state.activeBranchId,{colonia:name,coloniaFull:full});
+      // Sync to location study + auto-run
+      const locInput=$('loc-address-input');
+      if(locInput) locInput.value=name;
+      const studyBtn=$('btn-run-location-study');
+      if(studyBtn) studyBtn.click();
+    }
+  });
   // Royalty selector
   document.querySelectorAll('#branch-royalty-selector .seg-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
@@ -1394,6 +1365,14 @@ function renderBranchLocation(branch) {
   if (addrInput) addrInput.value = study?.address || branch.colonia || '';
   if (statusEl) statusEl.innerHTML = '';
 
+  // Setup Geocoding Autocomplete
+  setupGeocodingAutocomplete('loc-address-input', 'loc-address-suggestions', 'loc-address-status', (name, full) => {
+    // Also save to branch if it's new
+    updateBranch(branch.id, { colonia: name, coloniaFull: full });
+    const btn = $('btn-run-location-study');
+    if (btn) btn.click();
+  });
+
   // Button handler
   const btn = $('btn-run-location-study');
   if (btn) {
@@ -1407,7 +1386,7 @@ function renderBranchLocation(branch) {
         const result = await runLocationStudy(query);
         updateBranchLocation(branch.id, result);
         renderLocationResults(result);
-        if (result.errors.length) {
+        if (result.errors && result.errors.length) {
           statusEl.innerHTML = '<span class="loc-warning">⚠️ Estudio parcial: ' + result.errors.map(e => e.error).join('; ') + '</span>';
         } else {
           statusEl.innerHTML = '<span class="loc-success">✅ Estudio completo — ' + new Date(result.lastUpdated).toLocaleString('es-MX') + '</span>';
@@ -1416,7 +1395,7 @@ function renderBranchLocation(branch) {
         statusEl.innerHTML = '<span class="loc-error">❌ Error: ' + e.message + '</span>';
       }
       btn.disabled = false;
-      btn.textContent = '🔍 Actualizar estudio';
+      btn.textContent = 'Actualizar';
     };
   }
 

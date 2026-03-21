@@ -34,6 +34,7 @@
 
   <!-- ═══ MAIN NAV ═══ -->
   <nav id="main-nav">
+    <button class="nav-btn" data-view="bw2home">Inicio<small>Tus Empresas</small></button>
     <button class="nav-btn active" data-view="portfolio">Portafolio<small>Tus sucursales de un vistazo</small></button>
     <button class="nav-btn" data-view="consolidated">Consolidado<small>Números totales del negocio</small></button>
     <button class="nav-btn" data-view="comparador">Comparar<small>Sucursales lado a lado</small></button>
@@ -71,7 +72,7 @@
       <div class="view-header">
         <button class="btn-back" id="btn-back-portfolio">← Portafolio</button>
         <div><h2 id="branch-detail-title">Sucursal</h2><p id="branch-detail-subtitle">—</p></div>
-        <button class="btn-export-pdf" id="btn-export-pdf" title="Generar reporte PDF de inversión">📄 Exportar PDF</button>
+        <button class="btn-export-pdf" id="btn-export-pdf" title="Generar reporte PDF de inversión" style="display:none">📄 Exportar PDF</button>
       </div>
 
       <!-- ═══ 3-TAB NAVIGATION ═══ -->
@@ -233,9 +234,13 @@
       <div id="btab-socioeconomico" class="branch-tab-panel">
         <div class="neu-card">
           <h3 class="card-title">Estudio de Ubicación y Entorno</h3>
-          <div class="loc-input-row">
-            <input type="text" class="input-text" id="loc-address-input" placeholder="Ej: Col. Roma Norte, CDMX" style="flex:1">
-            <button class="btn-action" id="btn-run-location-study">Actualizar estudio</button>
+          <div class="loc-input-row" style="position:relative">
+            <div class="colonia-autocomplete" style="flex:1;position:relative">
+              <input type="text" class="input-text" id="loc-address-input" placeholder="Ej: Col. Roma Norte, CDMX" autocomplete="off" style="width:100%">
+              <div id="loc-address-status" class="colonia-status" style="position:absolute;right:8px;top:50%;transform:translateY(-50%)"></div>
+              <div class="colonia-suggestions" id="loc-address-suggestions"></div>
+            </div>
+            <button class="btn-action" id="btn-run-location-study">Actualizar</button>
           </div>
           <div id="loc-status" class="loc-status"></div>
         </div>
