@@ -978,7 +978,7 @@ body{
 
 /* ── Hero Section — Clean ACRU ── */
 .bw2-home{
-  padding:0;max-width:900px;margin:0 auto;
+  padding:0;
   min-height:calc(100vh - 54px);
 }
 

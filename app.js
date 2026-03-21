@@ -86,23 +86,13 @@ function initNav(){
   });
 }
 
-function renderCurrentView(){
-  const isBW2Home = state.view === 'bw2home';
-  const mainNav = $('main-nav');
-  const colorLegend = document.querySelector('.color-legend');
-  const appHeader = $('app-header');
-
-  // Show/hide chrome based on whether we're on BW² Home or project views
-  if(mainNav) mainNav.style.display = isBW2Home ? 'none' : '';
-  // Offset main content when sidebar is hidden (BW2 Home)
-  const mainContent = $('main-content');
-  const appFooter = $('app-footer');
 function renderCurrentView() {
   const isBW2Home = state.view === 'bw2home';
   const mainNav=$('main-nav');
   const addBranchBtn=$('btn-add-branch');
   const mainContent=$('main-content');
   const appFooter=$('app-footer');
+  const colorLegend = document.querySelector('.color-legend');
 
   // ALWAYS show nav and margins
   if(mainNav) mainNav.style.display = 'flex';
@@ -169,7 +159,7 @@ function updateEnterpriseHeader(empresa){
     <span class="ent-stat">Capital: ${fmt.m(empresa.totalCapital)}</span>
     <span class="ent-stat">Comprometido: ${fmt.m(consol.capitalCommitted)}</span>
     <span class="ent-stat ${consol.capitalFree<0?'danger':''}">Libre: ${fmt.m(consol.capitalFree)}</span>
-    <span class="ent-stat">Sucursales: ${consol.branchCount} activas</span>
+    <span class="ent-stat">Sucursales: ${consol.branchCountActive === 1 ? '1 activa' : consol.branchCountActive + ' activas'}${consol.branchCountPlanned > 0 ? (consol.branchCountPlanned === 1 ? ', 1 planeada' : ', ' + consol.branchCountPlanned + ' planeadas') : ''}</span>
     <span class="ent-stat">Score: ${consol.avgScore}</span>`;
   // Update brand
   const brandName=$('header-brand-name');
@@ -1784,7 +1774,7 @@ function renderEmpresaSettings(empresa){
       kc('Capital Total', fmt.m(empresa.totalCapital), `${empresa.partners.length} socios`, 'neutral'),
       kc('Comprometido', fmt.m(consol.capitalCommitted), fmt.pi(consol.capitalCommitted / empresa.totalCapital) + ' del total', 'neutral'),
       kc('Libre', fmt.m(consol.capitalFree), capStatus === 'good' ? 'Disponible' : '⚠️ Excedido', capStatus),
-      kc('Ganancia/mes', fmt.m(consol.avgMonthlyNet), `${consol.branchCount} suc. activas`, consol.avgMonthlyNet >= 0 ? 'good' : 'bad'),
+      kc('Ganancia/mes', fmt.m(consol.avgMonthlyNet), `en ${consol.branchCount} suc.`, consol.avgMonthlyNet >= 0 ? 'good' : 'bad'),
       kc('Recuperación Emp.', consol.paybackMonth ? consol.paybackMonth + ' meses' : '∞', 'Todas las sucursales', consol.paybackMonth && consol.paybackMonth <= 36 ? 'good' : 'warn'),
       kc('Calificación', consol.avgScore + '/100', 'Promedio portafolio', consol.avgScore >= 70 ? 'good' : consol.avgScore >= 50 ? 'warn' : 'bad')
     ].join('');

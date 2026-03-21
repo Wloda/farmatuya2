@@ -120,6 +120,8 @@ export function runConsolidation(empresa) {
     totalNet60,
     perPartner,
     branchCount: branchResults.length,
+    branchCountActive: branchResults.filter(br => br.branch.status === 'active').length,
+    branchCountPlanned: branchResults.filter(br => br.branch.status === 'planned').length,
     avgScore: Math.round(avgScore)
   };
 }
