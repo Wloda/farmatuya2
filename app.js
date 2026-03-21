@@ -1,12 +1,12 @@
 /**
  * BW² — Multi-Empresa Multi-Proyecto Dashboard v8
  */
-import { MODELS, SCENARIOS, LOCATIONS, BENCHMARKS } from './data/model-registry.js?v=bw3';
-import { runProjection, runSensitivity, generateHeatmap, calcStress, generateChecklist, evaluateAlerts } from './engine/financial-model.js?v=bw3';
-import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw3';
-import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw3';
-import { runLocationStudy } from './engine/location-engine.js?v=bw3';
-import { generateBranchPDF } from './pdf-export.js?v=bw3';
+import { MODELS, SCENARIOS, LOCATIONS, BENCHMARKS } from './data/model-registry.js?v=bw4';
+import { runProjection, runSensitivity, generateHeatmap, calcStress, generateChecklist, evaluateAlerts } from './engine/financial-model.js?v=bw4';
+import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw4';
+import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw4';
+import { runLocationStudy, calcCombinedMarketFactor } from './engine/location-engine.js?v=bw4';
+import { generateBranchPDF } from './pdf-export.js?v=bw4';
 
 let state = { view:'bw2home', activeBranchId:null, branchOverrides:{} };
 let charts = {};
@@ -735,6 +735,7 @@ function renderBranchDetail(empresa){
   document.querySelectorAll('#branch-timeline-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.preopen===currentPreOpen);});
 
   updateBranchKPIBar(r);
+  renderMarketStudyPanel(branch);
   renderBranchResumen(r);
   renderBranchPnL(r,model,overrides);
   renderBranchStress(r,model,overrides);
@@ -926,6 +927,72 @@ function renderBranchResumen(r){
   dc('branch-cashflow');const ctx=$('chart-branch-cashflow');if(!ctx)return;
   charts['branch-cashflow']=new Chart(ctx,{type:'line',data:{labels:r.months.map(m=>'M'+m.month),datasets:[{label:'Acumulado',data:r.months.map(m=>m.cumulativeCashFlow),borderColor:'#4d7cfe',backgroundColor:'rgba(77,124,254,0.1)',fill:true,tension:0.3,pointRadius:0,borderWidth:2.5},{label:'Mensual',data:r.months.map(m=>m.cashFlow),type:'bar',backgroundColor:r.months.map(m=>m.cashFlow>=0?'rgba(52,211,153,0.35)':'rgba(248,113,113,0.3)'),borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt.m(c.parsed.y)}`}}},scales:{y:{ticks:{callback:v=>fmt.mk(v)}}}}});
   renderAlerts(evaluateAlerts(r),'branch-alerts');
+}
+
+/* ─── MARKET STUDY VARIABLES PANEL ─── */
+function renderMarketStudyPanel(branch) {
+  const panel = $('market-study-panel');
+  const body = $('market-study-body');
+  const masterSwitch = $('market-master-switch');
+  const factorBadge = $('market-combined-factor');
+  if (!panel || !body) return;
+
+  const study = branch.locationStudy;
+  if (!study?.scores?.factors) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = 'block';
+  const toggles = branch.overrides?.marketStudyToggles || {};
+  const masterEnabled = branch.overrides?.marketStudyEnabled !== false;
+  if (masterSwitch) masterSwitch.checked = masterEnabled;
+
+  const { combinedFactor, activeImpacts, inactiveImpacts } = calcCombinedMarketFactor(
+    study.scores.factors, masterEnabled ? toggles : Object.fromEntries(Object.keys(study.scores.factors).map(k => [k, false]))
+  );
+
+  // Combined factor badge
+  const cfPct = ((combinedFactor - 1) * 100);
+  const cfClass = cfPct >= 0 ? 'positive' : 'negative';
+  if (factorBadge) factorBadge.innerHTML = masterEnabled
+    ? `Factor: <strong class="${cfClass}">${combinedFactor.toFixed(3)}x</strong> <small>(${cfPct >= 0 ? '+' : ''}${cfPct.toFixed(1)}%)</small>`
+    : '<small>Desactivado</small>';
+
+  // Build variables table
+  const allImpacts = [...activeImpacts, ...inactiveImpacts].sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+  body.innerHTML = `<table class="market-vars-table">
+    <thead><tr><th></th><th>Variable</th><th class="num">Score</th><th class="num">Efecto</th><th>Activa</th></tr></thead>
+    <tbody>${allImpacts.map(imp => {
+      const enabled = toggles[imp.key] !== false;
+      const pctStr = imp.pct >= 0 ? `+${imp.pct.toFixed(1)}%` : `${imp.pct.toFixed(1)}%`;
+      const pctClass = imp.pct >= 0 ? 'positive' : 'negative';
+      const scoreClass = imp.score >= 75 ? 'score-high' : imp.score >= 50 ? 'score-mid' : 'score-low';
+      return `<tr class="${enabled && masterEnabled ? '' : 'mvar-disabled'}">
+        <td class="mvar-emoji">${imp.emoji}</td>
+        <td class="mvar-label">${imp.label}</td>
+        <td class="num"><span class="mvar-score ${scoreClass}">${imp.score}</span></td>
+        <td class="num"><span class="mvar-pct ${pctClass}">${pctStr}</span></td>
+        <td><label class="mvar-toggle"><input type="checkbox" data-key="${imp.key}" ${enabled ? 'checked' : ''} ${masterEnabled ? '' : 'disabled'}><span class="mvar-slider"></span></label></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+
+  // Bind toggle events
+  body.querySelectorAll('input[data-key]').forEach(inp => {
+    inp.onchange = () => {
+      const key = inp.dataset.key;
+      const newToggles = { ...(branch.overrides?.marketStudyToggles || {}), [key]: inp.checked };
+      updateBranchOverrides(branch.id, { marketStudyToggles: newToggles });
+    };
+  });
+
+  // Master switch
+  if (masterSwitch) {
+    masterSwitch.onchange = () => {
+      updateBranchOverrides(branch.id, { marketStudyEnabled: masterSwitch.checked });
+    };
+  }
 }
 
 /* ─── BRANCH P&L ─── */

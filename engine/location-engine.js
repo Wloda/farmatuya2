@@ -506,3 +506,80 @@ export async function runLocationStudy(addressQuery) {
 
   return study;
 }
+
+/* ══════════════════════════════════════════
+   FINANCIAL IMPACT MAPPER
+   Converts 11-factor scores → financial adjustments
+   ══════════════════════════════════════════ */
+
+/**
+ * Each factor score (0–100) → a sales multiplier.
+ * Score 50 = neutral (1.00x), higher = bonus, lower = penalty.
+ * The range defines max penalty / max bonus per factor.
+ */
+const FACTOR_IMPACT_RANGES = {
+  rezago:      { min: -0.06, max: 0.04, label: 'Rezago Social',          emoji: '📊' },
+  compDensity: { min: -0.10, max: 0.06, label: 'Competencia (densidad)', emoji: '💊' },
+  compQuality: { min: -0.06, max: 0.04, label: 'Competencia (cadenas)',  emoji: '🏷️' },
+  health:      { min: -0.04, max: 0.06, label: 'Corredor de Salud',     emoji: '🏥' },
+  traffic:     { min: -0.05, max: 0.06, label: 'Generadores de Tráfico', emoji: '🚶' },
+  commercial:  { min: -0.03, max: 0.04, label: 'Densidad Comercial',    emoji: '🏪' },
+  transport:   { min: -0.04, max: 0.04, label: 'Accesibilidad',         emoji: '🚌' },
+  residential: { min: -0.05, max: 0.05, label: 'Densidad Residencial',  emoji: '🏠' },
+  income:      { min: -0.03, max: 0.04, label: 'Nivel de Ingreso',      emoji: '💰' },
+  saturation:  { min: -0.08, max: 0.04, label: 'Saturación',            emoji: '📈' },
+  nearest:     { min: -0.04, max: 0.04, label: 'Distancia Competidor',  emoji: '📍' },
+};
+
+/**
+ * Returns per-factor financial impact details.
+ * @param {object} factors - from calcLocationScores().factors
+ * @returns {object[]} Array of { key, label, emoji, score, multiplier, pct, enabled }
+ */
+export function calcFinancialImpact(factors) {
+  if (!factors) return [];
+  return Object.entries(FACTOR_IMPACT_RANGES).map(([key, range]) => {
+    const factor = factors[key];
+    if (!factor) return null;
+    const score = factor.score;
+    // Linear interpolation: score 0 → min, score 100 → max
+    const pct = range.min + (score / 100) * (range.max - range.min);
+    return {
+      key,
+      label: range.label,
+      emoji: range.emoji,
+      score,
+      weight: factor.weight,
+      multiplier: 1 + pct,
+      pct: pct * 100,  // e.g. +3.5 or -2.1
+    };
+  }).filter(Boolean);
+}
+
+/**
+ * Compute combined scenarioFactor adjustment from market study.
+ * @param {object} factors - from calcLocationScores().factors
+ * @param {object} toggles - { rezago: true, compDensity: false, ... }
+ * @returns {{ combinedFactor: number, activeImpacts: object[], inactiveImpacts: object[] }}
+ */
+export function calcCombinedMarketFactor(factors, toggles = {}) {
+  const impacts = calcFinancialImpact(factors);
+  if (!impacts.length) return { combinedFactor: 1, activeImpacts: [], inactiveImpacts: [] };
+
+  const activeImpacts = [];
+  const inactiveImpacts = [];
+  let combinedFactor = 1;
+
+  for (const imp of impacts) {
+    // Default: all enabled unless explicitly toggled off
+    const enabled = toggles[imp.key] !== false;
+    if (enabled) {
+      combinedFactor *= imp.multiplier;
+      activeImpacts.push({ ...imp, enabled: true });
+    } else {
+      inactiveImpacts.push({ ...imp, enabled: false });
+    }
+  }
+
+  return { combinedFactor, activeImpacts, inactiveImpacts };
+}

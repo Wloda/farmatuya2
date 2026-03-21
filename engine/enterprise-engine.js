@@ -3,8 +3,9 @@
  * Wraps the core financial-model.js for multi-branch projections.
  * Core engine is NOT modified — this is a pure wrapper.
  */
-import { MODELS, SCENARIOS } from '../data/model-registry.js?v=bw3';
-import { runProjection } from './financial-model.js?v=bw3';
+import { MODELS, SCENARIOS } from '../data/model-registry.js?v=bw4';
+import { runProjection } from './financial-model.js?v=bw4';
+import { calcCombinedMarketFactor } from './location-engine.js?v=bw4';
 
 /* ── Single Branch Projection ── */
 export function runBranchProjection(branch, empresa) {
@@ -23,6 +24,13 @@ export function runBranchProjection(branch, empresa) {
     const vc = { ...(overrides.variableCosts || model.variableCosts) };
     vc.merma = (vc.merma || model.variableCosts.merma) + sc.mermaAdj;
     overrides.variableCosts = vc;
+  }
+
+  // Apply market study adjustments (if study exists and is enabled)
+  if (branch.locationStudy?.scores?.factors && overrides.marketStudyEnabled !== false) {
+    const toggles = overrides.marketStudyToggles || {};
+    const { combinedFactor } = calcCombinedMarketFactor(branch.locationStudy.scores.factors, toggles);
+    overrides.scenarioFactor *= combinedFactor;
   }
 
   // Partners come from empresa, not from branch
