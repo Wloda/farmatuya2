@@ -154,13 +154,14 @@ function updateEnterpriseHeader(empresa){
   const empName = emp ? emp.name : 'Sin Empresa';
   const projName = empresa.name || 'Proyecto';
   const el=$('enterprise-header-info');
+  const scoreColor = consol.avgScore >= 80 ? 'green' : consol.avgScore >= 60 ? 'yellow' : 'red';
   if(el) el.innerHTML=`<span class="ent-name">🏢 ${empName}</span>
     <span class="ent-stat project-badge">📁 ${projName}</span>
     <span class="ent-stat">Capital: ${fmt.m(empresa.totalCapital)}</span>
     <span class="ent-stat">Comprometido: ${fmt.m(consol.capitalCommitted)}</span>
     <span class="ent-stat ${consol.capitalFree<0?'danger':''}">Libre: ${fmt.m(consol.capitalFree)}</span>
-    <span class="ent-stat">Sucursales: ${consol.branchCountActive === 1 ? '1 activa' : consol.branchCountActive + ' activas'}${consol.branchCountPlanned > 0 ? (consol.branchCountPlanned === 1 ? ', 1 planeada' : ', ' + consol.branchCountPlanned + ' planeadas') : ''}</span>
-    <span class="ent-stat">Score: ${consol.avgScore}</span>`;
+    <span class="ent-stat">Sucursales: ${consol.branchCountActive} activas</span>
+    <span class="ent-stat"><span class="sem-dot ${scoreColor}"></span> Score: ${consol.avgScore}</span>`;
   // Update brand
   const brandName=$('header-brand-name');
   const brandSub=$('header-brand-subtitle');
@@ -747,9 +748,9 @@ function renderBranchDetail(empresa){
   // Format selector
   document.querySelectorAll('#branch-format-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.format===branch.format);});
   // Scenario selector
-  document.querySelectorAll('#branch-scenario-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.scenario===branch.scenarioId);});
+  document.querySelectorAll('#branch-scenario-selector .seg-btn, #branch-scenario-selector-res .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.scenario===branch.scenarioId);});
   // Royalty
-  const proj = empresa.proyectos.find(p => p.id === branch.proyectoId);
+  const proj = empresa.proyectos?.find(p => p.id === branch.proyectoId);
   const isFranchise = proj?.isFranchise !== false;
   const rg=$('branch-royalty-group');
   if(rg) rg.style.display=(branch.format==='super' && isFranchise)?'block':'none';
@@ -781,7 +782,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   });
   // Scenario selector
-  document.querySelectorAll('#branch-scenario-selector .seg-btn').forEach(btn=>{
+  document.querySelectorAll('#branch-scenario-selector .seg-btn, #branch-scenario-selector-res .seg-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
       if(!state.activeBranchId)return;
       updateBranch(state.activeBranchId,{scenarioId:btn.dataset.scenario});
@@ -796,6 +797,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       const preOpen = parseInt(btn.dataset.preopen) || 0;
       const ov = { ...(branch.overrides || {}), preOpenMonths: preOpen };
       updateBranch(state.activeBranchId, { overrides: ov });
+      renderBranchDetail(getEmpresa());
     });
   });
   // Colonia autocomplete — geocoding suggestions
@@ -814,6 +816,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     btn.addEventListener('click',()=>{
       if(!state.activeBranchId)return;
       updateBranchOverrides(state.activeBranchId,{royaltyMode:btn.dataset.royalty});
+      renderBranchDetail(getEmpresa());
     });
   });
   // Advanced panel toggle
@@ -863,21 +866,30 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 function updateBranchKPIBar(r){
   const be=r.breakEvenPctCapacity, net=r.perPartnerMonthly[0]?.monthlyIncome||0;
-  const cf=r.months[Math.min(35,r.months.length-1)]?.cumulativeCashFlow||0;
   const pm=r.paybackMetrics;
-  const fmtRange=(min,max)=>min!=null&&max!=null?`${min.toFixed(0)}–${max.toFixed(0)} m`:'∞';
   const fmtMo2=(m,ext)=>m!=null?(m+(ext?' (est.)':''))+' m':'∞';
-  const pbSimpleMid=pm.simple.min!=null?(pm.simple.min+pm.simple.max)/2:null;
-  const pbAvgMid=pm.avg5y.min!=null?(pm.avg5y.min+pm.avg5y.max)/2:null;
-  const chips=[
-    {l:'Pto. Equilibrio',v:fmt.m(r.breakEvenRevenue),d:fmt.pi(be)+' cap.',s:be<0.5?'success':be<0.7?'warning':'danger',t:'Venta mínima mensual para cubrir costos'},
-    {l:'Ganancia/mes',v:fmt.m(r.avgMonthlyEBITDA),d:'Margen '+fmt.p(r.mc),s:r.avgMonthlyEBITDA>0?'success':'danger',t:'Ganancia mensual antes de impuestos'},
-    {l:'Recup. Simple',v:fmtRange(pm.simple.min,pm.simple.max),d:'Inversión / Utilidad',s:pbSimpleMid&&pbSimpleMid<=24?'success':pbSimpleMid&&pbSimpleMid<=36?'warning':'danger',t:'Meses para recuperar la inversión (sin rampa)'},
-    {l:'Recuperación',v:fmtMo2(pm.rampa.month,pm.rampa.extrapolated),d:'Flujo acum. real',s:pm.rampa.month&&pm.rampa.month<=36?'success':pm.rampa.month&&pm.rampa.month<=48?'warning':'danger',t:'Meses reales para recuperar la inversión'},
-    {l:'Operativo +',v:pm.beOperativo.month?pm.beOperativo.month+' m':'∞',d:'Utilidad > 0 sost.',s:pm.beOperativo.month&&pm.beOperativo.month<=12?'success':pm.beOperativo.month&&pm.beOperativo.month<=18?'warning':'danger',t:'Mes en que la sucursal empieza a ganar'},
-    {l:'Calificación',v:r.viabilityScore+'/100',d:r.viabilityScore>=60?'VIABLE':'FRÁGIL',s:r.viabilityScore>=60?'success':r.viabilityScore>=40?'warning':'danger',t:'Calificación general de viabilidad'},
-  ];
-  $('branch-kpi-strip').innerHTML=chips.map(k=>`<div class="kpi-chip" data-status="${k.s}"><div class="kpi-chip-label" title="${k.t}">${k.l}</div><div class="kpi-chip-value">${k.v}</div><div class="kpi-chip-detail">${k.d}</div></div>`).join('');
+  
+  const elEq = $('branch-kpi-equilibrio');
+  const elProfit = $('branch-kpi-profit');
+  const elPayback = $('branch-kpi-payback');
+  const elRating = $('branch-kpi-rating');
+
+  if(elEq) {
+    elEq.textContent = fmt.m(r.breakEvenRevenue);
+    elEq.style.color = be<0.5?'var(--green)':be<0.7?'var(--text-1)':'var(--red)';
+  }
+  if(elProfit) {
+    elProfit.textContent = fmt.m(r.avgMonthlyEBITDA);
+    elProfit.style.color = r.avgMonthlyEBITDA>0?'var(--green)':'var(--red)';
+  }
+  if(elPayback) {
+    elPayback.textContent = fmtMo2(pm.rampa.month,pm.rampa.extrapolated);
+    elPayback.style.color = pm.rampa.month&&pm.rampa.month<=36?'var(--green)':pm.rampa.month&&pm.rampa.month<=48?'var(--text-1)':'var(--red)';
+  }
+  if(elRating) {
+    elRating.textContent = r.viabilityScore+'/100';
+    elRating.style.color = r.viabilityScore>=60?'var(--green)':r.viabilityScore>=40?'var(--text-1)':'var(--red)';
+  }
 }
 
 function updateBranchAuditBadges(model){
@@ -963,6 +975,7 @@ function renderMarketStudyPanel(branch) {
       const key = inp.dataset.key;
       const newToggles = { ...(branch.overrides?.marketStudyToggles || {}), [key]: inp.checked };
       updateBranchOverrides(branch.id, { marketStudyToggles: newToggles });
+      renderBranchDetail(getEmpresa());
     };
   });
 
@@ -970,18 +983,22 @@ function renderMarketStudyPanel(branch) {
   if (masterSwitch) {
     masterSwitch.onchange = () => {
       updateBranchOverrides(branch.id, { marketStudyEnabled: masterSwitch.checked });
+      renderBranchDetail(getEmpresa());
     };
   }
 }
 
 /* ─── BRANCH P&L ─── */
 function renderBranchPnL(r,model,overrides){
-  $('branch-fin-kpis').innerHTML=[
-    kc('ROI 12m',r.roi12.toFixed(1)+'%','Año 1',r.roi12>0?'success':'danger'),
-    kc('ROI 36m',r.roi36.toFixed(1)+'%','3 años',r.roi36>60?'success':r.roi36>0?'warning':'danger'),
-    kc('VPN',fmt.m(r.npv),'WACC 12%',r.npv>0?'success':'danger'),
-    kc('TIR',r.irr!=null?(r.irr*100).toFixed(1)+'%':'N/A','Interna',r.irr&&r.irr>0.12?'success':'danger'),
-  ].join('');
+  const finKpiEl = $('branch-fin-kpis');
+  if(finKpiEl) {
+    finKpiEl.innerHTML=[
+      kc('ROI 12m',r.roi12.toFixed(1)+'%','Año 1',r.roi12>0?'success':'danger'),
+      kc('ROI 36m',r.roi36.toFixed(1)+'%','3 años',r.roi36>60?'success':r.roi36>0?'warning':'danger'),
+      kc('VPN',fmt.m(r.npv),'WACC 12%',r.npv>0?'success':'danger'),
+      kc('TIR',r.irr!=null?(r.irr*100).toFixed(1)+'%':'N/A','Interna',r.irr&&r.irr>0.12?'success':'danger'),
+    ].join('');
+  }
   dc('branch-pnl-bars');const c1=$('chart-branch-pnl');if(c1){
     charts['branch-pnl-bars']=new Chart(c1,{type:'bar',data:{labels:r.months.map(m=>'M'+m.month),datasets:[{label:'Ingresos',data:r.months.map(m=>m.revenue),backgroundColor:'rgba(77,124,254,0.4)'},{label:'EBITDA',data:r.months.map(m=>m.ebitda),backgroundColor:r.months.map(m=>m.ebitda>=0?'rgba(52,211,153,0.4)':'rgba(248,113,113,0.35)')}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false},scales:{y:{ticks:{callback:v=>fmt.mk(v)}}}}});
   }
@@ -1004,11 +1021,14 @@ function renderBranchPnL(r,model,overrides){
 /* ─── BRANCH STRESS ─── */
 function renderBranchStress(r,model,overrides){
   let stress;try{stress=calcStress(state.activeBranchId?getBranch(state.activeBranchId).format:'express',overrides);}catch(e){stress={maxRent:0,fragilityPct:1,viableCells:0,totalCells:1};}
-  $('branch-stress-kpis').innerHTML=[
-    kc('Renta Máx.',fmt.m(stress.maxRent),`Actual: ${fmt.m(overrides.rent||model.fixedCosts.rent)}`,stress.maxRent>(overrides.rent||model.fixedCosts.rent)*1.2?'success':'warning'),
-    kc('Venta Mín.',fmt.m(r.breakEvenRevenue),fmt.pi(r.breakEvenPctCapacity)+' cap.',r.breakEvenPctCapacity<0.7?'success':'danger'),
-    kc('Fragilidad',fmt.pi(stress.fragilityPct),`${stress.viableCells}/${stress.totalCells}`,stress.fragilityPct<0.3?'success':stress.fragilityPct<0.5?'warning':'danger'),
-  ].join('');
+  const stressEl = $('branch-stress-kpis');
+  if(stressEl) {
+    stressEl.innerHTML=[
+      kc('Renta Máx.',fmt.m(stress.maxRent),`Actual: ${fmt.m(overrides.rent||model.fixedCosts.rent)}`,stress.maxRent>(overrides.rent||model.fixedCosts.rent)*1.2?'success':'warning'),
+      kc('Venta Mín.',fmt.m(r.breakEvenRevenue),fmt.pi(r.breakEvenPctCapacity)+' cap.',r.breakEvenPctCapacity<0.7?'success':'danger'),
+      kc('Fragilidad',fmt.pi(stress.fragilityPct),`${stress.viableCells}/${stress.totalCells}`,stress.fragilityPct<0.3?'success':stress.fragilityPct<0.5?'warning':'danger'),
+    ].join('');
+  }
   let sensitivity;try{sensitivity=runSensitivity(getBranch(state.activeBranchId).format,overrides);}catch(e){sensitivity=[];}
   dc('branch-tornado');const ctx=$('chart-branch-tornado');if(ctx&&sensitivity.length){
     charts['branch-tornado']=new Chart(ctx,{type:'bar',data:{labels:sensitivity.map(s=>s.label),datasets:[{label:'+20%',data:sensitivity.map(s=>s.ebitdaDeltaUp),backgroundColor:sensitivity.map(s=>s.ebitdaDeltaUp>=0?'rgba(52,211,153,0.6)':'rgba(248,113,113,0.5)'),borderRadius:3},{label:'−20%',data:sensitivity.map(s=>s.ebitdaDeltaDown),backgroundColor:sensitivity.map(s=>s.ebitdaDeltaDown>=0?'rgba(52,211,153,0.4)':'rgba(248,113,113,0.35)'),borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt.m(c.parsed.x)}`}}},scales:{x:{ticks:{callback:v=>fmt.mk(v)}}}}});
@@ -1171,7 +1191,7 @@ function renderBranchEditPanel(branch, model) {
   const vcEl = $('edit-vc');
   if (vcEl) {
     const empresa = getEmpresa();
-    const proj = empresa?.proyectos.find(p => p.id === branch.proyectoId);
+    const proj = empresa?.proyectos?.find(p => p.id === branch.proyectoId);
     const isFranchise = proj?.isFranchise !== false;
 
     let fields = [

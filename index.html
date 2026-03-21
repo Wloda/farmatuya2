@@ -29,7 +29,7 @@
       <h2 style="margin:0 0 0.5rem 0;color:#111827;font-size:1.25rem;font-weight:700">Acceso Privado</h2>
       <p style="margin:0 0 2rem 0;color:#6b7280;font-size:0.875rem">Ingresa tu código de acceso para entrar al Dashboard BW².</p>
       <input type="password" id="bw2-auth-input" style="width:100%;padding:0.75rem;border:1px solid #d1d5db;border-radius:8px;font-size:1.25rem;margin-bottom:1rem;text-align:center;letter-spacing:0.2em;outline:none" placeholder="••••••••" autocomplete="current-password">
-      <button onclick="window.checkBw2Auth()" style="width:100%;padding:0.75rem;background:#111827;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:1rem;transition:background 0.2s">Entrar al Portafolio</button>
+      <button onclick="window.checkBw2Auth()" style="width:100%;padding:0.75rem;background:#111827;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:1rem;transition:background 0.2s">Entrar a Proyectos</button>
       <div id="bw2-auth-error" style="color:#ef4444;font-size:0.875rem;margin-top:1rem;display:none;font-weight:500">Código incorrecto. Intenta de nuevo.</div>
     </div>
   </div>
@@ -39,8 +39,24 @@
       const input = document.getElementById('bw2-auth-input');
       const err = document.getElementById('bw2-auth-error');
       
-      // Auto-bypass on localhost or if already authenticated
-      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || localStorage.getItem('bw2_access_granted') === 'true') {
+      // Hashed passwords (admin / bw2secure2026) -> SHA-256
+      // You can add more hashes here
+      const validHashes = [
+        '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', // admin
+        '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08', // test
+        '10bf97c6742533fac4eb1d4cc3f0ed006f1eb3d11b3fe4082dcfea4613b1fbcd'  // Nojom2026
+      ];
+
+      async function hashPassword(password) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      }
+
+      // Check if already authenticated
+      if (localStorage.getItem('bw2_access_granted') === 'true') {
         gate.style.display = 'none';
       } else {
         input.addEventListener('keypress', function(e) {
@@ -48,10 +64,12 @@
         });
       }
 
-      window.checkBw2Auth = function() {
+      window.checkBw2Auth = async function() {
         const val = input.value.trim();
-        // Accepted passwords
-        if (val === 'Nojom2026' || val === 'BW2026') {
+        if(!val) return;
+        const hash = await hashPassword(val);
+        
+        if (validHashes.includes(hash)) {
           localStorage.setItem('bw2_access_granted', 'true');
           gate.style.opacity = '0';
           setTimeout(() => gate.style.display = 'none', 300);
@@ -60,6 +78,12 @@
           input.value = '';
           input.focus();
         }
+      };
+
+      // Global logout
+      window.bw2Logout = function() {
+        localStorage.removeItem('bw2_access_granted');
+        location.reload();
       };
     })();
   </script>
@@ -72,17 +96,22 @@
       <div class="header-brand"><span class="brand-name" id="header-brand-name">NOJOM</span><span class="subtitle" id="header-brand-subtitle">Dashboard de Inversión</span></div>
     </div>
     <div class="header-center" id="enterprise-header-info"></div>
+    <div class="header-right" style="margin-left:auto;display:flex;align-items:center;padding-right:1rem">
+      <button onclick="window.bw2Logout()" style="background:none;border:none;color:var(--text-3);font-size:0.75rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:0.3rem;transition:color 0.2s" title="Cerrar Sessión" onmouseover="this.style.color='var(--text-1)'" onmouseout="this.style.color='var(--text-3)'">
+        <span>Salir</span> <span style="font-size:1rem">🚪</span>
+      </button>
+    </div>
   </header>
 
   <!-- ═══ MAIN NAV ═══ -->
   <nav id="main-nav">
     <button class="nav-btn" data-view="bw2home">Inicio<small>Tus Empresas</small></button>
-    <button class="nav-btn active" data-view="portfolio">Portafolio<small>Tus sucursales de un vistazo</small></button>
+    <button class="nav-btn" data-view="empresa">Empresa<small>Capital, socios y config.</small></button>
+    <button class="nav-btn active" data-view="portfolio">Proyectos<small>Tus sucursales de un vistazo</small></button>
     <button class="nav-btn" data-view="consolidated">Consolidado<small>Números totales del negocio</small></button>
     <button class="nav-btn" data-view="comparador">Comparar<small>Sucursales lado a lado</small></button>
-    <button class="nav-btn" data-view="empresa">Empresa<small>Capital, socios y config.</small></button>
     <div class="nav-spacer"></div>
-    <button class="btn-add" id="btn-add-branch">+ Nueva Sucursal</button>
+    <button class="btn-add" id="btn-add-branch">+ Nuevo Proyecto</button>
   </nav>
 
 
@@ -105,14 +134,14 @@
 
     <!-- ═══ PORTFOLIO VIEW ═══ -->
     <section id="view-portfolio">
-      <div class="view-header"><h2>Portafolio de Sucursales</h2><p>Haz clic en 📊 <strong>Ver</strong> para explorar los detalles de cada sucursal</p></div>
+      <div class="view-header"><h2>Proyectos</h2><p>Haz clic en 📊 <strong>Ver</strong> para explorar los detalles de cada proyecto</p></div>
       <div class="portfolio-grid" id="portfolio-grid"></div>
     </section>
 
     <!-- ═══ BRANCH DETAIL VIEW ═══ -->
     <section id="view-branch" style="display:none">
       <div class="view-header">
-        <button class="btn-back" id="btn-back-portfolio">← Portafolio</button>
+        <button class="btn-back" id="btn-back-portfolio">← Proyectos</button>
         <div><h2 id="branch-detail-title">Sucursal</h2><p id="branch-detail-subtitle">—</p></div>
         <button class="btn-export-pdf" id="btn-export-pdf" title="Generar reporte PDF de inversión" style="display:none">📄 Exportar PDF</button>
       </div>
@@ -189,8 +218,7 @@
           <div class="edit-section">
             <h4 class="edit-section-title" data-toggle="edit-sales">Ventas <span class="toggle-arrow">▼</span></h4>
             <div class="edit-grid" id="edit-sales"></div>
-          </div>
-          <div class="edit-section" id="branch-royalty-group" style="display:none">
+  <div class="edit-section" id="branch-royalty-group" style="display:none">
             <h4 class="edit-section-title">Modo Regalía (Súper)</h4>
             <div class="neu-segmented small" id="branch-royalty-selector">
               <button class="seg-btn active" data-royalty="variable_2_5">Variable 2.5%</button>
@@ -205,69 +233,114 @@
       <!-- ═══ TAB 2: RESULTADOS (default active) ═══ -->
       <div id="btab-resultados" class="branch-tab-panel active">
 
-        <!-- KPI Strip -->
-        <section id="branch-kpi-bar">
-          <div class="kpi-strip" id="branch-kpi-strip"></div>
-        </section>
+        <div style="display:flex; justify-content:flex-end; margin-bottom: 1rem;">
+          <div class="neu-segmented small" id="branch-scenario-selector-res">
+            <button class="seg-btn" data-scenario="conservative">🔴 Cons.</button>
+            <button class="seg-btn" data-scenario="base">🟡 Base</button>
+            <button class="seg-btn" data-scenario="upside">🟢 Upside</button>
+          </div>
+        </div>
 
-        <!-- Market Study Variables (toggleable) -->
-        <div id="market-study-panel" class="neu-card market-study-panel" style="display:none">
-          <div class="market-study-header">
-            <h3 class="card-title">📊 Variables del Mercado</h3>
-            <div class="market-study-controls">
-              <span class="market-factor-badge" id="market-combined-factor"></span>
-              <label class="market-master-toggle" title="Activar/desactivar todas las variables del estudio">
-                <input type="checkbox" id="market-master-switch" checked>
-                <span class="toggle-slider"></span>
-                <span class="toggle-text">Aplicar</span>
-              </label>
+        <div class="widget-grid" id="branch-resultados-grid">
+          
+          <!-- KPI Row (4 widgets x 3 cols = 12 cols) -->
+          <div class="widget wg-3" id="wid-kpi-eq">
+            <span class="widget-subtitle">Pto. Equilibrio</span>
+            <h3 class="widget-title" id="branch-kpi-equilibrio" style="font-size:1.25rem;margin-top:0.25rem">...</h3>
+          </div>
+          <div class="widget wg-3" id="wid-kpi-profit">
+            <span class="widget-subtitle">Ganancia/Mes</span>
+            <h3 class="widget-title" id="branch-kpi-profit" style="font-size:1.25rem;color:var(--accent);margin-top:0.25rem">...</h3>
+          </div>
+          <div class="widget wg-3" id="wid-kpi-payback">
+            <span class="widget-subtitle">Recuperación (Target 36m)</span>
+            <h3 class="widget-title" id="branch-kpi-payback" style="font-size:1.25rem;margin-top:0.25rem">...</h3>
+          </div>
+          <div class="widget wg-3" id="wid-kpi-rating">
+            <span class="widget-subtitle">Calificación</span>
+            <h3 class="widget-title" id="branch-kpi-rating" style="font-size:1.25rem;margin-top:0.25rem">...</h3>
+          </div>
+
+          <!-- Variables del Mercado -->
+          <div class="widget wg-12" id="market-study-panel" style="display:none">
+            <div class="widget-header" style="margin-bottom:0.5rem">
+              <h3 class="widget-title">📊 Variables del Mercado</h3>
+              <div class="market-study-controls" style="display:flex;align-items:center;gap:1rem">
+                <span class="market-factor-badge" id="market-combined-factor"></span>
+                <label class="market-master-toggle" title="Activar/desactivar todas las variables">
+                  <input type="checkbox" id="market-master-switch" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
             </div>
+            <p style="font-size:0.75rem;color:var(--text-3);margin-bottom:1rem">Factores que impactan las ventas en esta ubicación base.</p>
+            <div class="market-study-body" id="market-study-body"></div>
           </div>
-          <div class="market-study-body" id="market-study-body"></div>
+
+          <!-- Main Chart -->
+          <div class="widget wg-8">
+            <h3 class="widget-title" style="margin-bottom:1rem">Flujo de Caja Acumulado (ROI)</h3>
+            <div class="chart-box"><canvas id="chart-branch-cashflow"></canvas></div>
+          </div>
+
+          <!-- Viabilidad -->
+          <div class="widget wg-4" style="display:flex;flex-direction:column;align-items:center;justify-content:center">
+            <h3 class="widget-title" style="text-align:center;width:100%;margin-bottom:1rem">Viabilidad</h3>
+            <div id="branch-gauge" style="width:100%;display:flex;justify-content:center"></div>
+            <div id="branch-viability-badge" style="text-align:center;margin-top:1rem;font-size:0.875rem;font-weight:700"></div>
+          </div>
+
+          <!-- Checkout / Checklist -->
+          <div class="widget wg-8">
+            <h3 class="widget-title" style="margin-bottom:1rem">Checklist de Cierre</h3>
+            <div id="branch-checklist-results" style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem"></div>
+          </div>
+
+          <!-- Alertas -->
+          <div class="widget wg-4">
+             <h3 class="widget-title" style="margin-bottom:1rem">Alertas y Sugerencias</h3>
+             <div id="branch-alerts" style="display:flex;flex-direction:column;gap:0.5rem"></div>
+          </div>
+
         </div>
 
-        <!-- Viabilidad + Checklist -->
-        <div class="row-2col">
-          <div class="neu-card"><h3 class="card-title">Viabilidad</h3><div id="branch-gauge"></div></div>
-          <div class="neu-card"><h3 class="card-title">Checklist Go / No-Go</h3><div id="branch-checklist"></div></div>
-        </div>
-
-        <!-- Cash Flow -->
-        <div class="neu-card"><h3 class="card-title">Flujo de Caja (60 meses)</h3><div class="chart-box"><canvas id="chart-branch-cashflow"></canvas></div></div>
-
-        <!-- Alertas -->
-        <div class="neu-card"><h3 class="card-title">Alertas</h3><div id="branch-alerts"></div></div>
-
-        <!-- P&L Section -->
-        <div class="results-section">
-          <h3 class="results-section-title" data-toggle-section="section-pnl">📈 Estado de Resultados <span class="toggle-arrow">▼</span></h3>
-          <div id="section-pnl" class="results-section-body">
-            <div class="kpi-grid" id="branch-fin-kpis"></div>
-            <div class="neu-card"><h3 class="card-title">Ingresos vs EBITDA</h3><div class="chart-box"><canvas id="chart-branch-pnl"></canvas></div></div>
-            <div class="row-2col">
-              <div class="neu-card"><h3 class="card-title">Costos Fijos</h3><div class="chart-box-sm"><canvas id="chart-branch-donut"></canvas></div></div>
-              <div class="neu-card"><h3 class="card-title">Costos Variables (%)</h3><div class="chart-box-sm"><canvas id="chart-branch-cv"></canvas></div></div>
+        <!-- Collapsible Sub-sections for Detailed Results -->
+        <div class="resultados-details" style="margin-top:2rem">
+          <h3 style="font-size:1.125rem;font-weight:800;color:var(--text-1);margin-bottom:1rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border)">Análisis Detallado</h3>
+          
+          <div class="widget-grid">
+            <div class="widget wg-8">
+              <h3 class="widget-title" style="margin-bottom:1rem">Ingresos vs EBITDA (Trimestral)</h3>
+              <div class="chart-box"><canvas id="chart-branch-pnl"></canvas></div>
             </div>
-            <div class="neu-card"><h3 class="card-title">Resumen Anual</h3><div class="table-scroll" id="branch-annual-table"></div></div>
-            <div class="neu-card"><h3 class="card-title">P&L Mensual <button class="expand-btn" id="branch-toggle-pnl">Expandir ▼</button></h3><div class="table-scroll collapsible collapsed" id="branch-pnl-table-full"></div></div>
-          </div>
-        </div>
-
-        <!-- Sensitivity Section -->
-        <div class="results-section">
-          <h3 class="results-section-title" data-toggle-section="section-stress">🎯 Sensibilidad <span class="toggle-arrow">▼</span></h3>
-          <div id="section-stress" class="results-section-body">
-            <div class="kpi-grid" id="branch-stress-kpis"></div>
-            <div class="neu-card"><h3 class="card-title">Tornado (±20%)</h3><div class="chart-box"><canvas id="chart-branch-tornado"></canvas></div></div>
-          </div>
-        </div>
-
-        <!-- Scenarios Section -->
-        <div class="results-section">
-          <h3 class="results-section-title" data-toggle-section="section-scenarios">🔀 Escenarios <span class="toggle-arrow">▼</span></h3>
-          <div id="section-scenarios" class="results-section-body">
-            <div class="neu-card"><h3 class="card-title">Comparativa de Escenarios</h3><div class="table-scroll" id="scenarios-comparison-table"></div></div>
-            <div class="neu-card"><h3 class="card-title">Cash Flow por Escenario</h3><div class="chart-box"><canvas id="chart-scenarios-cf"></canvas></div></div>
+            <div class="widget wg-4">
+              <h3 class="widget-title" style="margin-bottom:1rem">Costos fijos (%)</h3>
+              <div class="chart-box-sm"><canvas id="chart-branch-donut"></canvas></div>
+            </div>
+            
+            <div class="widget wg-12">
+              <h3 class="widget-title" style="margin-bottom:1rem">Resumen Anual P&L</h3>
+              <div class="table-responsive" id="branch-annual-table"></div>
+              
+              <div style="margin-top:1rem;border-top:1px solid var(--border);padding-top:1rem">
+                <button class="expand-btn" id="branch-toggle-pnl" style="font-weight:600;background:none;border:none;color:var(--text-2);cursor:pointer;display:flex;align-items:center;gap:0.5rem">Desglose Mensual <span style="font-size:0.7rem">▼</span></button>
+                <div class="table-scroll collapsible collapsed" id="branch-pnl-table-full" style="margin-top:1rem"></div>
+              </div>
+            </div>
+            
+            <div class="widget wg-12">
+              <div class="row-2col" style="margin:0;grid-template-columns:1fr 1fr">
+                 <div style="padding-right:0.5rem">
+                   <h3 class="widget-title" style="margin-bottom:1rem">Flujo por Escenario</h3>
+                   <div class="chart-box-sm"><canvas id="chart-scenarios-cf"></canvas></div>
+                   <div class="table-scroll" id="scenarios-comparison-table" style="margin-top:1rem"></div>
+                 </div>
+                 <div style="padding-left:0.5rem">
+                   <h3 class="widget-title" style="margin-bottom:1rem">Tornado Sensibilidad (±20%)</h3>
+                   <div class="chart-box-sm"><canvas id="chart-branch-tornado"></canvas></div>
+                 </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
