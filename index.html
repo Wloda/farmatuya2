@@ -25,7 +25,7 @@
   <!-- ═══ ENTERPRISE HEADER ═══ -->
   <header id="app-header">
     <div class="header-left">
-      <button class="header-home-btn" id="btn-bw2-home" title="Inicio BW²"><img src="assets/bw2-logo.png" alt="BW²" class="header-bw2-logo"></button>
+      <button class="header-home-btn" id="btn-bw2-home" title="Inicio BW²"><svg class="header-bw2-logo" viewBox="0 0 48 32" width="48" height="32"><text x="2" y="24" font-family="Inter,sans-serif" font-weight="900" font-size="22" fill="#1A1A1A">BW</text><text x="36" y="16" font-family="Inter,sans-serif" font-weight="700" font-size="10" fill="#6B7A2E">²</text></svg></button>
       <img src="assets/nojom-bird.png" alt="NOJOM" class="header-logo">
       <div class="header-brand"><span class="brand-name" id="header-brand-name">NOJOM</span><span class="subtitle" id="header-brand-subtitle">Dashboard de Inversión</span></div>
     </div>
@@ -71,137 +71,150 @@
       <div class="view-header">
         <button class="btn-back" id="btn-back-portfolio">← Portafolio</button>
         <div><h2 id="branch-detail-title">Sucursal</h2><p id="branch-detail-subtitle">—</p></div>
-      </div>
-
-      <!-- Branch Config Bar -->
-      <div class="branch-config-bar">
-        <div class="config-item">
-          <label>Formato</label>
-          <div class="neu-segmented small" id="branch-format-selector">
-            <button class="seg-btn" data-format="express">⚡ Express</button>
-            <button class="seg-btn" data-format="super">🏪 Súper</button>
-            <button class="seg-btn" data-format="integral">🏥 Integral</button>
-            <span class="seg-divider">|</span>
-            <button class="seg-btn" data-format="coolpet_estetica">🐾 Estética</button>
-            <button class="seg-btn" data-format="coolpet_farmaspot">🐕 FarmaSpot</button>
-            <button class="seg-btn" data-format="coolpet_farmavet">🏥 FarmaVet</button>
-          </div>
-        </div>
-        <div class="config-item">
-          <label>Escenario</label>
-          <div class="neu-segmented small" id="branch-scenario-selector">
-            <button class="seg-btn" data-scenario="conservative">🔴 Cons.</button>
-            <button class="seg-btn" data-scenario="base">🟡 Base</button>
-            <button class="seg-btn" data-scenario="upside">🟢 Upside</button>
-          </div>
-        </div>
-        <div class="config-item colonia-config">
-          <label>Ubicación</label>
-          <div id="colonia-display" class="colonia-display">—</div>
-          <input type="hidden" id="branch-colonia-input">
-          <div class="colonia-suggestions" id="colonia-suggestions" style="display:none"></div>
-          <div id="colonia-status" class="colonia-status"></div>
-        </div>
-        <div class="config-item">
-          <label>Inicio Cash Flow</label>
-          <div class="neu-segmented small" id="branch-timeline-selector">
-            <button class="seg-btn active" data-preopen="0">📊 Desde Apertura</button>
-            <button class="seg-btn" data-preopen="2">💰 Desde Capital</button>
-          </div>
-        </div>
         <button class="btn-export-pdf" id="btn-export-pdf" title="Generar reporte PDF de inversión">📄 Exportar PDF</button>
       </div>
 
-      <!-- Branch KPI Strip -->
-      <section id="branch-kpi-bar">
-        <div class="kpi-strip" id="branch-kpi-strip"></div>
-      </section>
+      <!-- ═══ 3-TAB NAVIGATION ═══ -->
+      <nav id="branch-tab-nav">
+        <button class="branch-tab-btn" data-tab="config">⚙️ Configuración</button>
+        <button class="branch-tab-btn active" data-tab="resultados">📊 Resultados</button>
+        <button class="branch-tab-btn" data-tab="socioeconomico">🌍 Estudio Socioeconómico</button>
+      </nav>
 
-      <!-- Branch Edit Panel -->
-      <section id="branch-edit-panel">
-        <div class="edit-panel-header">
-          <h3>Supuestos de Sucursal</h3>
-          <button class="btn-sm secondary" id="btn-reset-branch-defaults">🔄 Restablecer valores</button>
-        </div>
+      <!-- ═══ TAB 1: CONFIGURACIÓN ═══ -->
+      <div id="btab-config" class="branch-tab-panel">
 
-        <!-- Investment -->
-        <div class="edit-section">
-          <h4 class="edit-section-title" data-toggle="edit-inv">Inversión <span class="toggle-arrow">▼</span></h4>
-          <div class="edit-grid" id="edit-inv"></div>
-        </div>
-
-        <!-- Fixed Costs -->
-        <div class="edit-section">
-          <h4 class="edit-section-title" data-toggle="edit-fc">Gastos Fijos <span class="toggle-arrow">▼</span></h4>
-          <div class="edit-grid" id="edit-fc"></div>
-        </div>
-
-        <!-- Variable Costs -->
-        <div class="edit-section">
-          <h4 class="edit-section-title" data-toggle="edit-vc">Costos Variables <span class="toggle-arrow">▼</span></h4>
-          <div class="edit-grid" id="edit-vc"></div>
-        </div>
-
-        <!-- Sales -->
-        <div class="edit-section">
-          <h4 class="edit-section-title" data-toggle="edit-sales">Ventas <span class="toggle-arrow">▼</span></h4>
-          <div class="edit-grid" id="edit-sales"></div>
-        </div>
-
-        <!-- Royalty (Súper only) -->
-        <div class="edit-section" id="branch-royalty-group" style="display:none">
-          <h4 class="edit-section-title">Modo Regalía (Súper)</h4>
-          <div class="neu-segmented small" id="branch-royalty-selector">
-            <button class="seg-btn active" data-royalty="variable_2_5">Variable 2.5%</button>
-            <button class="seg-btn" data-royalty="condonacion_6m">Cond. 6m</button>
-            <button class="seg-btn" data-royalty="pago_unico">Pago Único</button>
+        <!-- Format & Scenario Selectors -->
+        <div class="neu-card config-card">
+          <h3 class="card-title">Modelo y Escenario</h3>
+          <div class="config-grid">
+            <div class="config-item">
+              <label>Formato</label>
+              <div class="neu-segmented small" id="branch-format-selector">
+                <button class="seg-btn" data-format="express">⚡ Express</button>
+                <button class="seg-btn" data-format="super">🏪 Súper</button>
+                <button class="seg-btn" data-format="integral">🏥 Integral</button>
+                <span class="seg-divider">|</span>
+                <button class="seg-btn" data-format="coolpet_estetica">🐾 Estética</button>
+                <button class="seg-btn" data-format="coolpet_farmaspot">🐕 FarmaSpot</button>
+                <button class="seg-btn" data-format="coolpet_farmavet">🏥 FarmaVet</button>
+              </div>
+            </div>
+            <div class="config-item">
+              <label>Escenario</label>
+              <div class="neu-segmented small" id="branch-scenario-selector">
+                <button class="seg-btn" data-scenario="conservative">🔴 Cons.</button>
+                <button class="seg-btn" data-scenario="base">🟡 Base</button>
+                <button class="seg-btn" data-scenario="upside">🟢 Upside</button>
+              </div>
+            </div>
+            <div class="config-item">
+              <label>Inicio Cash Flow</label>
+              <div class="neu-segmented small" id="branch-timeline-selector">
+                <button class="seg-btn active" data-preopen="0">📊 Desde Apertura</button>
+                <button class="seg-btn" data-preopen="2">💰 Desde Capital</button>
+              </div>
+            </div>
+            <div class="config-item colonia-config">
+              <label>Ubicación</label>
+              <div id="colonia-display" class="colonia-display">—</div>
+              <input type="hidden" id="branch-colonia-input">
+              <div class="colonia-suggestions" id="colonia-suggestions" style="display:none"></div>
+              <div id="colonia-status" class="colonia-status"></div>
+            </div>
           </div>
         </div>
 
-        <div class="adv-audit" id="branch-audit-badges"></div>
-      </section>
+        <!-- Supuestos Edit Panel -->
+        <section id="branch-edit-panel">
+          <div class="edit-panel-header">
+            <h3>Supuestos de Sucursal</h3>
+            <button class="btn-sm secondary" id="btn-reset-branch-defaults">🔄 Restablecer valores</button>
+          </div>
+          <div class="edit-section">
+            <h4 class="edit-section-title" data-toggle="edit-inv">Inversión <span class="toggle-arrow">▼</span></h4>
+            <div class="edit-grid" id="edit-inv"></div>
+          </div>
+          <div class="edit-section">
+            <h4 class="edit-section-title" data-toggle="edit-fc">Gastos Fijos <span class="toggle-arrow">▼</span></h4>
+            <div class="edit-grid" id="edit-fc"></div>
+          </div>
+          <div class="edit-section">
+            <h4 class="edit-section-title" data-toggle="edit-vc">Costos Variables <span class="toggle-arrow">▼</span></h4>
+            <div class="edit-grid" id="edit-vc"></div>
+          </div>
+          <div class="edit-section">
+            <h4 class="edit-section-title" data-toggle="edit-sales">Ventas <span class="toggle-arrow">▼</span></h4>
+            <div class="edit-grid" id="edit-sales"></div>
+          </div>
+          <div class="edit-section" id="branch-royalty-group" style="display:none">
+            <h4 class="edit-section-title">Modo Regalía (Súper)</h4>
+            <div class="neu-segmented small" id="branch-royalty-selector">
+              <button class="seg-btn active" data-royalty="variable_2_5">Variable 2.5%</button>
+              <button class="seg-btn" data-royalty="condonacion_6m">Cond. 6m</button>
+              <button class="seg-btn" data-royalty="pago_unico">Pago Único</button>
+            </div>
+          </div>
+          <div class="adv-audit" id="branch-audit-badges"></div>
+        </section>
+      </div>
 
-      <!-- Branch Tabs -->
-      <nav id="branch-tab-nav">
-        <button class="branch-tab-btn active" data-tab="resumen">Resumen</button>
-        <button class="branch-tab-btn" data-tab="ubicacion">Ubicación</button>
-        <button class="branch-tab-btn" data-tab="pnl">Resultados</button>
-        <button class="branch-tab-btn" data-tab="stress">Sensibilidad</button>
-        <button class="branch-tab-btn" data-tab="scenarios">Escenarios</button>
-      </nav>
+      <!-- ═══ TAB 2: RESULTADOS (default active) ═══ -->
+      <div id="btab-resultados" class="branch-tab-panel active">
 
-      <!-- Branch Tab Panels -->
-      <div id="btab-resumen" class="branch-tab-panel active">
+        <!-- KPI Strip -->
+        <section id="branch-kpi-bar">
+          <div class="kpi-strip" id="branch-kpi-strip"></div>
+        </section>
+
+        <!-- Viabilidad + Checklist -->
         <div class="row-2col">
           <div class="neu-card"><h3 class="card-title">Viabilidad</h3><div id="branch-gauge"></div></div>
           <div class="neu-card"><h3 class="card-title">Checklist Go / No-Go</h3><div id="branch-checklist"></div></div>
         </div>
+
+        <!-- Cash Flow -->
         <div class="neu-card"><h3 class="card-title">Flujo de Caja (60 meses)</h3><div class="chart-box"><canvas id="chart-branch-cashflow"></canvas></div></div>
+
+        <!-- Alertas -->
         <div class="neu-card"><h3 class="card-title">Alertas</h3><div id="branch-alerts"></div></div>
-      </div>
 
-      <div id="btab-pnl" class="branch-tab-panel">
-        <div class="kpi-grid" id="branch-fin-kpis"></div>
-        <div class="row-2col">
-          <div class="neu-card"><h3 class="card-title">Ingresos vs EBITDA</h3><div class="chart-box"><canvas id="chart-branch-pnl"></canvas></div></div>
-          <div class="neu-card"><h3 class="card-title">Costos Fijos</h3><div class="chart-box-sm"><canvas id="chart-branch-donut"></canvas></div></div>
+        <!-- P&L Section -->
+        <div class="results-section">
+          <h3 class="results-section-title" data-toggle-section="section-pnl">📈 Estado de Resultados <span class="toggle-arrow">▼</span></h3>
+          <div id="section-pnl" class="results-section-body">
+            <div class="kpi-grid" id="branch-fin-kpis"></div>
+            <div class="row-2col">
+              <div class="neu-card"><h3 class="card-title">Ingresos vs EBITDA</h3><div class="chart-box"><canvas id="chart-branch-pnl"></canvas></div></div>
+              <div class="neu-card"><h3 class="card-title">Costos Fijos</h3><div class="chart-box-sm"><canvas id="chart-branch-donut"></canvas></div></div>
+            </div>
+            <div class="neu-card"><h3 class="card-title">Costos Variables (%)</h3><div class="chart-box-sm"><canvas id="chart-branch-cv"></canvas></div></div>
+            <div class="neu-card"><h3 class="card-title">Resumen Anual</h3><div class="table-scroll" id="branch-annual-table"></div></div>
+            <div class="neu-card"><h3 class="card-title">P&L Mensual <button class="expand-btn" id="branch-toggle-pnl">Expandir ▼</button></h3><div class="table-scroll collapsible collapsed" id="branch-pnl-table-full"></div></div>
+          </div>
         </div>
-        <div class="neu-card"><h3 class="card-title">Costos Variables (%)</h3><div class="chart-box-sm"><canvas id="chart-branch-cv"></canvas></div></div>
-        <div class="neu-card"><h3 class="card-title">Resumen Anual</h3><div class="table-scroll" id="branch-annual-table"></div></div>
-        <div class="neu-card"><h3 class="card-title">P&L Mensual <button class="expand-btn" id="branch-toggle-pnl">Expandir ▼</button></h3><div class="table-scroll collapsible collapsed" id="branch-pnl-table-full"></div></div>
+
+        <!-- Sensitivity Section -->
+        <div class="results-section">
+          <h3 class="results-section-title" data-toggle-section="section-stress">🎯 Sensibilidad <span class="toggle-arrow">▼</span></h3>
+          <div id="section-stress" class="results-section-body">
+            <div class="kpi-grid" id="branch-stress-kpis"></div>
+            <div class="neu-card"><h3 class="card-title">Tornado (±20%)</h3><div class="chart-box"><canvas id="chart-branch-tornado"></canvas></div></div>
+          </div>
+        </div>
+
+        <!-- Scenarios Section -->
+        <div class="results-section">
+          <h3 class="results-section-title" data-toggle-section="section-scenarios">🔀 Escenarios <span class="toggle-arrow">▼</span></h3>
+          <div id="section-scenarios" class="results-section-body">
+            <div class="neu-card"><h3 class="card-title">Comparativa de Escenarios</h3><div class="table-scroll" id="scenarios-comparison-table"></div></div>
+            <div class="neu-card"><h3 class="card-title">Cash Flow por Escenario</h3><div class="chart-box"><canvas id="chart-scenarios-cf"></canvas></div></div>
+          </div>
+        </div>
       </div>
 
-      <div id="btab-stress" class="branch-tab-panel">
-        <div class="kpi-grid" id="branch-stress-kpis"></div>
-        <div class="neu-card"><h3 class="card-title">Tornado (±20%)</h3><div class="chart-box"><canvas id="chart-branch-tornado"></canvas></div></div>
-      </div>
-
-      <div id="btab-scenarios" class="branch-tab-panel">
-        <div class="neu-card"><h3 class="card-title">Comparativa de Escenarios</h3><div class="table-scroll" id="scenarios-comparison-table"></div></div>
-        <div class="neu-card"><h3 class="card-title">Cash Flow por Escenario</h3><div class="chart-box"><canvas id="chart-scenarios-cf"></canvas></div></div>
-      </div>
-
-      <div id="btab-ubicacion" class="branch-tab-panel">
+      <!-- ═══ TAB 3: ESTUDIO SOCIOECONÓMICO ═══ -->
+      <div id="btab-socioeconomico" class="branch-tab-panel">
         <div class="neu-card">
           <h3 class="card-title">Estudio de Ubicación y Entorno</h3>
           <div class="loc-input-row">

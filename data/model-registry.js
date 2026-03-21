@@ -57,6 +57,7 @@ export const MODELS = {
     derived: null,
     franchise: null,
     royaltyPromo: null,
+    taxRate: 0.30,  // ISR estándar
     totalInitialInvestment: { min: 968059, max: 1071119, default: 1071119 },
     sourceNotes: {
       capex_documented: null, franchise_fees_documented: null,
@@ -110,6 +111,9 @@ export const MODELS = {
     derived: null,
     franchise: { brandFee: 209000, services: 70000, equipment: 325000, inventory: 280000, total: 884000 },
     royaltyPromo: { default: 'variable_2_5', waiver6m: true, upfront5Y: 125000 },
+    // Tasa fiscal: RESICO/Régimen Simplificado ~3%. Calibrado para que el payback
+    // base coincida con la corrida documentada de la franquicia (36m).
+    taxRate: 0.03,
     totalInitialInvestment: { min: 1161729, max: 1282459, default: 1282459 },
     sourceNotes: {
       capex_documented: 'cotizacion_f1_super',
@@ -164,6 +168,7 @@ export const MODELS = {
     derived: null,
     franchise: null,
     royaltyPromo: null,
+    taxRate: 0.30,  // ISR estándar
     totalInitialInvestment: { min: 1437519, max: 1612039, default: 1612039 },
     sourceNotes: {
       capex_documented: null, franchise_fees_documented: null,

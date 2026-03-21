@@ -45,9 +45,9 @@ function resizeImageToDataURL(file, maxSize = 256) {
   });
 }
 
-Chart.defaults.color='#a1a9b8';Chart.defaults.font.family="'Inter',sans-serif";Chart.defaults.font.size=11;
+Chart.defaults.color='#6B7280';Chart.defaults.font.family="'Inter',sans-serif";Chart.defaults.font.size=11;
 Chart.defaults.plugins.legend.labels.boxWidth=12;Chart.defaults.elements.bar.borderRadius=3;
-Chart.defaults.scale.grid={color:'rgba(255,255,255,0.04)'};
+Chart.defaults.scale.grid={color:'rgba(0,0,0,0.06)'};
 
 const $=id=>document.getElementById(id);
 const fmt={m:v=>'$'+Math.round(v).toLocaleString('es-MX'),mk:v=>'$'+(v/1000).toFixed(0)+'K',p:v=>(v*100).toFixed(1)+'%',pi:v=>Math.round(v*100)+'%',mo:v=>v?v+' m':'∞'};
@@ -94,6 +94,11 @@ function renderCurrentView(){
 
   // Show/hide chrome based on whether we're on BW² Home or project views
   if(mainNav) mainNav.style.display = isBW2Home ? 'none' : '';
+  // Offset main content when sidebar is hidden (BW2 Home)
+  const mainContent = $('main-content');
+  const appFooter = $('app-footer');
+  if(mainContent) mainContent.style.marginLeft = isBW2Home ? '0' : '';
+  if(appFooter) appFooter.style.marginLeft = isBW2Home ? '0' : '';
   if(colorLegend) colorLegend.remove();
 
   // Hide all views
@@ -529,26 +534,9 @@ function renderPortfolio(empresa){
       ${r?`<div class="branch-kpis">
         <div class="branch-kpi"><span class="bk-label" title="Ganancia mensual antes de impuestos">Ganancia/mes</span><span class="bk-value" style="color:${r.avgMonthlyEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(r.avgMonthlyEBITDA)}</span></div>
         <div class="branch-kpi"><span class="bk-label" title="Venta mínima mensual para cubrir todos los costos">Pto. Equilibrio</span><span class="bk-value">${fmt.m(r.breakEvenRevenue)}</span></div>
-        <div class="branch-kpi"><span class="bk-label" title="Meses para recuperar la inversión (inversión ÷ utilidad mensual estabilizada)">Recuperación</span><span class="bk-value" style="color:${r.paybackSimple&&r.paybackSimple<=36?'var(--green)':r.paybackSimple&&r.paybackSimple<=48?'var(--yellow)':'var(--red)'}">${r.paybackSimple?Math.round(r.paybackSimple)+' m':'∞'}</span></div>
-        <div class="branch-kpi"><span class="bk-label" title="Calificación de viabilidad: 0-100">Score</span><span class="bk-value" style="color:${color}">${score}<small style="font-size:0.6em;color:var(--text-3);font-weight:500">/100</small></span></div>
-      </div>
-      <div class="branch-progress-row">
-        <div class="branch-pb-wrap" title="Progreso de recuperación de inversión">
-          <span class="branch-pb-label">Recuperación</span>
-          <div class="branch-pb-bar"><div class="branch-pb-fill" style="width:${Math.min(100,r.paybackSimple?Math.round((1-Math.min(r.paybackSimple,60)/60)*100):0)}%;background:${r.paybackSimple&&r.paybackSimple<=36?'var(--green)':r.paybackSimple&&r.paybackSimple<=48?'var(--yellow)':'var(--red)'}"></div></div>
-          <span class="branch-pb-pct">${r.paybackSimple?Math.round((1-Math.min(r.paybackSimple,60)/60)*100)+'%':'—'}</span>
-        </div>
-        <div class="branch-score-arc" title="Score de viabilidad: ${score}/100">
-          <svg width="44" height="44" viewBox="0 0 44 44">
-            <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="4"/>
-            <circle cx="22" cy="22" r="18" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"
-              stroke-dasharray="${score*1.13} ${113-score*1.13}"
-              transform="rotate(-90 22 22)" style="transition:stroke-dasharray 0.6s ease"/>
-            <text x="22" y="22" text-anchor="middle" dominant-baseline="central" fill="${color}" font-size="11" font-weight="800" font-family="Inter,sans-serif">${score}</text>
-          </svg>
-        </div>
-      </div>`:
-      '<div class="branch-kpis"><span style="color:var(--text-3)">Sin datos</span></div>'}
+        <div class="branch-kpi"><span class="bk-label" title="Meses para recuperar la inversión (inversión ÷ utilidad mensual estabilizada)">Recuperación</span><span class="bk-value" style="color:${r.paybackSimple&&r.paybackSimple<=36?'var(--green)':r.paybackSimple&&r.paybackSimple<=48?'var(--yellow)':'var(--red)'}">${r.paybackSimple?Math.round(r.paybackSimple)+' meses':'∞'}</span></div>
+        <div class="branch-kpi"><span class="bk-label" title="Calificación de viabilidad: 0-100">Calificación</span><span class="bk-value" style="color:${color}">${score}/100</span></div>
+      </div>`:'<div class="branch-kpis"><span style="color:var(--text-3)">Sin datos</span></div>'}
       <div class="branch-actions">${actionBtns}</div>
     </div>`;
   }).join('');
@@ -665,13 +653,13 @@ function renderBranchDetail(empresa){
   const gotoMapBtn = $('btn-goto-map');
   if (gotoMapBtn) {
     gotoMapBtn.addEventListener('click', () => {
-      // Activate Ubicación tab
-      document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.detail-panel').forEach(p => p.style.display = 'none');
-      const ubicTab = document.querySelector('[data-panel="branch-location"]');
-      if (ubicTab) { ubicTab.classList.add('active'); }
-      const ubicPanel = $('branch-location');
-      if (ubicPanel) { ubicPanel.style.display = 'block'; ubicPanel.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      // Activate Estudio Socioeconómico tab
+      document.querySelectorAll('.branch-tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.branch-tab-panel').forEach(p=>p.classList.remove('active'));
+      const socioBtn = document.querySelector('[data-tab="socioeconomico"]');
+      if(socioBtn) socioBtn.classList.add('active');
+      const socioPanel = $('btab-socioeconomico');
+      if(socioPanel) { socioPanel.classList.add('active'); socioPanel.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     });
   }
   // Format selector
@@ -805,6 +793,16 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
   const tb=$('branch-toggle-pnl');
   if(tb) tb.addEventListener('click',()=>{const t=$('branch-pnl-table-full');t.classList.toggle('collapsed');tb.textContent=t.classList.contains('collapsed')?'Expandir ▼':'Colapsar ▲';});
+  // Results sub-section collapsible toggles
+  document.querySelectorAll('.results-section-title[data-toggle-section]').forEach(title=>{
+    title.addEventListener('click',()=>{
+      const bodyId = title.getAttribute('data-toggle-section');
+      const body = $(bodyId);
+      if(!body) return;
+      title.classList.toggle('collapsed');
+      body.classList.toggle('collapsed');
+    });
+  });
   // PDF Export button
   const pdfBtn = $('btn-export-pdf');
   if(pdfBtn) pdfBtn.addEventListener('click', async ()=>{
@@ -1028,7 +1026,7 @@ function renderBranchEditPanel(branch, model) {
               <input type="number" class="inv-main-input input-text" data-key="totalInitialInvestment" value="${parseFloat(invCurrent.toFixed(2))}" step="1" min="${invMin}" max="${invMax * 2}">
             </div>
             <div class="inv-range-bar-wrap">
-              <input type="range" class="inv-slider" id="inv-range-slider" min="${invMin}" max="${invMax}" step="1000" value="${invCurrent}">
+              <input type="range" class="inv-slider" id="inv-range-slider" min="${invMin}" max="${invMax}" step="1" value="${invCurrent}">
               <div class="inv-range-labels">
                 <span>Mín ${fmt.m(invMin)}</span>
                 <span>Máx ${fmt.m(invMax)}</span>
@@ -1123,9 +1121,18 @@ function renderBranchEditPanel(branch, model) {
         const invSlider = $('inv-range-slider');
         const invNumInput = document.querySelector('[data-key="totalInitialInvestment"]');
         if (key === 'totalInitialInvestment' && invSlider && invNumInput) {
-          // If number input changed, sync slider (clamped to slider max)
+          // If number input changed, sync slider (clamped to slider range)
+          const sliderMin = parseFloat(invSlider.min);
           const sliderMax = parseFloat(invSlider.max);
-          invSlider.value = Math.min(val, sliderMax);
+          invSlider.value = Math.max(sliderMin, Math.min(val, sliderMax));
+          // Update status label in real-time
+          const statusEl = document.querySelector('.inv-status');
+          if (statusEl) {
+            const isMax = Math.abs(val - sliderMax) < 2;
+            const isMin = Math.abs(val - sliderMin) < 2;
+            statusEl.textContent = isMax ? 'Peor escenario' : isMin ? 'Escenario mínimo' : 'Personalizado';
+            statusEl.className = 'inv-status ' + (isMax ? 'inv-status-worst' : isMin ? 'inv-status-min' : 'inv-status-custom');
+          }
         }
       }, 300);
       // Allow full re-render after extended inactivity (rebuilds edit panel)
@@ -1181,6 +1188,16 @@ function renderBranchEditPanel(branch, model) {
     invSlider.addEventListener('input', () => {
       const val = parseFloat(invSlider.value);
       invNumInput.value = val;
+      // Update status label in real-time
+      const sliderMin = parseFloat(invSlider.min);
+      const sliderMax = parseFloat(invSlider.max);
+      const statusEl = document.querySelector('.inv-status');
+      if (statusEl) {
+        const isMax = Math.abs(val - sliderMax) < 2;
+        const isMin = Math.abs(val - sliderMin) < 2;
+        statusEl.textContent = isMax ? 'Peor escenario' : isMin ? 'Escenario mínimo' : 'Personalizado';
+        statusEl.className = 'inv-status ' + (isMax ? 'inv-status-worst' : isMin ? 'inv-status-min' : 'inv-status-custom');
+      }
       invNumInput.dispatchEvent(new Event('input', { bubbles: true }));
     });
   }

@@ -63,7 +63,7 @@ export function runProjection(modelId, overrides={}) {
   const scenarioFactor = overrides.scenarioFactor || 1.0;
   const royaltyMode = overrides.royaltyMode || (model.royaltyPromo ? model.royaltyPromo.default : 'variable_2_5');
   const horizonMonths = overrides.horizonMonths || 60;
-  const taxRate = overrides.taxRate || 0.30;
+  const taxRate = overrides.taxRate ?? model.taxRate ?? 0.30;
   const discountRate = overrides.discountRate || 0.12;
 
   // Investment — uses per-branch override (worst case default)
@@ -71,7 +71,7 @@ export function runProjection(modelId, overrides={}) {
   if (overrides.totalInitialInvestment != null) {
     totalInv = overrides.totalInitialInvestment;
   } else if (model.totalInitialInvestment) {
-    totalInv = (model.totalInitialInvestment.min + model.totalInitialInvestment.max) / 2; // midpoint = base case
+    totalInv = model.totalInitialInvestment.default; // use default (worst case) to match UI
   } else {
     totalInv = model.summary.invRange[1]; // fallback to max
   }
@@ -224,16 +224,16 @@ function calcScore({paybackMonth:pb,npv,rentPctRevenue:rp,breakEvenPctCapacity:b
 export function calcPaybackMetrics(model, totalInv, netStab, months) {
   const sm = model.summary;
 
-  // A. Payback Simple: investment / stabilized monthly profit (from summary control)
+  // A. Payback Simple: actual investment / stabilized monthly profit
+  //    Uses the actual totalInv (user's slider choice), not the hardcoded summary range
   const profitRange = sm.profitRange || [0, 0];
-  const invRange = sm.invRange || [totalInv, totalInv];
-  const pbSimpleMin = profitRange[1] > 0 ? invRange[0] / profitRange[1] : null; // best case
-  const pbSimpleMax = profitRange[0] > 0 ? invRange[1] / profitRange[0] : null; // worst case
+  const pbSimpleMin = profitRange[1] > 0 ? totalInv / profitRange[1] : null; // best profit
+  const pbSimpleMax = profitRange[0] > 0 ? totalInv / profitRange[0] : null; // worst profit
 
-  // B. Payback Promedio 5Y: investment / (profit5Y / 60)
+  // B. Payback Promedio 5Y: actual investment / (profit5Y / 60)
   const avgMonthly5Y = sm.profit5Y ? sm.profit5Y / 60 : null;
-  const pbAvg5yMin = avgMonthly5Y > 0 ? invRange[0] / avgMonthly5Y : null;
-  const pbAvg5yMax = avgMonthly5Y > 0 ? invRange[1] / avgMonthly5Y : null;
+  const pbAvg5yMin = avgMonthly5Y > 0 ? totalInv / avgMonthly5Y : null;
+  const pbAvg5yMax = avgMonthly5Y > 0 ? totalInv / avgMonthly5Y : null;
 
   // C. Payback con Rampa Real: first month where cumulative CF >= 0
   //    (engine already tracks this via cumulativeCashFlow in months[])
