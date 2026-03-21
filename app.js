@@ -8,7 +8,177 @@ import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveE
 import { runLocationStudy, calcCombinedMarketFactor } from './engine/location-engine.js?v=bw4';
 import { generateBranchPDF } from './pdf-export.js?v=bw4';
 
-let state = { view:'bw2home', activeBranchId:null, branchOverrides:{} };
+/* ═══ GLOBALS & STATE ═══ */
+const STORE_KEY = 'bw2_store';
+let ws = {
+  version: 3,
+  empresas: [],
+  activeEmpresaId: null
+};
+
+// State view: dashboard, bw2home, comparador, etc.
+let state = { view: 'bw2home', activeBranchId: null, showInactive: false };
+
+/* ═══ WIDGET LAYOUT MANAGER ═══ */
+const WidgetManager = {
+  isEditing: false,
+  sortables: [],
+  
+  init() {
+    this.hookButtons();
+    this.loadLayout('branch-resultados');
+    this.loadLayout('consolidated');
+  },
+
+  hookButtons() {
+    document.querySelectorAll('.btn-edit-layout').forEach(btn => {
+      btn.onclick = () => this.toggleEditMode(btn.dataset.target, true);
+    });
+    document.querySelectorAll('.btn-save-layout').forEach(btn => {
+      btn.onclick = () => this.toggleEditMode(btn.dataset.target, false);
+    });
+    
+    // Remove restore widget logic
+  },
+
+  getGrids(target) {
+    if (target === 'branch-resultados') return ['branch-resultados-grid', 'branch-an-grid'];
+    return ['consol-widget-grid'];
+  },
+
+  getAllWidgets(target) {
+    const grids = this.getGrids(target);
+    const selectors = grids.map(g => `#${g} > .widget`).join(', ');
+    return Array.from(document.querySelectorAll(selectors));
+  },
+
+  toggleEditMode(target, active) {
+    const grids = this.getGrids(target);
+    const firstGrid = $(grids[0]);
+    if (!firstGrid) return;
+
+    this.isEditing = active;
+    const tabEl = firstGrid.closest('.branch-tab-panel') || firstGrid.closest('section');
+    const toolbar = $(`toolbar-${target}`);
+    
+    if (active) {
+      tabEl.classList.add('dashboard-edit-mode');
+      if(toolbar) toolbar.style.display = 'flex';
+      
+      // Inject overlays into widgets
+      this.getAllWidgets(target).forEach(w => {
+        if (!w.querySelector('.widget-edit-overlay')) {
+          w.insertAdjacentHTML('beforeend', `
+            <div class="widget-edit-overlay">
+              <div style="display:flex;gap:0.5rem">
+                <button class="widget-control-btn btn-shrink" title="Achicar">←</button>
+                <button class="widget-control-btn btn-expand" title="Agrandar">→</button>
+              </div>
+            </div>
+          `);
+          
+          const btnShrink = w.querySelector('.btn-shrink');
+          const btnExpand = w.querySelector('.btn-expand');
+          if (btnShrink) btnShrink.onclick = (e) => { e.stopPropagation(); this.resizeWidget(w, target, -1); };
+          if (btnExpand) btnExpand.onclick = (e) => { e.stopPropagation(); this.resizeWidget(w, target, 1); };
+        }
+      });
+
+      // Init Sortable natively for all grids under this target
+      if (window.Sortable) {
+        grids.forEach(gId => {
+          const el = $(gId);
+          if (el && !this.sortables[gId]) {
+            this.sortables[gId] = new Sortable(el, {
+              group: target,
+              animation: 150,
+              ghostClass: 'widget-ghost',
+              dragClass: 'widget-drag',
+              onEnd: () => this.saveLayout(target)
+            });
+          }
+        });
+      }
+      // Nothing else needed here
+      
+    } else {
+      tabEl.classList.remove('dashboard-edit-mode');
+      if(toolbar) toolbar.style.display = 'none';
+      this.saveLayout(target);
+      
+      const btn = document.querySelector(`.btn-save-layout[data-target="${target}"]`);
+      if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = '✅ Guardado';
+        setTimeout(() => btn.textContent = orig, 1500);
+      }
+      
+      // Trigger a resize on charts just in case sizes changed
+      setTimeout(()=> window.dispatchEvent(new Event('resize')), 200);
+    }
+  },
+
+  resizeWidget(widgetEl, target, direction) {
+    const sizes = ['wg-3', 'wg-4', 'wg-6', 'wg-8', 'wg-12'];
+    let current = sizes.find(s => widgetEl.classList.contains(s)) || 'wg-4';
+    let currIdx = sizes.indexOf(current);
+    if(currIdx === -1) currIdx = 1;
+    
+    let nextIdx = currIdx + direction;
+    if (nextIdx < 0) nextIdx = 0;
+    if (nextIdx >= sizes.length) nextIdx = sizes.length - 1;
+    
+    if (nextIdx !== currIdx) {
+      widgetEl.classList.remove(...sizes);
+      widgetEl.classList.add(sizes[nextIdx]);
+      this.saveLayout(target);
+      const canvas = widgetEl.querySelector('canvas');
+      if(canvas) setTimeout(()=> window.dispatchEvent(new Event('resize')), 100);
+    }
+  },
+
+  saveLayout(target) {
+    const widgets = this.getAllWidgets(target);
+    const layout = widgets.map(w => {
+      const sizes = ['wg-3', 'wg-4', 'wg-6', 'wg-8', 'wg-12'];
+      return {
+        id: w.dataset.widgetId,
+        size: sizes.find(s => w.classList.contains(s)) || 'wg-4'
+      };
+    });
+    const key = `bw2_layout_${target}`;
+    localStorage.setItem(key, JSON.stringify(layout));
+  },
+
+  loadLayout(target) {
+    const saved = localStorage.getItem(`bw2_layout_${target}`);
+    if(!saved) return;
+    try {
+      const layout = JSON.parse(saved);
+      const grids = this.getGrids(target);
+      // Determine final grid host to append to (last configured parent or fallback to first grid)
+      
+      layout.forEach(conf => {
+        if(!conf.id) return;
+        const w = document.querySelector(`[data-widget-id="${conf.id}"]`);
+        if(w) {
+          // Keep it in its current parent grid if we aren't saving exact grid-parent state,
+          // or properly append it sequentially back to its parent. Since we didn't save parentGridId,
+          // we'll just append it to the grid it is currently in to re-order it, or first grid.
+          const currentParent = w.parentElement;
+          if (currentParent) currentParent.appendChild(w);
+          
+          const sizes = ['wg-3', 'wg-4', 'wg-6', 'wg-8', 'wg-12'];
+          w.classList.remove(...sizes);
+          w.classList.add(conf.size);
+          w.style.display = '';
+        }
+      });
+    } catch(e) { console.warn('Layout load error', e); }
+  }
+};
+
+/* ═══ LOCALSTORAGE MIGRATION ═══ */
 let charts = {};
 let locMap = null;
 
@@ -57,7 +227,9 @@ function kc(l,v,d,s,tip){return `<div class="kpi-card" data-status="${s}"${tip?'
 let _suppressFullRender = false;
 let _suppressTimer = null;
 document.addEventListener('DOMContentLoaded',()=>{
-  initNav(); renderCurrentView();
+  initNav(); 
+  WidgetManager.init();
+  renderCurrentView();
   onEmpresaChange(()=>{ if(!_suppressFullRender) renderCurrentView(); });
 });
 
@@ -261,13 +433,25 @@ function renderBW2Home(){
                 <button class="btn-icon btn-delete-proyecto" data-emp-id="${emp.id}" data-proj-id="${proj.id}" title="Eliminar proyecto">🗑️</button>
               </div>
             </div>
-            ${validBranches>0 ? `<div class="branch-kpis">
-              <div class="branch-kpi"><span class="bk-label" title="Ganancia mensual combinada">Ganancia/mes</span><span class="bk-value" style="color:${totalEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(totalEBITDA)}</span></div>
-              <div class="branch-kpi"><span class="bk-label" title="Punto de equilibrio combinado">Pto. Equilibrio</span><span class="bk-value">${fmt.m(totalEq)}</span></div>
-              <div class="branch-kpi"><span class="bk-label" title="Recuperación máxima entre sucursales">Recuperación</span><span class="bk-value" style="color:${maxPayback&&maxPayback<=36?'var(--green)':maxPayback&&maxPayback<=48?'var(--yellow)':'var(--red)'}">${paybackStr}</span></div>
-              <div class="branch-kpi"><span class="bk-label" title="Calificación promedio">Calificación</span><span class="bk-value" style="color:${scoreColor}">${avgScore}/100</span></div>
-            </div>` : '<div class="branch-kpis"><span style="color:var(--text-3);font-size:0.75rem;padding:0.5rem 0">Sin sucursales calculadas</span></div>'}
-            <button class="btn-open-proyecto" data-emp-id="${emp.id}" data-proj-id="${proj.id}" style="margin-top:0.25rem;width:100%;text-align:center;display:block">Abrir Proyecto →</button>
+            ${validBranches>0 ? `<div class="branch-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;margin-bottom:1rem;background:var(--bg);padding:0.75rem;border-radius:8px;border:1px solid var(--border)">
+              <div class="branch-kpi" style="text-align:left">
+                <span class="widget-subtitle" title="Punto de equilibrio combinado" style="font-size:0.575rem;margin-bottom:0.15rem;margin-top:0">Pto. Equilibrio</span>
+                <span class="widget-title" style="font-size:0.875rem;display:block">${fmt.m(totalEq)}</span>
+              </div>
+              <div class="branch-kpi" style="text-align:left">
+                <span class="widget-subtitle" title="Ganancia mensual combinada" style="font-size:0.575rem;margin-bottom:0.15rem;margin-top:0">Ganancia/mes</span>
+                <span class="widget-title" style="color:${totalEBITDA>=0?'var(--accent)':'var(--red)'};font-size:0.875rem;display:block">${fmt.m(totalEBITDA)}</span>
+              </div>
+              <div class="branch-kpi" style="text-align:left">
+                <span class="widget-subtitle" title="Recuperación máxima entre sucursales" style="font-size:0.575rem;margin-bottom:0.15rem;margin-top:0">Recuperación</span>
+                <span class="widget-title" style="color:${maxPayback&&maxPayback<=36?'var(--text-1)':maxPayback&&maxPayback<=48?'var(--yellow)':'var(--red)'};font-size:0.875rem;display:block">${paybackStr}</span>
+              </div>
+              <div class="branch-kpi" style="text-align:left">
+                <span class="widget-subtitle" title="Calificación promedio" style="font-size:0.575rem;margin-bottom:0.15rem;margin-top:0">Calificación</span>
+                <span class="widget-title" style="color:${scoreColor};font-size:0.875rem;display:block">${avgScore}/100</span>
+              </div>
+            </div>` : '<div class="branch-kpis" style="margin-bottom:1rem;background:var(--bg);padding:0.75rem;border-radius:8px;border:1px dashed var(--border);text-align:center"><span style="color:var(--text-3);font-size:0.75rem">Sin sucursales activas</span></div>'}
+            <button class="btn-open-proyecto" data-emp-id="${emp.id}" data-proj-id="${proj.id}" style="width:100%;text-align:center;display:block">Abrir Proyecto →</button>
           </div>`;
         }).join('')}
         <div class="bw2-proyecto-card bw2-add-card" data-emp-id="${emp.id}">
@@ -742,6 +926,99 @@ window._dupBranch = (id)=>{
   if(dup) showToast('📋 Sucursal duplicada — recuerda asignarle una nueva dirección','info');
 };
 
+/* ═══ MARKET INDICATOR UTILS ═══ */
+function updateMarketIndicators(branch) {
+  let hasStudy = !!branch.locationStudy;
+  let isActive = true;
+  if (branch.overrides && branch.overrides.marketStudyToggles && branch.overrides.marketStudyToggles.master === false) {
+    isActive = false;
+  }
+  
+  let label = '📍 Mercado: --';
+  let color = 'var(--text-3)';
+  let bg = 'var(--surface)';
+  let title = '';
+  
+  if (hasStudy) {
+    if (isActive) {
+      const { combinedFactor } = calcCombinedMarketFactor(branch.locationStudy.scores.factors || branch.locationStudy.scores, branch.overrides?.marketStudyToggles);
+      const pct = ((combinedFactor - 1)*100).toFixed(1);
+      label = `📍 Impacto Mercado: ${pct > 0 ? '+'+pct : pct}%`;
+      color = pct >= 0 ? '#10b981' : '#ef4444'; // green or red
+      bg = pct >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+      title = 'El estudio de mercado está ajustando las proyecciones. Clic para ver detalles.';
+    } else {
+      label = '📍 Mercado Ignorado';
+      color = 'var(--text-2)';
+      bg = 'var(--bg-hover)';
+      title = 'El estudio de mercado está desactivado.';
+    }
+  } else {
+    label = '📍 Sin Estudio de Mercado';
+    title = 'No hay estudio de ubicación para esta sucursal.';
+  }
+  
+  ['branch-market-indicator', 'config-market-indicator'].forEach(id => {
+    const el = $(id);
+    if (el) {
+      el.style.display = 'inline-block';
+      el.textContent = label;
+      el.style.color = color;
+      el.style.background = bg;
+      el.title = title;
+      if (hasStudy) {
+         el.onclick = () => {
+             const panel = $('market-study-panel');
+             if (panel && state.view === 'portfolio' && $('btab-resultados').classList.contains('active')) {
+                 panel.scrollIntoView({behavior:'smooth', block: 'center'});
+             } else {
+                window.switchBranchTab?.('resultados');
+                setTimeout(() => $('market-study-panel')?.scrollIntoView({behavior:'smooth', block: 'center'}), 150);
+             }
+         };
+         el.style.cursor = 'pointer';
+      } else {
+         el.onclick = null;
+         el.style.cursor = 'default';
+      }
+    }
+  });
+}
+
+function updateConsolMarketIndicator(empresa) {
+  const proyectos = empresa.proyectos || [];
+  let totalBranches = proyectos.reduce((acc, p) => acc + (p.branches || []).length, 0);
+  if(totalBranches===0) return;
+  
+  let branchesWithStudy = 0;
+  let branchesActive = 0;
+  
+  proyectos.forEach(p => (p.branches || []).forEach(b => {
+     if(b.locationStudy) {
+        branchesWithStudy++;
+        if (!b.overrides?.marketStudyToggles || b.overrides.marketStudyToggles.master !== false) {
+           branchesActive++;
+        }
+     }
+  }));
+  
+  const el = $('consol-market-indicator');
+  if(!el) return;
+  
+  if (branchesWithStudy === 0) {
+    el.style.display = 'inline-block';
+    el.textContent = '📍 Sin Estudios';
+    el.style.color = 'var(--text-3)';
+    el.style.background = 'var(--surface)';
+  } else {
+    el.style.display = 'inline-block';
+    el.textContent = `📍 Mercado: ${branchesActive}/${branchesWithStudy} Activos`;
+    el.style.color = branchesActive > 0 ? 'var(--accent)' : 'var(--text-2)';
+    el.style.background = branchesActive > 0 ? 'var(--accent-light)' : 'var(--bg)';
+    el.title = `${branchesActive} de ${branchesWithStudy} sucursales con estudio tienen el impacto activado en este consolidado.`;
+  }
+}
+
 /* ═══ BRANCH DETAIL VIEW (preserves all existing visualizations) ═══ */
 function renderBranchDetail(empresa){
   const branch=getBranch(state.activeBranchId);
@@ -812,6 +1089,7 @@ function renderBranchDetail(empresa){
   renderBranchEditPanel(branch,model);
   renderBranchLocation(branch);
   renderBranchScenarios(branch, empresa);
+  updateMarketIndicators(branch);
 }
 
 // Init branch config listeners
@@ -1756,6 +2034,7 @@ function renderLocationResults(study) {
 
 /* ═══ CONSOLIDATED VIEW ═══ */
 function renderConsolidated(empresa){
+  updateConsolMarketIndicator(empresa);
   const consol=runConsolidation(empresa);
   const ivaOn = $('toggle-iva')?.checked;
   const f = ivaOn ? 1.16 : 1; // IVA factor
@@ -1889,6 +2168,10 @@ function renderEmpresaSettings(empresa){
   $('emp-name').value = empresa.name || '';
   const projEl = $('emp-project-name');
   if (projEl) projEl.value = empresa.projectName || 'FarmaTuya';
+  
+  const logoPreview = $('emp-logo-preview');
+  if (logoPreview) logoPreview.src = empresa.logo || 'assets/nojom-bird.png';
+  if (projEl) projEl.value = empresa.projectName || 'FarmaTuya';
   $('emp-capital').value = empresa.totalCapital || 0;
   $('emp-reserve').value = empresa.corporateReserve || 0;
   const corpExpEl = $('emp-corp-expenses');
@@ -1976,15 +2259,42 @@ window._removePartner = (id) => {
 {
   const saveBtn=$('btn-save-empresa');
   if(saveBtn) saveBtn.addEventListener('click',()=>{
-    updateEmpresa({
-      name:$('emp-name').value,
-      projectName:$('emp-project-name')?.value || 'FarmaTuya',
-      totalCapital:parseFloat($('emp-capital').value)||0,
-      corporateReserve:parseFloat($('emp-reserve').value)||0,
-      corporateExpenses:parseFloat($('emp-corp-expenses')?.value)||0
-    });
-    saveBtn.textContent='✅ Guardado';
-    setTimeout(()=>saveBtn.textContent='💾 Guardar Cambios',1500);
+    const fileInp = $('emp-logo-upload');
+    const commit = (logoStr) => {
+      const data = {
+        name:$('emp-name').value,
+        projectName:$('emp-project-name')?.value || 'FarmaTuya',
+        totalCapital:parseFloat($('emp-capital').value)||0,
+        corporateReserve:parseFloat($('emp-reserve').value)||0,
+        corporateExpenses:parseFloat($('emp-corp-expenses')?.value)||0
+      };
+      if (logoStr !== undefined) data.logo = logoStr;
+      
+      updateEmpresa(data);
+      saveBtn.textContent='✅ Guardado';
+      setTimeout(()=>saveBtn.textContent='Guardar Cambios',1500);
+    };
+
+    if (fileInp && fileInp.files && fileInp.files[0]) {
+      const fr = new FileReader();
+      fr.onload = (e) => commit(e.target.result);
+      fr.readAsDataURL(fileInp.files[0]);
+    } else {
+      commit(undefined);
+    }
+  });
+  
+  // Live preview when file is selected
+  const fileInp = $('emp-logo-upload');
+  if(fileInp) fileInp.addEventListener('change', (e) => {
+    if(e.target.files && e.target.files[0]) {
+      const fr = new FileReader();
+      fr.onload = (ev) => {
+         const preview = $('emp-logo-preview');
+         if (preview) preview.src = ev.target.result;
+      };
+      fr.readAsDataURL(e.target.files[0]);
+    }
   });
   const addPBtn=$('btn-add-partner');
   if(addPBtn) addPBtn.addEventListener('click',()=>{
