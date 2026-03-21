@@ -984,24 +984,24 @@ body{
 
 .bw2-header{
   display:flex;align-items:center;justify-content:space-between;
-  padding:2rem 1rem 1.25rem;
+  padding:1rem 0.5rem 1.25rem;
 }
-.bw2-title-group{display:flex;flex-direction:column;gap:0.25rem}
+.bw2-title-group{display:flex;flex-direction:column;gap:0.15rem}
 .bw2-title{
-  font-size:1.75rem;font-weight:900;letter-spacing:-0.02em;line-height:1;
+  font-size:1.25rem;font-weight:900;letter-spacing:-0.02em;line-height:1;
   color:var(--text-1);
 }
 .bw2-title sup{color:var(--accent);font-size:0.5em}
 .bw2-subtitle{
-  font-size:0.75rem;color:var(--text-3);font-weight:500;margin:0;
+  font-size:0.7rem;color:var(--text-3);font-weight:600;margin:0;
   letter-spacing:0.04em;text-transform:uppercase;
 }
 
 /* ── Create Company Button ── */
 .bw2-home .btn-primary{
   background:var(--accent);color:#fff;border:none;
-  padding:0.75rem 1.8rem;border-radius:12px;
-  font-weight:700;font-size:0.9rem;cursor:pointer;
+  padding:0.5rem 1rem;border-radius:8px;
+  font-weight:600;font-size:0.8rem;cursor:pointer;
   transition:all 0.25s;
   box-shadow:var(--shadow-neu-sm);
 }
@@ -1012,14 +1012,14 @@ body{
 
 /* ── Grid Container ── */
 .bw2-empresas-grid{
-  display:flex;flex-direction:column;gap:1.25rem;
-  padding:0 1rem 2rem;
+  display:flex;flex-direction:column;gap:1rem;
+  padding:0 0.5rem 2rem;
 }
 
 /* ── Company Card — Clean ── */
 .bw2-empresa-card{
   background:var(--surface);
-  border-radius:var(--r-lg);padding:1.25rem 1.5rem;
+  border-radius:12px;padding:1rem 1.25rem;
   border:1px solid var(--border);
   transition:all 0.2s ease;
 }
@@ -1031,9 +1031,9 @@ body{
   border-color:var(--accent);
 }
 
-.bw2-empresa-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
-.bw2-empresa-name{font-size:1.125rem;font-weight:800;color:var(--text-1)}
-.bw2-empresa-meta{font-size:0.75rem;color:var(--text-3);margin-top:0.15rem;display:block}
+.bw2-empresa-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem}
+.bw2-empresa-name{font-size:1rem;font-weight:800;color:var(--text-1)}
+.bw2-empresa-meta{font-size:0.7rem;color:var(--text-3);margin-top:0.1rem;display:block}
 .bw2-empresa-info{display:flex;flex-direction:column}
 .bw2-empresa-actions{display:flex;gap:0.5rem}
 .bw2-empresa-actions .btn-icon{
@@ -1042,14 +1042,14 @@ body{
 .bw2-empresa-actions .btn-icon:hover{color:var(--text-1);background:rgba(0,0,0,0.04)}
 
 /* ── Project Cards Grid ── */
-.bw2-proyectos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.25rem}
+.bw2-proyectos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:0.85rem}
 
 .bw2-proyecto-card{
   background:var(--surface);
-  border-radius:16px;padding:1.4rem;
+  border-radius:12px;padding:1rem;
   border:1px solid var(--border);
   transition:all 0.2s ease;
-  display:flex;flex-direction:column;gap:0.9rem;
+  display:flex;flex-direction:column;gap:0.75rem;
 }
 .bw2-proyecto-card:hover{
   transform:translateY(-2px);
@@ -1062,24 +1062,24 @@ body{
 }
 
 .bw2-proj-header{display:flex;align-items:center;justify-content:space-between}
-.bw2-proj-name{font-weight:700;font-size:1.05rem;color:var(--text-1)}
-.bw2-proj-actions{display:flex;gap:0.3rem}
+.bw2-proj-name{font-weight:700;font-size:0.9rem;color:var(--text-1)}
+.bw2-proj-actions{display:flex;gap:0.25rem}
 .bw2-proj-actions .btn-icon{color:var(--text-3)}
 .bw2-proj-actions .btn-icon:hover{color:var(--text-1);background:rgba(0,0,0,0.04)}
 
-.bw2-proj-stats{display:flex;flex-wrap:wrap;gap:0.5rem}
+.bw2-proj-stats{display:flex;flex-wrap:wrap;gap:0.4rem}
 .bw2-proj-stats span{
-  font-size:0.78rem;color:var(--text-2);
-  background:var(--surface-alt);padding:0.25rem 0.7rem;
-  border-radius:8px;
+  font-size:0.7rem;color:var(--text-2);
+  background:var(--surface-alt);padding:0.15rem 0.5rem;
+  border-radius:6px;
   border:1px solid var(--border);
 }
 
 .btn-open-proyecto{
-  width:100%;padding:0.65rem 1rem;
+  width:100%;padding:0.4rem 0.8rem;
   background:var(--accent);color:#fff;
-  border:none;border-radius:12px;
-  font-weight:600;font-size:0.85rem;cursor:pointer;
+  border:none;border-radius:8px;
+  font-weight:600;font-size:0.75rem;cursor:pointer;
   transition:all 0.2s;margin-top:auto;
 }
 .btn-open-proyecto:hover{
@@ -1090,13 +1090,13 @@ body{
 /* ── Add Card ── */
 .bw2-add-card{
   border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;
-  min-height:140px;background:transparent;border-radius:16px;
+  min-height:90px;background:transparent;border-radius:12px;
   transition:all 0.3s;box-shadow:none;
 }
 .bw2-add-card:hover{border-color:var(--accent);background:var(--accent-soft)}
 .btn-add-proyecto{
-  background:none;border:none;font-size:0.9rem;color:var(--text-3);cursor:pointer;
-  font-weight:600;padding:0.8rem 1.5rem;border-radius:8px;transition:color 0.2s,background 0.2s;
+  background:none;border:none;font-size:0.8rem;color:var(--text-3);cursor:pointer;
+  font-weight:600;padding:0.5rem 1rem;border-radius:6px;transition:color 0.2s,background 0.2s;
 }
 .btn-add-proyecto:hover{color:var(--accent);background:var(--accent-soft)}
 

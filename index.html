@@ -234,15 +234,22 @@
       <div id="btab-socioeconomico" class="branch-tab-panel">
         <div class="neu-card">
           <h3 class="card-title">Estudio de Ubicación y Entorno</h3>
+          <p class="section-desc" style="margin-bottom:1rem;color:var(--text-light);font-size:0.875rem">Busca una ubicación para desplegar automáticamente el análisis del mercado y potencial de ventas.</p>
           <div class="loc-input-row" style="position:relative">
             <div class="colonia-autocomplete" style="flex:1;position:relative">
-              <input type="text" class="input-text" id="loc-address-input" placeholder="Ej: Col. Roma Norte, CDMX" autocomplete="off" style="width:100%">
+              <input type="text" class="input-text" id="loc-address-input" placeholder="🔍 Escribe una colonia, municipio o código postal..." autocomplete="off" style="width:100%">
               <div id="loc-address-status" class="colonia-status" style="position:absolute;right:8px;top:50%;transform:translateY(-50%)"></div>
               <div class="colonia-suggestions" id="loc-address-suggestions"></div>
             </div>
-            <button class="btn-action" id="btn-run-location-study">Actualizar</button>
+            <button class="btn-action" id="btn-run-location-study" style="display:none">Evaluar</button>
           </div>
           <div id="loc-status" class="loc-status"></div>
+        </div>
+
+        <div id="loc-empty-state" style="text-align:center;padding:4rem 2rem;color:var(--text-light)">
+          <div style="font-size:3rem;margin-bottom:1rem;opacity:0.6">🌍</div>
+          <h4 style="margin-bottom:0.5rem;color:var(--text-dark)">Sin estudio de mercado</h4>
+          <p style="max-width:400px;margin:0 auto;line-height:1.4">Busca una ubicación en la barra de arriba para descubrir el potencial de ventas, nivel socioeconómico y saturación de farmacias en la zona.</p>
         </div>
         <div id="loc-results" style="display:none">
           <div class="kpi-grid" id="loc-score-cards"></div>

@@ -1349,6 +1349,7 @@ function renderBranchLocation(branch) {
   const study = branch.locationStudy;
   const addrInput = $('loc-address-input');
   const resultsEl = $('loc-results');
+  const emptyEl = $('loc-empty-state');
   const statusEl = $('loc-status');
 
   // Pre-fill address
@@ -1370,7 +1371,8 @@ function renderBranchLocation(branch) {
       const query = addrInput.value.trim();
       if (!query) { statusEl.innerHTML = '<span class="loc-error">Ingresa una colonia o dirección</span>'; return; }
       btn.disabled = true;
-      btn.textContent = '⏳ Consultando...';
+      btn.textContent = '⏳ ...';
+      if (emptyEl) emptyEl.style.display = 'none'; // hide while loading
       statusEl.innerHTML = '<span class="loc-loading">Geocodificando → Buscando establecimientos → Calculando scores...</span>';
       try {
         const result = await runLocationStudy(query);
@@ -1383,9 +1385,10 @@ function renderBranchLocation(branch) {
         }
       } catch (e) {
         statusEl.innerHTML = '<span class="loc-error">❌ Error: ' + e.message + '</span>';
+        if (emptyEl && (!study || !study.coordinates)) emptyEl.style.display = 'block';
       }
       btn.disabled = false;
-      btn.textContent = 'Actualizar';
+      btn.textContent = 'Evaluar';
     };
   }
 
@@ -1395,9 +1398,11 @@ function renderBranchLocation(branch) {
 
   // Render saved study
   if (study && study.coordinates) {
+    if (emptyEl) emptyEl.style.display = 'none';
     renderLocationResults(study);
     if (statusEl) statusEl.innerHTML = '<span class="loc-success">📍 Último estudio: ' + new Date(study.lastUpdated).toLocaleString('es-MX') + '</span>';
   } else {
+    if (emptyEl) emptyEl.style.display = 'block';
     if (resultsEl) resultsEl.style.display = 'none';
   }
 }
