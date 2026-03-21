@@ -24,3 +24,6 @@ npm-debug.log*
 # === Gemini/Agent ===
 .gemini/
 .agents/
+
+# Local Netlify folder
+.netlify

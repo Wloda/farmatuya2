@@ -11,7 +11,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <link rel="stylesheet" href="styles.css?v=bw20">
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <link rel="stylesheet" href="styles.css?v=warm1">
   <script>
     window.addEventListener('error',e=>document.title='ERR:'+e.message);
     window.addEventListener('unhandledrejection',e=>document.title='REJ:'+e.reason);
@@ -107,6 +109,7 @@
             <button class="seg-btn" data-preopen="2">💰 Desde Capital</button>
           </div>
         </div>
+        <button class="btn-export-pdf" id="btn-export-pdf" title="Generar reporte PDF de inversión">📄 Exportar PDF</button>
       </div>
 
       <!-- Branch KPI Strip -->
@@ -164,6 +167,7 @@
         <button class="branch-tab-btn" data-tab="ubicacion">Ubicación</button>
         <button class="branch-tab-btn" data-tab="pnl">Resultados</button>
         <button class="branch-tab-btn" data-tab="stress">Sensibilidad</button>
+        <button class="branch-tab-btn" data-tab="scenarios">Escenarios</button>
       </nav>
 
       <!-- Branch Tab Panels -->
@@ -190,6 +194,11 @@
       <div id="btab-stress" class="branch-tab-panel">
         <div class="kpi-grid" id="branch-stress-kpis"></div>
         <div class="neu-card"><h3 class="card-title">Tornado (±20%)</h3><div class="chart-box"><canvas id="chart-branch-tornado"></canvas></div></div>
+      </div>
+
+      <div id="btab-scenarios" class="branch-tab-panel">
+        <div class="neu-card"><h3 class="card-title">Comparativa de Escenarios</h3><div class="table-scroll" id="scenarios-comparison-table"></div></div>
+        <div class="neu-card"><h3 class="card-title">Cash Flow por Escenario</h3><div class="chart-box"><canvas id="chart-scenarios-cf"></canvas></div></div>
       </div>
 
       <div id="btab-ubicacion" class="branch-tab-panel">
@@ -414,6 +423,6 @@
   </div>
 
   <footer id="app-footer"><p>BW² — Dashboard de Inversión · v8.0 · Multi-Empresa</p></footer>
-  <script type="module" src="app.js?v=bw20"></script>
+  <script type="module" src="app.js?v=bw30"></script>
 </body>
 </html>

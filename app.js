@@ -6,6 +6,7 @@ import { runProjection, runSensitivity, generateHeatmap, calcStress, generateChe
 import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw3';
 import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw3';
 import { runLocationStudy } from './engine/location-engine.js?v=bw3';
+import { generateBranchPDF } from './pdf-export.js?v=bw3';
 
 let state = { view:'bw2home', activeBranchId:null, branchOverrides:{} };
 let charts = {};
@@ -677,6 +678,7 @@ function renderBranchDetail(empresa){
   updateBranchAuditBadges(model);
   renderBranchEditPanel(branch,model);
   renderBranchLocation(branch);
+  renderBranchScenarios(branch, empresa);
 }
 
 // Init branch config listeners
@@ -786,6 +788,24 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
   const tb=$('branch-toggle-pnl');
   if(tb) tb.addEventListener('click',()=>{const t=$('branch-pnl-table-full');t.classList.toggle('collapsed');tb.textContent=t.classList.contains('collapsed')?'Expandir ▼':'Colapsar ▲';});
+  // PDF Export button
+  const pdfBtn = $('btn-export-pdf');
+  if(pdfBtn) pdfBtn.addEventListener('click', async ()=>{
+    if(!state.activeBranchId){showToast('Selecciona una sucursal primero','warning');return;}
+    const branch=getBranch(state.activeBranchId);
+    const empresa=getEmpresa();
+    if(!branch||!empresa){showToast('No se encontró la sucursal','warning');return;}
+    pdfBtn.disabled=true;pdfBtn.textContent='⏳ Generando...';
+    try{
+      await generateBranchPDF(branch,empresa);
+      showToast('📄 PDF generado exitosamente','success');
+    }catch(e){
+      console.error('PDF generation error:',e);
+      showToast('Error al generar PDF: '+e.message,'warning');
+    }finally{
+      pdfBtn.disabled=false;pdfBtn.textContent='📄 Exportar PDF';
+    }
+  });
 });
 
 function updateBranchKPIBar(r){
@@ -874,6 +894,92 @@ function renderBranchStress(r,model,overrides){
   dc('branch-tornado');const ctx=$('chart-branch-tornado');if(ctx&&sensitivity.length){
     charts['branch-tornado']=new Chart(ctx,{type:'bar',data:{labels:sensitivity.map(s=>s.label),datasets:[{label:'+20%',data:sensitivity.map(s=>s.ebitdaDeltaUp),backgroundColor:sensitivity.map(s=>s.ebitdaDeltaUp>=0?'rgba(52,211,153,0.6)':'rgba(248,113,113,0.5)'),borderRadius:3},{label:'−20%',data:sensitivity.map(s=>s.ebitdaDeltaDown),backgroundColor:sensitivity.map(s=>s.ebitdaDeltaDown>=0?'rgba(52,211,153,0.4)':'rgba(248,113,113,0.35)'),borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt.m(c.parsed.x)}`}}},scales:{x:{ticks:{callback:v=>fmt.mk(v)}}}}});
   }
+}
+
+/* ─── BRANCH SCENARIOS COMPARISON ─── */
+function renderBranchScenarios(branch, empresa) {
+  const el = $('scenarios-comparison-table');
+  if (!el) return;
+  const scenarioIds = ['conservative', 'base', 'upside'];
+  const results = scenarioIds.map(sid => {
+    const clone = { ...branch, scenarioId: sid };
+    return { sid, sc: SCENARIOS[sid], result: runBranchProjection(clone, empresa) };
+  });
+
+  const metrics = [
+    { l: 'Inversión Total', f: r => fmt.m(r.totalInvestment) },
+    { l: 'EBITDA / mes', f: r => fmt.m(r.avgMonthlyEBITDA), color: r => r.avgMonthlyEBITDA > 0 ? 'positive' : 'negative' },
+    { l: 'Venta Prom. / mes', f: r => fmt.m(r.avgMonthlyRevenue) },
+    { l: 'Margen EBITDA', f: r => fmt.p(r.ebitdaMarginStabilized) },
+    { l: 'Pto. Equilibrio', f: r => fmt.m(r.breakEvenRevenue) },
+    { l: 'BE % Capacidad', f: r => fmt.p(r.breakEvenPctCapacity), color: r => r.breakEvenPctCapacity < 0.7 ? 'positive' : 'negative' },
+    { l: 'Recup. Simple', f: r => r.paybackMetrics.simple.min != null ? `${r.paybackMetrics.simple.min.toFixed(0)}–${r.paybackMetrics.simple.max.toFixed(0)} m` : '∞' },
+    { l: 'Recup. Rampa', f: r => r.paybackMetrics.rampa.month ? r.paybackMetrics.rampa.month + ' m' : '∞' },
+    { l: 'BE Operativo', f: r => r.paybackMetrics.beOperativo.month ? r.paybackMetrics.beOperativo.month + ' m' : '∞' },
+    { l: 'ROI 12m', f: r => r.roi12.toFixed(1) + '%', color: r => r.roi12 > 0 ? 'positive' : 'negative' },
+    { l: 'ROI 36m', f: r => r.roi36.toFixed(1) + '%', color: r => r.roi36 > 20 ? 'positive' : 'negative' },
+    { l: 'VPN', f: r => fmt.m(r.npv), color: r => r.npv > 0 ? 'positive' : 'negative' },
+    { l: 'TIR', f: r => r.irr != null ? (r.irr * 100).toFixed(1) + '%' : 'N/A', color: r => r.irr && r.irr > 0.12 ? 'positive' : 'negative' },
+    { l: 'Calificación', f: r => r.viabilityScore + '/100' },
+    { l: 'Ganancia 5 Años', f: r => fmt.m(r.annualSummary.year1.netIncome + r.annualSummary.year2.netIncome + r.annualSummary.year3.netIncome + (r.annualSummary.year4?.netIncome||0) + (r.annualSummary.year5?.netIncome||0)) },
+  ];
+
+  const activeSid = branch.scenarioId || 'base';
+  el.innerHTML = `<table class="data-table scenarios-table">
+    <thead><tr>
+      <th>Métrica</th>
+      ${results.map(({sid, sc}) => `<th class="num scenario-col ${sid === activeSid ? 'active' : ''}" data-sid="${sid}">${sc.emoji} ${sc.label}</th>`).join('')}
+    </tr></thead>
+    <tbody>
+      ${metrics.map(m => `<tr>
+        <td class="metric-label">${m.l}</td>
+        ${results.map(({sid, result}) => {
+          const cls = m.color ? m.color(result) : '';
+          return `<td class="num ${cls} ${sid === activeSid ? 'active-col' : ''}">${m.f(result)}</td>`;
+        }).join('')}
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+
+  // Make scenario headers clickable
+  el.querySelectorAll('.scenario-col').forEach(th => {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', () => {
+      if (!state.activeBranchId) return;
+      updateBranch(state.activeBranchId, { scenarioId: th.dataset.sid });
+    });
+  });
+
+  // Overlay chart
+  dc('scenarios-cf');
+  const ctx = $('chart-scenarios-cf');
+  if (!ctx) return;
+  const colors = { conservative: '#f87171', base: '#fbbf24', upside: '#34d399' };
+  charts['scenarios-cf'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: results[0].result.months.map(m => 'M' + m.month),
+      datasets: results.map(({ sid, sc, result }) => ({
+        label: sc.label,
+        data: result.months.map(m => m.cumulativeCashFlow),
+        borderColor: colors[sid],
+        backgroundColor: 'transparent',
+        borderWidth: sid === activeSid ? 3 : 1.5,
+        borderDash: sid === activeSid ? [] : [5, 3],
+        pointRadius: 0,
+        tension: 0.3
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmt.m(c.parsed.y)}` } },
+        annotation: { annotations: { zeroline: { type: 'line', yMin: 0, yMax: 0, borderColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderDash: [4, 4] } } }
+      },
+      scales: { y: { ticks: { callback: v => fmt.mk(v) } } }
+    }
+  });
 }
 
 /* ─── BRANCH EDIT PANEL ─── */
