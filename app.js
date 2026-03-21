@@ -179,6 +179,17 @@ function updateEnterpriseHeader(empresa){
   }
 }
 
+/* ═══ UTILS ═══ */
+function esc(str) {
+  if(!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 /* ═══ BW² HOME VIEW ═══ */
 function renderBW2Home(){
   const container=$('bw2-empresas-grid');if(!container)return;
@@ -196,12 +207,12 @@ function renderBW2Home(){
     const projCount = emp.proyectos.length;
     const isActive = emp.id===ws.activeEmpresaId;
     const empLogoHtml = emp.logo
-      ? `<img src="${emp.logo}" alt="${emp.name}" class="bw2-card-logo">`
+      ? `<img src="${emp.logo}" alt="${esc(emp.name)}" class="bw2-card-logo">`
       : '<span class="bw2-card-logo-placeholder">🏢</span>';
     html+=`<div class="bw2-empresa-card ${isActive?'active':''}" data-emp-id="${emp.id}">
       <div class="bw2-empresa-header">
         <div class="bw2-empresa-info">
-          <div class="bw2-empresa-name-row">${empLogoHtml}<h3 class="bw2-empresa-name">${emp.name}</h3></div>
+          <div class="bw2-empresa-name-row">${empLogoHtml}<h3 class="bw2-empresa-name">${esc(emp.name)}</h3></div>
           <span class="bw2-empresa-meta">${projCount} proyecto${projCount!==1?'s':''} · Creada ${new Date(emp.createdAt).toLocaleDateString('es-MX')}</span>
         </div>
         <div class="bw2-empresa-actions">
@@ -234,14 +245,14 @@ function renderBW2Home(){
           const paybackStr = validBranches ? (maxPayback ? maxPayback + ' meses' : '∞') : '—';
           
           const projLogoHtml = proj.logo
-            ? `<img src="${proj.logo}" alt="${proj.name}" class="bw2-proj-logo">`
+            ? `<img src="${proj.logo}" alt="${esc(proj.name)}" class="bw2-proj-logo">`
             : '<span class="bw2-proj-logo-placeholder">📁</span>';
             
           return `<div class="bw2-proyecto-card ${isProjActive?'active':''}" data-emp-id="${emp.id}" data-proj-id="${proj.id}">
             <div class="bw2-proj-header">
               <div class="bw2-proj-name-row">${projLogoHtml}
                 <div class="branch-info" style="flex:1">
-                  <div class="bw2-proj-name">${proj.name}</div>
+                  <div class="bw2-proj-name">${esc(proj.name)}</div>
                   <div class="branch-meta">Capital: ${fmt.m(proj.totalCapital)} · ${activeBranchesCount} sucursales</div>
                 </div>
               </div>

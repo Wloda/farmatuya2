@@ -1097,7 +1097,7 @@ body{
 .bw2-empresa-actions .btn-icon:hover{color:var(--text-1);background:rgba(0,0,0,0.04)}
 
 /* ── Project Cards Grid ── */
-.bw2-proyectos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem}
+.bw2-proyectos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1rem}
 
 .bw2-proyecto-card{
   background:var(--surface);
@@ -1105,6 +1105,7 @@ body{
   border:1px solid var(--border);
   transition:all 0.2s ease;
   display:flex;flex-direction:column;gap:0.75rem;
+  min-width:0;min-height:0;overflow:hidden;
 }
 .bw2-proyecto-card:hover{
   transform:translateY(-2px);
@@ -1179,7 +1180,7 @@ body{
 @media(max-width:768px){
   .bw2-header{padding:2rem 1.5rem 1.5rem;flex-direction:column;gap:1rem;align-items:flex-start}
   .bw2-empresas-grid{padding:1.5rem}
-  .bw2-proyectos-grid{grid-template-columns:1fr}
+  .bw2-proyectos-grid{grid-template-columns:minmax(0,1fr)}
 }
 
 /* ═══ PDF Export Button ═══ */
