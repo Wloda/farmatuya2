@@ -529,9 +529,26 @@ function renderPortfolio(empresa){
       ${r?`<div class="branch-kpis">
         <div class="branch-kpi"><span class="bk-label" title="Ganancia mensual antes de impuestos">Ganancia/mes</span><span class="bk-value" style="color:${r.avgMonthlyEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(r.avgMonthlyEBITDA)}</span></div>
         <div class="branch-kpi"><span class="bk-label" title="Venta mínima mensual para cubrir todos los costos">Pto. Equilibrio</span><span class="bk-value">${fmt.m(r.breakEvenRevenue)}</span></div>
-        <div class="branch-kpi"><span class="bk-label" title="Meses para recuperar la inversión (inversión ÷ utilidad mensual estabilizada)">Recuperación</span><span class="bk-value" style="color:${r.paybackSimple&&r.paybackSimple<=36?'var(--green)':r.paybackSimple&&r.paybackSimple<=48?'var(--yellow)':'var(--red)'}">${r.paybackSimple?Math.round(r.paybackSimple)+' meses':'∞'}</span></div>
-        <div class="branch-kpi"><span class="bk-label" title="Calificación de viabilidad: 0-100">Calificación</span><span class="bk-value" style="color:${color}">${score}/100</span></div>
-      </div>`:'<div class="branch-kpis"><span style="color:var(--text-3)">Sin datos</span></div>'}
+        <div class="branch-kpi"><span class="bk-label" title="Meses para recuperar la inversión (inversión ÷ utilidad mensual estabilizada)">Recuperación</span><span class="bk-value" style="color:${r.paybackSimple&&r.paybackSimple<=36?'var(--green)':r.paybackSimple&&r.paybackSimple<=48?'var(--yellow)':'var(--red)'}">${r.paybackSimple?Math.round(r.paybackSimple)+' m':'∞'}</span></div>
+        <div class="branch-kpi"><span class="bk-label" title="Calificación de viabilidad: 0-100">Score</span><span class="bk-value" style="color:${color}">${score}<small style="font-size:0.6em;color:var(--text-3);font-weight:500">/100</small></span></div>
+      </div>
+      <div class="branch-progress-row">
+        <div class="branch-pb-wrap" title="Progreso de recuperación de inversión">
+          <span class="branch-pb-label">Recuperación</span>
+          <div class="branch-pb-bar"><div class="branch-pb-fill" style="width:${Math.min(100,r.paybackSimple?Math.round((1-Math.min(r.paybackSimple,60)/60)*100):0)}%;background:${r.paybackSimple&&r.paybackSimple<=36?'var(--green)':r.paybackSimple&&r.paybackSimple<=48?'var(--yellow)':'var(--red)'}"></div></div>
+          <span class="branch-pb-pct">${r.paybackSimple?Math.round((1-Math.min(r.paybackSimple,60)/60)*100)+'%':'—'}</span>
+        </div>
+        <div class="branch-score-arc" title="Score de viabilidad: ${score}/100">
+          <svg width="44" height="44" viewBox="0 0 44 44">
+            <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="4"/>
+            <circle cx="22" cy="22" r="18" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"
+              stroke-dasharray="${score*1.13} ${113-score*1.13}"
+              transform="rotate(-90 22 22)" style="transition:stroke-dasharray 0.6s ease"/>
+            <text x="22" y="22" text-anchor="middle" dominant-baseline="central" fill="${color}" font-size="11" font-weight="800" font-family="Inter,sans-serif">${score}</text>
+          </svg>
+        </div>
+      </div>`:
+      '<div class="branch-kpis"><span style="color:var(--text-3)">Sin datos</span></div>'}
       <div class="branch-actions">${actionBtns}</div>
     </div>`;
   }).join('');
