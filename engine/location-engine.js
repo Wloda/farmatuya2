@@ -13,7 +13,10 @@
 import { lookupRezago } from '../data/coneval-rezago.js';
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
-const OVERPASS_URL  = 'https://overpass-api.de/api/interpreter';
+const OVERPASS_URLS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter'
+];
 
 /* ══════════════════════════════════════════════════
    KNOWN PHARMACY CHAINS (for competition analysis)
@@ -135,14 +138,26 @@ export async function queryMultiRadius(lat, lng) {
     out center body;
   `;
 
-  const resp = await fetch(OVERPASS_URL, {
-    method: 'POST',
-    body: 'data=' + encodeURIComponent(query),
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-  });
-
-  if (!resp.ok) throw new Error(`Overpass error: ${resp.status}`);
-  const data = await resp.json();
+  // Try primary + mirror Overpass servers with retry
+  let data = null;
+  let lastError = null;
+  for (const url of OVERPASS_URLS) {
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        body: 'data=' + encodeURIComponent(query),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+      if (resp.ok) {
+        data = await resp.json();
+        break;
+      }
+      lastError = `Overpass ${url}: HTTP ${resp.status}`;
+    } catch (e) {
+      lastError = `Overpass ${url}: ${e.message}`;
+    }
+  }
+  if (!data) throw new Error(lastError || 'All Overpass servers failed');
   const elements = data.elements || [];
 
   // Classify all elements

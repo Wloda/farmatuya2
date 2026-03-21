@@ -92,16 +92,34 @@ export function runProjection(modelId, overrides={}) {
   const rentOverride = overrides.rent != null ? overrides.rent : fc.rent;
   const fcWithRent = { ...fc, rent: rentOverride };
 
+  // Pre-opening months (capital deployed but store not yet open)
+  const preOpenMonths = overrides.preOpenMonths || 0;
+  const totalMonths = preOpenMonths + horizonMonths;
+
   const months = [];
   let cumCF = -totalInv, pbMonth = null;
   let taxLossPool = 0;  // Accumulated losses carried forward (tax shield)
 
+  // Pre-opening phase: rent + partial costs, zero revenue
+  for (let p = 0; p < preOpenMonths; p++) {
+    const m = p + 1;
+    // During pre-opening: rent, services (m1-level), but no payroll/operations yet
+    const preOpenCost = rentOverride + (fcWithRent.servPap?.m1 || 0);
+    const ebitda = -preOpenCost;
+    taxLossPool += preOpenCost;
+    const net = ebitda; // No taxes on losses
+    cumCF += net;
+    months.push({ month: m, revenue: 0, cogs: 0, grossProfit: 0, totalFixedCosts: preOpenCost, variableCosts: 0, variableCostsExCogs: 0, ebitda, ebitdaMargin: 0, taxes: 0, netIncome: net, cashFlow: net, cumulativeCashFlow: cumCF, seasonFactor: 1, preOpen: true });
+  }
+
+  // Operating phase
   for (let i=0; i<horizonMonths; i++) {
-    const m = i+1;
+    const m = preOpenMonths + i + 1;
+    const opMonth = i + 1; // operating month (for ramp/fixed cost calc)
     const season = SEASONALITY[i%12];
     const revenue = ramp[i] * season;
-    const cfTotal = calcFixedCosts(fcWithRent, m);
-    const varRate = calcVarRate(vc, royaltyMode, m);
+    const cfTotal = calcFixedCosts(fcWithRent, opMonth);
+    const varRate = calcVarRate(vc, royaltyMode, opMonth);
     const cogs = revenue * vc.cogs;
     const grossProfit = revenue - cogs;
     const varCostsTotal = revenue * varRate;

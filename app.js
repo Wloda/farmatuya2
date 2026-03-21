@@ -411,6 +411,7 @@ function showBW2Modal(type, empId, projId){
   if(dropzone) {
     // Click to upload
     dropzone.addEventListener('click', (e) => {
+      if(e.target === fileInput) return; // prevent re-trigger
       if(e.target.closest('#bw2-logo-remove')) return;
       fileInput.click();
     });
@@ -665,6 +666,9 @@ function renderBranchDetail(empresa){
   // Royalty active state
   const currentRoyalty = branch.overrides?.royaltyMode || 'variable_2_5';
   document.querySelectorAll('#branch-royalty-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.royalty===currentRoyalty);});
+  // Timeline selector active state
+  const currentPreOpen = String(branch.overrides?.preOpenMonths || 0);
+  document.querySelectorAll('#branch-timeline-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.preopen===currentPreOpen);});
 
   updateBranchKPIBar(r);
   renderBranchResumen(r);
@@ -689,6 +693,17 @@ document.addEventListener('DOMContentLoaded',()=>{
     btn.addEventListener('click',()=>{
       if(!state.activeBranchId)return;
       updateBranch(state.activeBranchId,{scenarioId:btn.dataset.scenario});
+    });
+  });
+  // Timeline selector (Desde Apertura / Desde Capital)
+  document.querySelectorAll('#branch-timeline-selector .seg-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      if(!state.activeBranchId)return;
+      const branch = getBranch(state.activeBranchId);
+      if(!branch) return;
+      const preOpen = parseInt(btn.dataset.preopen) || 0;
+      const ov = { ...(branch.overrides || {}), preOpenMonths: preOpen };
+      updateBranch(state.activeBranchId, { overrides: ov });
     });
   });
   // Colonia autocomplete — geocoding suggestions
