@@ -22,6 +22,48 @@
   </script>
 </head>
 <body>
+  <!-- ═══ AUTHENTICATION GATE ═══ -->
+  <div id="bw2-auth-gate" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#f9fafb;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Inter',sans-serif;transition:opacity 0.3s ease;">
+    <div style="background:#fff;padding:3rem 2rem;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,0.05);text-align:center;max-width:400px;width:90%;border:1px solid #f3f4f6">
+      <svg viewBox="0 0 48 32" width="72" height="48" style="margin-bottom:1.5rem"><text x="0" y="24" font-family="Inter,sans-serif" font-weight="900" font-size="28" fill="#1A1A1A">BW</text><text x="44" y="16" font-family="Inter,sans-serif" font-weight="700" font-size="12" fill="#6B7A2E">²</text></svg>
+      <h2 style="margin:0 0 0.5rem 0;color:#111827;font-size:1.25rem;font-weight:700">Acceso Privado</h2>
+      <p style="margin:0 0 2rem 0;color:#6b7280;font-size:0.875rem">Ingresa tu código de acceso para entrar al Dashboard BW².</p>
+      <input type="password" id="bw2-auth-input" style="width:100%;padding:0.75rem;border:1px solid #d1d5db;border-radius:8px;font-size:1.25rem;margin-bottom:1rem;text-align:center;letter-spacing:0.2em;outline:none" placeholder="••••••••" autocomplete="current-password">
+      <button onclick="window.checkBw2Auth()" style="width:100%;padding:0.75rem;background:#111827;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:1rem;transition:background 0.2s">Entrar al Portafolio</button>
+      <div id="bw2-auth-error" style="color:#ef4444;font-size:0.875rem;margin-top:1rem;display:none;font-weight:500">Código incorrecto. Intenta de nuevo.</div>
+    </div>
+  </div>
+  <script>
+    (function(){
+      const gate = document.getElementById('bw2-auth-gate');
+      const input = document.getElementById('bw2-auth-input');
+      const err = document.getElementById('bw2-auth-error');
+      
+      // Auto-bypass on localhost or if already authenticated
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || localStorage.getItem('bw2_access_granted') === 'true') {
+        gate.style.display = 'none';
+      } else {
+        input.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') window.checkBw2Auth();
+        });
+      }
+
+      window.checkBw2Auth = function() {
+        const val = input.value.trim();
+        // Accepted passwords
+        if (val === 'Nojom2026' || val === 'BW2026') {
+          localStorage.setItem('bw2_access_granted', 'true');
+          gate.style.opacity = '0';
+          setTimeout(() => gate.style.display = 'none', 300);
+        } else {
+          err.style.display = 'block';
+          input.value = '';
+          input.focus();
+        }
+      };
+    })();
+  </script>
+
   <!-- ═══ ENTERPRISE HEADER ═══ -->
   <header id="app-header">
     <div class="header-left">

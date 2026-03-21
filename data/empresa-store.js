@@ -82,6 +82,7 @@ function createProyecto(name = 'Nuevo Proyecto') {
   return {
     id: uid('proj'),
     name,
+    isFranchise: true,
     logo: null,
     totalCapital: 2000000,
     corporateReserve: 200000,
@@ -132,6 +133,7 @@ function migrateFromLegacy(legacy) {
     proyectos: [{
       id: uid('proj'),
       name: legacy.projectName || 'FarmaTuya',
+      isFranchise: true,
       totalCapital: legacy.totalCapital || 2000000,
       corporateReserve: legacy.corporateReserve || 200000,
       corporateExpenses: legacy.corporateExpenses || 0,
@@ -307,6 +309,7 @@ export function updateProyecto(empresaId, proyectoId, updates) {
   const proj = getProyectoById(empresaId, proyectoId);
   if (proj) {
     if (updates.name !== undefined) proj.name = updates.name;
+    if (updates.isFranchise !== undefined) proj.isFranchise = updates.isFranchise;
     if (updates.logo !== undefined) proj.logo = updates.logo;
     if (updates.totalCapital !== undefined) proj.totalCapital = updates.totalCapital;
     if (updates.corporateReserve !== undefined) proj.corporateReserve = updates.corporateReserve;

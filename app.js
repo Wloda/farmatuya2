@@ -368,14 +368,28 @@ function showBW2Modal(type, empId, projId){
       <label>Capital Total ($)</label>
       <input type="number" id="bw2-input-capital" class="input-text" value="2000000" step="100000">
     </div>
+    <div class="bw2-form-group">
+      <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+        <input type="checkbox" id="bw2-input-franchise" checked>
+        Es un proyecto de franquicia
+      </label>
+      <p style="font-size:0.75rem;color:var(--text-3);margin-top:0.25rem">Si marcas esto, el proyecto incluirá cálculos de regalías.</p>
+    </div>
     ${logoField('Logo del Proyecto', null)}`;
     submitLabel='Crear Proyecto';
   } else if(type==='editar-proyecto'){
     const proj = getProyectoById(empId, projId);
+    const isF = proj?.isFranchise !== false;
     title='Editar Proyecto';
     fields=`<div class="bw2-form-group">
       <label>Nombre del Proyecto</label>
       <input type="text" id="bw2-input-name" class="input-text" value="${proj?.name||''}" autofocus>
+    </div>
+    <div class="bw2-form-group">
+      <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+        <input type="checkbox" id="bw2-input-franchise" ${isF ? 'checked' : ''}>
+        Es un proyecto de franquicia
+      </label>
     </div>
     ${logoField('Logo del Proyecto', proj?.logo || null)}`;
   }
@@ -473,13 +487,15 @@ function showBW2Modal(type, empId, projId){
       showToast('Empresa actualizada','success');
     } else if(type==='crear-proyecto'){
       const cap = parseFloat($('bw2-input-capital')?.value)||2000000;
+      const isFranchise = $('bw2-input-franchise') ? $('bw2-input-franchise').checked : true;
       const newProj = addProyecto(empId, nameVal);
       if(newProj){
-        updateProyecto(empId, newProj.id, {totalCapital:cap, logo: pendingLogoDataURL});
+        updateProyecto(empId, newProj.id, {totalCapital:cap, isFranchise, logo: pendingLogoDataURL});
         showToast(`Proyecto "${nameVal}" creado`,'success');
       }
     } else if(type==='editar-proyecto'){
-      updateProyecto(empId, projId, {name:nameVal, logo: pendingLogoDataURL});
+      const isFranchise = $('bw2-input-franchise') ? $('bw2-input-franchise').checked : true;
+      updateProyecto(empId, projId, {name:nameVal, isFranchise, logo: pendingLogoDataURL});
       showToast('Proyecto actualizado','success');
     }
 
@@ -733,8 +749,10 @@ function renderBranchDetail(empresa){
   // Scenario selector
   document.querySelectorAll('#branch-scenario-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.scenario===branch.scenarioId);});
   // Royalty
+  const proj = empresa.proyectos.find(p => p.id === branch.proyectoId);
+  const isFranchise = proj?.isFranchise !== false;
   const rg=$('branch-royalty-group');
-  if(rg) rg.style.display=branch.format==='super'?'block':'none';
+  if(rg) rg.style.display=(branch.format==='super' && isFranchise)?'block':'none';
   // Royalty active state
   const currentRoyalty = branch.overrides?.royaltyMode || 'variable_2_5';
   document.querySelectorAll('#branch-royalty-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.royalty===currentRoyalty);});
@@ -1152,14 +1170,22 @@ function renderBranchEditPanel(branch, model) {
   // ── Variable Costs ──
   const vcEl = $('edit-vc');
   if (vcEl) {
-    vcEl.innerHTML = [
+    const empresa = getEmpresa();
+    const proj = empresa?.proyectos.find(p => p.id === branch.proyectoId);
+    const isFranchise = proj?.isFranchise !== false;
+
+    let fields = [
       editField('COGS (Inventario)', 'vc.cogs', (vc.cogs ?? defVC.cogs) * 100, defVC.cogs * 100, 0.5, '%', 40, 80, 'Costo de la mercancía vendida como % de las ventas. ≈59% para farmacia'),
       editField('Comisión Venta', 'vc.comVenta', (vc.comVenta ?? defVC.comVenta) * 100, defVC.comVenta * 100, 0.1, '%', 0, 10, 'Comisión pagada al equipo de ventas sobre ingresos'),
       editField('Merma', 'vc.merma', (vc.merma ?? defVC.merma) * 100, defVC.merma * 100, 0.1, '%', 0, 5, 'Pérdida por caducidad, robo o daño del inventario'),
-      editField('Publicidad', 'vc.pubDir', (vc.pubDir ?? defVC.pubDir) * 100, defVC.pubDir * 100, 0.5, '%', 0, 10, 'Marketing digital, volanteo, señalización y promociones'),
-      editField('Regalía', 'vc.regalia', (vc.regalia ?? defVC.regalia) * 100, defVC.regalia * 100, 0.1, '%', 0, 10, 'Pago mensual a la franquicia por uso de marca (% sobre ventas)'),
-      editField('Bancario', 'vc.bancario', (vc.bancario ?? defVC.bancario) * 100, defVC.bancario * 100, 0.1, '%', 0, 5, 'Comisión por pagos con tarjeta (terminal bancaria)'),
-    ].join('');
+      editField('Publicidad', 'vc.pubDir', (vc.pubDir ?? defVC.pubDir) * 100, defVC.pubDir * 100, 0.5, '%', 0, 10, 'Marketing digital, volanteo, señalización y promociones')
+    ];
+    if (isFranchise) {
+      fields.push(editField('Regalía', 'vc.regalia', (vc.regalia ?? defVC.regalia) * 100, defVC.regalia * 100, 0.1, '%', 0, 10, 'Pago mensual a la franquicia por uso de marca (% sobre ventas)'));
+    }
+    fields.push(editField('Bancario', 'vc.bancario', (vc.bancario ?? defVC.bancario) * 100, defVC.bancario * 100, 0.1, '%', 0, 5, 'Comisión por pagos con tarjeta (terminal bancaria)'));
+    
+    vcEl.innerHTML = fields.join('');
   }
 
   // ── Sales ──

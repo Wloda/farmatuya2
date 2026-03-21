@@ -36,6 +36,13 @@ export function runBranchProjection(branch, empresa) {
   // Partners come from empresa, not from branch
   overrides.partners = empresa.partners;
 
+  // Enforce 0 royalty if the project is not a franchise
+  const proj = empresa.proyectos?.find(p => p.id === branch.proyectoId);
+  if (proj && proj.isFranchise === false) {
+    overrides.variableCosts = { ...(overrides.variableCosts || model.variableCosts) };
+    overrides.variableCosts.regalia = 0;
+  }
+
   return runProjection(branch.format, overrides);
 }
 
