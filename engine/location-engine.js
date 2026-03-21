@@ -73,7 +73,7 @@ export async function geocodeAddress(query) {
     lat: parseFloat(r.lat),
     lng: parseFloat(r.lon),
     displayName: r.display_name,
-    municipio: addr.city || addr.town || addr.municipality || addr.county || null,
+    municipio: addr.municipality || addr.county || addr.city || addr.town || null,
     estado: addr.state || null,
     colonia: addr.suburb || addr.neighbourhood || null,
     cp: addr.postcode || null,
