@@ -534,7 +534,7 @@ function renderPortfolio(empresa){
       ${r?`<div class="branch-kpis">
         <div class="branch-kpi"><span class="bk-label" title="Ganancia mensual antes de impuestos">Ganancia/mes</span><span class="bk-value" style="color:${r.avgMonthlyEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(r.avgMonthlyEBITDA)}</span></div>
         <div class="branch-kpi"><span class="bk-label" title="Venta mínima mensual para cubrir todos los costos">Pto. Equilibrio</span><span class="bk-value">${fmt.m(r.breakEvenRevenue)}</span></div>
-        <div class="branch-kpi"><span class="bk-label" title="Meses para recuperar la inversión (inversión ÷ utilidad mensual estabilizada)">Recuperación</span><span class="bk-value" style="color:${r.paybackSimple&&r.paybackSimple<=36?'var(--green)':r.paybackSimple&&r.paybackSimple<=48?'var(--yellow)':'var(--red)'}">${r.paybackSimple?Math.round(r.paybackSimple)+' meses':'∞'}</span></div>
+        <div class="branch-kpi"><span class="bk-label" title="Meses reales para recuperar la inversión (flujo acumulado desde apertura)">Recuperación</span><span class="bk-value" style="color:${r.paybackMonth&&r.paybackMonth<=36?'var(--green)':r.paybackMonth&&r.paybackMonth<=48?'var(--yellow)':'var(--red)'}">${r.paybackMonth?r.paybackMonth+' meses':'∞'}</span></div>
         <div class="branch-kpi"><span class="bk-label" title="Calificación de viabilidad: 0-100">Calificación</span><span class="bk-value" style="color:${color}">${score}/100</span></div>
       </div>`:'<div class="branch-kpis"><span style="color:var(--text-3)">Sin datos</span></div>'}
       <div class="branch-actions">${actionBtns}</div>
