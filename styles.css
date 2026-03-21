@@ -610,12 +610,14 @@ body{
   border:1px solid var(--border);
   border-radius:var(--r-xl);
   box-shadow:var(--shadow-modal);
-  padding:1.75rem;min-width:360px;max-width:440px
+  padding:1.75rem;min-width:360px;max-width:440px;
+  overflow:visible
 }
 .modal-card h3{font-size:1.0625rem;font-weight:700;color:var(--text-1);margin-bottom:1.125rem}
-.modal-field{margin-bottom:0.875rem}
+.modal-field{margin-bottom:0.875rem;position:relative}
 .modal-field label{display:block;font-size:0.6875rem;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em;font-weight:700;margin-bottom:0.3125rem}
 .modal-field .input-text,.modal-field .input-select{width:100%}
+.modal-field .colonia-suggestions{z-index:300}
 .modal-actions{display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1.25rem}
 .modal-confirm-body{text-align:center;color:var(--text-2);font-size:0.875rem;line-height:1.6}
 .modal-confirm-body ul{list-style:none;padding:0;margin:0.5rem 0}

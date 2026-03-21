@@ -157,7 +157,7 @@ function updateEnterpriseHeader(empresa){
     <span class="ent-stat">Capital: ${fmt.m(empresa.totalCapital)}</span>
     <span class="ent-stat">Comprometido: ${fmt.m(consol.capitalCommitted)}</span>
     <span class="ent-stat ${consol.capitalFree<0?'danger':''}">Libre: ${fmt.m(consol.capitalFree)}</span>
-    <span class="ent-stat">Sucursales: ${consol.branchCount}</span>
+    <span class="ent-stat">Sucursales: ${consol.branchCount} activas</span>
     <span class="ent-stat">Score: ${consol.avgScore}</span>`;
   // Update brand
   const brandName=$('header-brand-name');
@@ -210,6 +210,7 @@ function renderBW2Home(){
       <div class="bw2-proyectos-grid">
         ${emp.proyectos.map(proj=>{
           const isProjActive = proj.id===ws.activeProyectoId && isActive;
+          const activeBranches = (proj.branches||[]).filter(b=>b.status==='active'||b.status==='planned').length;
           const branchCount = (proj.branches||[]).length;
           const projLogoHtml = proj.logo
             ? `<img src="${proj.logo}" alt="${proj.name}" class="bw2-proj-logo">`
@@ -224,7 +225,7 @@ function renderBW2Home(){
             </div>
             <div class="bw2-proj-stats">
               <span>💰 Capital: ${fmt.m(proj.totalCapital)}</span>
-              <span>🏪 ${branchCount} sucursal${branchCount!==1?'es':''}</span>
+              <span>🏪 ${activeBranches} sucursal${activeBranches!==1?'es':''}</span>
               <span>👥 ${(proj.partners||[]).length} socio${(proj.partners||[]).length!==1?'s':''}</span>
             </div>
             <button class="btn-open-proyecto" data-emp-id="${emp.id}" data-proj-id="${proj.id}">Abrir Proyecto →</button>
@@ -544,7 +545,6 @@ function renderPortfolio(empresa){
 
 // Global action handlers
 window._openBranch = (id)=>{ state.view='branch'; state.activeBranchId=id; state.branchOverrides={}; renderCurrentView(); selectNav('branch'); };
-window._dupBranch = (id)=>{ dupBranch(id); };
 window._activateBranch = (id)=>{ activateBranch(id); };
 window._restoreBranch = (id)=>{ restoreBranch(id); };
 
@@ -607,14 +607,72 @@ function showAddBranchModal(){
   $('modal-add-format').value='express';
   $('modal-add-name').value='';
   $('modal-add-colonia').value='';
+  const sugBox=$('modal-add-suggestions');
+  const statusEl=$('modal-add-colonia-status');
+  if(sugBox){sugBox.classList.remove('open');sugBox.innerHTML='';}
+  if(statusEl) statusEl.innerHTML='';
+
+  // Geocoding autocomplete for the modal colonia input
+  const ci=$('modal-add-colonia');
+  let debounce=null;
+  if(ci){
+    ci.oninput=()=>{
+      clearTimeout(debounce);
+      const q=ci.value.trim();
+      if(q.length<3){if(sugBox){sugBox.classList.remove('open');sugBox.innerHTML='';}if(statusEl)statusEl.innerHTML='';return;}
+      if(statusEl) statusEl.innerHTML='<span class="searching">🔍 Buscando...</span>';
+      debounce=setTimeout(async()=>{
+        try{
+          const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+', México')}&format=json&limit=6&addressdetails=1&countrycodes=mx`;
+          const res=await fetch(url,{headers:{'Accept-Language':'es'}});
+          const data=await res.json();
+          if(!data.length){
+            sugBox.innerHTML='<div class="colonia-suggestion"><span class="sug-main">Sin resultados</span></div>';
+            sugBox.classList.add('open');
+            if(statusEl) statusEl.innerHTML='<span class="no-results">Sin resultados</span>';
+            return;
+          }
+          sugBox.innerHTML=data.map((r,i)=>{
+            const name=r.address?.suburb||r.address?.neighbourhood||r.address?.city||r.display_name.split(',')[0];
+            const detail=[r.address?.city||r.address?.town,r.address?.state].filter(Boolean).join(', ');
+            return `<div class="colonia-suggestion" data-name="${name}" data-full="${r.display_name}">
+              <div class="sug-main">${name}</div>
+              <div class="sug-detail">${detail||r.display_name}</div>
+            </div>`;
+          }).join('');
+          sugBox.classList.add('open');
+          if(statusEl) statusEl.innerHTML='<span class="searching">↓ Selecciona una ubicación</span>';
+          sugBox.querySelectorAll('.colonia-suggestion').forEach(s=>{
+            s.addEventListener('click',()=>{
+              ci.value=s.dataset.name;
+              ci.dataset.full=s.dataset.full;
+              sugBox.classList.remove('open');
+              if(statusEl) statusEl.innerHTML=`<span class="validated">✅ ${s.dataset.name}</span>`;
+            });
+          });
+        }catch(e){
+          if(statusEl) statusEl.innerHTML='<span class="no-results">Error de conexión</span>';
+        }
+      },400);
+    };
+  }
 }
 window._closeModal=()=>{const m=$('modal-add-branch');if(m)m.style.display='none';};
 window._confirmAddBranch=()=>{
   const format=$('modal-add-format').value;
   const name=$('modal-add-name').value||`Sucursal ${getEmpresa().branches.length+1}`;
   const colonia=$('modal-add-colonia').value;
+  if(!colonia){
+    if(!confirm('No ingresaste una dirección. ¿Deseas crear la sucursal sin dirección?')) return;
+  }
   addBranch(format,name,colonia);
   window._closeModal();
+};
+
+// Duplicate with toast reminder
+window._dupBranch = (id)=>{
+  const dup = dupBranch(id);
+  if(dup) showToast('📋 Sucursal duplicada — recuerda asignarle una nueva dirección','info');
 };
 
 /* ═══ BRANCH DETAIL VIEW (preserves all existing visualizations) ═══ */

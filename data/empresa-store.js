@@ -70,7 +70,10 @@ export function duplicateBranch(branch) {
     ...JSON.parse(JSON.stringify(branch)),
     id: uid('br'),
     name: branch.name + ' (copia)',
-    status: 'planned'
+    status: 'planned',
+    colonia: '',
+    coloniaFull: '',
+    locationStudy: null
   };
 }
 

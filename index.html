@@ -413,8 +413,10 @@
         <input type="text" id="modal-add-name" class="input-text" placeholder="Sucursal Centro">
       </div>
       <div class="modal-field">
-        <label>Colonia</label>
-        <input type="text" id="modal-add-colonia" class="input-text" placeholder="Col. Roma Norte">
+        <label>📍 Dirección / Colonia</label>
+        <input type="text" id="modal-add-colonia" class="input-text" placeholder="Ej: Col. Roma Norte, CDMX" autocomplete="off">
+        <div class="colonia-suggestions" id="modal-add-suggestions"></div>
+        <div id="modal-add-colonia-status" class="colonia-status"></div>
       </div>
       <div class="modal-actions">
         <button class="btn-sm" onclick="window._closeModal()">Cancelar</button>
