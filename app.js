@@ -155,8 +155,7 @@ function updateEnterpriseHeader(empresa){
   const projName = empresa.name || 'Proyecto';
   const el=$('enterprise-header-info');
   const scoreColor = consol.avgScore >= 80 ? 'green' : consol.avgScore >= 60 ? 'yellow' : 'red';
-  if(el) el.innerHTML=`<span class="ent-name">🏢 ${empName}</span>
-    <span class="ent-stat project-badge">📁 ${projName}</span>
+  if(el) el.innerHTML=`<span class="ent-stat project-badge">📁 ${projName}</span>
     <span class="ent-stat">Capital: ${fmt.m(empresa.totalCapital)}</span>
     <span class="ent-stat">Comprometido: ${fmt.m(consol.capitalCommitted)}</span>
     <span class="ent-stat ${consol.capitalFree<0?'danger':''}">Libre: ${fmt.m(consol.capitalFree)}</span>
@@ -213,25 +212,51 @@ function renderBW2Home(){
       <div class="bw2-proyectos-grid">
         ${emp.proyectos.map(proj=>{
           const isProjActive = proj.id===ws.activeProyectoId && isActive;
-          const activeBranches = (proj.branches||[]).filter(b=>b.status==='active'||b.status==='planned').length;
-          const branchCount = (proj.branches||[]).length;
+          const activeBranchesCount = (proj.branches||[]).filter(b=>b.status==='active'||b.status==='planned').length;
+          
+          let totalEBITDA = 0, totalEq = 0, totalScore = 0, maxPayback = 0, validBranches = 0;
+          (proj.branches||[]).forEach(b => {
+             if(b.status === 'archived' || b.status === 'paused') return;
+             try {
+               const r = runBranchProjection(b, emp);
+               if(r) {
+                 totalEBITDA += r.avgMonthlyEBITDA;
+                 totalEq += r.breakEvenRevenue;
+                 if(r.paybackMonth > maxPayback) maxPayback = r.paybackMonth;
+                 if(r.viabilityScore) totalScore += r.viabilityScore;
+                 validBranches++;
+               }
+             } catch(e){}
+          });
+
+          const avgScore = validBranches ? Math.round(totalScore/validBranches) : 0;
+          const scoreColor = avgScore >= 80 ? 'var(--green)' : avgScore >= 60 ? 'var(--yellow)' : 'var(--red)';
+          const paybackStr = validBranches ? (maxPayback ? maxPayback + ' meses' : '∞') : '—';
+          
           const projLogoHtml = proj.logo
             ? `<img src="${proj.logo}" alt="${proj.name}" class="bw2-proj-logo">`
             : '<span class="bw2-proj-logo-placeholder">📁</span>';
+            
           return `<div class="bw2-proyecto-card ${isProjActive?'active':''}" data-emp-id="${emp.id}" data-proj-id="${proj.id}">
             <div class="bw2-proj-header">
-              <div class="bw2-proj-name-row">${projLogoHtml}<span class="bw2-proj-name">${proj.name}</span></div>
+              <div class="bw2-proj-name-row">${projLogoHtml}
+                <div class="branch-info" style="flex:1">
+                  <div class="bw2-proj-name">${proj.name}</div>
+                  <div class="branch-meta">Capital: ${fmt.m(proj.totalCapital)} · ${activeBranchesCount} sucursales</div>
+                </div>
+              </div>
               <div class="bw2-proj-actions">
                 <button class="btn-icon btn-edit-proyecto" data-emp-id="${emp.id}" data-proj-id="${proj.id}" title="Editar proyecto">✏️</button>
                 <button class="btn-icon btn-delete-proyecto" data-emp-id="${emp.id}" data-proj-id="${proj.id}" title="Eliminar proyecto">🗑️</button>
               </div>
             </div>
-            <div class="bw2-proj-stats">
-              <span>💰 Capital: ${fmt.m(proj.totalCapital)}</span>
-              <span>🏪 ${activeBranches} sucursal${activeBranches!==1?'es':''}</span>
-              <span>👥 ${(proj.partners||[]).length} socio${(proj.partners||[]).length!==1?'s':''}</span>
-            </div>
-            <button class="btn-open-proyecto" data-emp-id="${emp.id}" data-proj-id="${proj.id}">Abrir Proyecto →</button>
+            ${validBranches>0 ? `<div class="branch-kpis">
+              <div class="branch-kpi"><span class="bk-label" title="Ganancia mensual combinada">Ganancia/mes</span><span class="bk-value" style="color:${totalEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(totalEBITDA)}</span></div>
+              <div class="branch-kpi"><span class="bk-label" title="Punto de equilibrio combinado">Pto. Equilibrio</span><span class="bk-value">${fmt.m(totalEq)}</span></div>
+              <div class="branch-kpi"><span class="bk-label" title="Recuperación máxima entre sucursales">Recuperación</span><span class="bk-value" style="color:${maxPayback&&maxPayback<=36?'var(--green)':maxPayback&&maxPayback<=48?'var(--yellow)':'var(--red)'}">${paybackStr}</span></div>
+              <div class="branch-kpi"><span class="bk-label" title="Calificación promedio">Calificación</span><span class="bk-value" style="color:${scoreColor}">${avgScore}/100</span></div>
+            </div>` : '<div class="branch-kpis"><span style="color:var(--text-3);font-size:0.75rem;padding:0.5rem 0">Sin sucursales calculadas</span></div>'}
+            <button class="btn-open-proyecto" data-emp-id="${emp.id}" data-proj-id="${proj.id}" style="margin-top:0.25rem;width:100%;text-align:center;display:block">Abrir Proyecto →</button>
           </div>`;
         }).join('')}
         <div class="bw2-proyecto-card bw2-add-card" data-emp-id="${emp.id}">
@@ -511,6 +536,9 @@ function showBW2Modal(type, empId, projId){
 /* ═══ PORTFOLIO VIEW ═══ */
 function renderPortfolio(empresa){
   const container=$('portfolio-grid');if(!container)return;
+  const proj = empresa.proyectos?.find(p => p.id === state.activeProyectoId);
+  const titleEl = $('portfolio-title');
+  if (titleEl) titleEl.textContent = `Sucursales de ${proj ? proj.name : 'Proyecto'}`;
   const branchResults = empresa.branches.map(b=>{
     try { return {branch:b, result:runBranchProjection(b,empresa)}; }
     catch(e) { return {branch:b, result:null}; }
@@ -617,7 +645,10 @@ window._deleteBranch = (id)=>{
   );
 };
 
-function selectNav(view){ document.querySelectorAll('#main-nav .nav-btn').forEach(b=>{b.classList.toggle('active',b.dataset.view===view);}); }
+function selectNav(view) {
+  const targetView = view === 'branch' ? 'portfolio' : view;
+  document.querySelectorAll('#main-nav .nav-btn').forEach(b=>{b.classList.toggle('active',b.dataset.view===targetView);});
+}
 
 /* ─── GEOCODING AUTOCOMPLETE HELPER ─── */
 function setupGeocodingAutocomplete(inputId, suggestionsId, statusId, onSelectCallback) {
@@ -1732,14 +1763,26 @@ function renderConsolidated(empresa){
   }
 
   // Enterprise KPIs
-  $('consol-kpis').innerHTML=[
-    kc('Inversión Total',fm(consol.totalInvestment),`${consol.branchCount} sucursales`,'warning'),
-    kc('Capital Libre',fm(consol.capitalFree),fmt.pi(consol.capitalFree/empresa.totalCapital)+' del total',consol.capitalFree>0?'success':'danger'),
-    kc('Ganancia Consolidada',fm(consol.avgMonthlyEBITDA),'Mensual estabilizado',consol.avgMonthlyEBITDA>0?'success':'danger'),
-    kc('Recuperación Empresa',consol.paybackMonth?consol.paybackMonth+' meses':'∞','Flujo acumulado',consol.paybackMonth&&consol.paybackMonth<=36?'success':consol.paybackMonth&&consol.paybackMonth<=48?'warning':'danger'),
-    kc('Calificación Promedio',consol.avgScore+'/100','Portafolio',consol.avgScore>=60?'success':consol.avgScore>=40?'warning':'danger'),
-    kc('Ganancia Neta 5 Años',fm(consol.totalNet60),'Acumulado 60 meses',consol.totalNet60>0?'success':'danger'),
-  ].join('');
+  const invEl = $('consol-kpi-inv');
+  const freeEl = $('consol-kpi-free');
+  const profitEl = $('consol-kpi-profit');
+  const scoreEl = $('consol-kpi-score');
+
+  if(invEl) {
+    invEl.textContent = fm(consol.totalInvestment);
+  }
+  if(freeEl) {
+    freeEl.textContent = fm(consol.capitalFree);
+    freeEl.style.color = consol.capitalFree>0?'var(--green)':'var(--red)';
+  }
+  if(profitEl) {
+    profitEl.textContent = fm(consol.avgMonthlyEBITDA);
+    profitEl.style.color = consol.avgMonthlyEBITDA>0?'var(--green)':'var(--red)';
+  }
+  if(scoreEl) {
+    scoreEl.textContent = consol.avgScore+'/100';
+    scoreEl.style.color = consol.avgScore>=60?'var(--green)':consol.avgScore>=40?'var(--text-1)':'var(--red)';
+  }
 
   // Consolidated cashflow chart
   dc('consol-cashflow');const ctx=$('chart-consol-cashflow');if(ctx){

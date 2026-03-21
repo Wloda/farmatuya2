@@ -13,7 +13,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=bw31">
+  <link rel="stylesheet" href="styles.css?v=bw32">
   <script>
     window.addEventListener('error',e=>document.title='ERR:'+e.message);
     window.addEventListener('unhandledrejection',e=>document.title='REJ:'+e.reason);
@@ -106,12 +106,12 @@
   <!-- ═══ MAIN NAV ═══ -->
   <nav id="main-nav">
     <button class="nav-btn" data-view="bw2home">Inicio<small>Tus Empresas</small></button>
-    <button class="nav-btn" data-view="empresa">Empresa<small>Capital, socios y config.</small></button>
-    <button class="nav-btn active" data-view="portfolio">Proyectos<small>Tus sucursales de un vistazo</small></button>
+    <button class="nav-btn" data-view="empresa">Ajustes<small>Capital y socios del proyecto</small></button>
+    <button class="nav-btn active" data-view="portfolio">Proyecto<small>Sucursales activas</small></button>
     <button class="nav-btn" data-view="consolidated">Consolidado<small>Números totales del negocio</small></button>
     <button class="nav-btn" data-view="comparador">Comparar<small>Sucursales lado a lado</small></button>
     <div class="nav-spacer"></div>
-    <button class="btn-add" id="btn-add-branch">+ Nuevo Proyecto</button>
+    <button class="btn-add" id="btn-add-branch">+ Nueva Sucursal</button>
   </nav>
 
 
@@ -134,14 +134,14 @@
 
     <!-- ═══ PORTFOLIO VIEW ═══ -->
     <section id="view-portfolio">
-      <div class="view-header"><h2>Proyectos</h2><p>Haz clic en 📊 <strong>Ver</strong> para explorar los detalles de cada proyecto</p></div>
+      <div class="view-header"><h2 id="portfolio-title">Sucursales del Proyecto</h2><p>Haz clic en 📊 <strong>Ver</strong> para explorar los detalles de cada sucursal</p></div>
       <div class="portfolio-grid" id="portfolio-grid"></div>
     </section>
 
     <!-- ═══ BRANCH DETAIL VIEW ═══ -->
     <section id="view-branch" style="display:none">
       <div class="view-header">
-        <button class="btn-back" id="btn-back-portfolio">← Proyectos</button>
+        <button class="btn-back" id="btn-back-portfolio">← Proyecto</button>
         <div><h2 id="branch-detail-title">Sucursal</h2><p id="branch-detail-subtitle">—</p></div>
         <button class="btn-export-pdf" id="btn-export-pdf" title="Generar reporte PDF de inversión" style="display:none">📄 Exportar PDF</button>
       </div>
@@ -293,7 +293,7 @@
           <!-- Checkout / Checklist -->
           <div class="widget wg-8">
             <h3 class="widget-title" style="margin-bottom:1rem">Checklist de Cierre</h3>
-            <div id="branch-checklist-results" style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem"></div>
+            <div id="branch-checklist" style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem"></div>
           </div>
 
           <!-- Alertas -->
@@ -391,13 +391,45 @@
 
     <!-- ═══ CONSOLIDATED VIEW ═══ -->
     <section id="view-consolidated" style="display:none">
-      <div class="view-header"><h2>Consolidado Empresa</h2><p>Métricas agregadas de todas las sucursales</p>
+      <div class="view-header"><h2>Consolidado Empresa</h2><p>Métricas agregadas del holding y todas las sucursales</p>
         <label class="iva-toggle" title="Multiplicar los montos por 1.16 para ver con IVA incluido"><input type="checkbox" id="toggle-iva"><span class="iva-slider"></span><span class="iva-label" id="iva-label">Sin IVA</span></label>
       </div>
-      <div class="kpi-grid" id="consol-kpis"></div>
-      <div class="neu-card"><h3 class="card-title">Flujo de Caja Consolidado (60 meses)</h3><div class="chart-box"><canvas id="chart-consol-cashflow"></canvas></div></div>
-      <div class="neu-card"><h3 class="card-title">Retorno por Socio</h3><div id="consol-partners"></div></div>
-      <div class="neu-card"><h3 class="card-title">Detalle por Sucursal</h3><div class="table-scroll" id="consol-branch-table"></div></div>
+      
+      <div class="widget-grid" id="consol-widget-grid">
+        <!-- Fila 1: KPIs -->
+        <div class="widget wg-3">
+          <span class="widget-subtitle">Inversión Total</span>
+          <h3 class="widget-title" id="consol-kpi-inv" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
+        </div>
+        <div class="widget wg-3">
+          <span class="widget-subtitle">Capital Libre</span>
+          <h3 class="widget-title" id="consol-kpi-free" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
+        </div>
+        <div class="widget wg-3">
+          <span class="widget-subtitle">EBITDA Mensual</span>
+          <h3 class="widget-title" id="consol-kpi-profit" style="font-size:1.25rem;color:var(--accent);margin-top:0.25rem">-</h3>
+        </div>
+        <div class="widget wg-3">
+          <span class="widget-subtitle">Score del Portafolio</span>
+          <h3 class="widget-title" id="consol-kpi-score" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
+        </div>
+
+        <!-- Fila 2: Chart & Partners -->
+        <div class="widget wg-8">
+          <h3 class="widget-title" style="margin-bottom:1rem">Flujo de Caja Consolidado (60 meses)</h3>
+          <div class="chart-box"><canvas id="chart-consol-cashflow"></canvas></div>
+        </div>
+        <div class="widget wg-4">
+          <h3 class="widget-title" style="margin-bottom:1rem">Retorno por Socio</h3>
+          <div id="consol-partners" style="display:flex;flex-direction:column;gap:1rem;max-height:400px;overflow-y:auto"></div>
+        </div>
+
+        <!-- Fila 3: Branches Data Table -->
+        <div class="widget wg-12">
+           <h3 class="widget-title" style="margin-bottom:1rem">Detalle por Sucursal</h3>
+           <div class="table-responsive" id="consol-branch-table"></div>
+        </div>
+      </div>
 
       <!-- Opening Process Timeline -->
       <div class="neu-card timeline-card">
