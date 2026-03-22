@@ -5,7 +5,7 @@
  */
 import { MODELS, SCENARIOS } from '../data/model-registry.js?v=bw4';
 import { runProjection } from './financial-model.js?v=bw4';
-import { calcCombinedMarketFactor } from './location-engine.js?v=bw4';
+import { calcCombinedMarketFactor } from './location-engine.js?v=bw5';
 
 /* ── Single Branch Projection ── */
 export function runBranchProjection(branch, empresa) {

@@ -91,7 +91,7 @@ export async function queryMultiRadius(lat, lng) {
   // We'll classify by distance afterwards into 500m / 1km / 2km bands
   const radius = 2000;
   const query = `
-    [out:json][timeout:25];
+    [out:json][timeout:30];
     (
       // Pharmacies
       node["amenity"="pharmacy"](around:${radius},${lat},${lng});
@@ -116,6 +116,10 @@ export async function queryMultiRadius(lat, lng) {
       // Other shops (density proxy)
       node["shop"](around:${radius},${lat},${lng});
 
+      // Pet shops (vet corridor)
+      node["shop"="pet"](around:${radius},${lat},${lng});
+      way["shop"="pet"](around:${radius},${lat},${lng});
+
       // Banks & ATMs (income proxy)
       node["amenity"~"bank|atm"](around:${radius},${lat},${lng});
       way["amenity"="bank"](around:${radius},${lat},${lng});
@@ -130,6 +134,10 @@ export async function queryMultiRadius(lat, lng) {
 
       // Gas stations (traffic proxy)
       node["amenity"="fuel"](around:${radius},${lat},${lng});
+
+      // Dog parks (vet corridor)
+      node["leisure"="dog_park"](around:${radius},${lat},${lng});
+      way["leisure"="dog_park"](around:${radius},${lat},${lng});
 
       // Residential (density estimation)
       way["building"="apartments"](around:${radius},${lat},${lng});
@@ -164,7 +172,8 @@ export async function queryMultiRadius(lat, lng) {
   const classified = {
     farmacias: [], salud: [], escuelas: [], iglesias: [],
     mercados: [], comercios: [], bancos: [], restaurantes: [],
-    transporte: [], gasolineras: [], residencial: []
+    transporte: [], gasolineras: [], residencial: [],
+    veterinarias: [], petShops: [], dogParks: [], publicHealth: []
   };
 
   for (const el of elements) {
@@ -182,15 +191,23 @@ export async function queryMultiRadius(lat, lng) {
       const chain = detectChain(name);
       classified.farmacias.push({ ...item, ...chain });
     } else if (['clinic', 'hospital', 'doctors', 'dentist'].includes(amenity)) {
-      classified.salud.push({ ...item, type: amenity === 'hospital' ? 'Hospital' : amenity === 'clinic' ? 'Clínica' : amenity === 'dentist' ? 'Dentista' : 'Consultorio' });
+      const operator = el.tags?.operator || '';
+      const isPublic = /imss|issste|ssa|secretar[ií]a.*salud|centro.*salud|dif\b/i.test(operator) || /imss|issste/i.test(name);
+      const type = amenity === 'hospital' ? 'Hospital' : amenity === 'clinic' ? 'Clínica' : amenity === 'dentist' ? 'Dentista' : 'Consultorio';
+      classified.salud.push({ ...item, type, operator, isPublic });
+      if (isPublic) classified.publicHealth.push({ ...item, type, operator });
     } else if (amenity === 'veterinary') {
       classified.salud.push({ ...item, type: 'Veterinaria' });
+      classified.veterinarias.push({ ...item, type: 'Veterinaria' });
     } else if (['school', 'university', 'college', 'kindergarten'].includes(amenity)) {
       classified.escuelas.push({ ...item, type: amenity === 'university' ? 'Universidad' : amenity === 'college' ? 'Preparatoria' : amenity === 'kindergarten' ? 'Kinder' : 'Escuela' });
     } else if (amenity === 'place_of_worship') {
       classified.iglesias.push(item);
     } else if (['supermarket', 'convenience', 'mall', 'department_store', 'wholesale'].includes(shop)) {
       classified.mercados.push({ ...item, type: shop === 'supermarket' ? 'Supermercado' : shop === 'mall' ? 'Centro Comercial' : shop === 'convenience' ? 'Tienda' : 'Mayoreo' });
+    } else if (shop === 'pet') {
+      classified.petShops.push({ ...item, type: 'Pet Shop' });
+      classified.comercios.push({ ...item, type: 'pet' });
     } else if (shop) {
       classified.comercios.push({ ...item, type: shop });
     } else if (['bank', 'atm'].includes(amenity)) {
@@ -203,6 +220,8 @@ export async function queryMultiRadius(lat, lng) {
       classified.transporte.push({ ...item, type: 'Estación metro/tren' });
     } else if (amenity === 'fuel') {
       classified.gasolineras.push(item);
+    } else if (el.tags?.leisure === 'dog_park') {
+      classified.dogParks.push({ ...item, type: 'Parque canino' });
     } else if (el.tags?.building === 'apartments' || el.tags?.building === 'residential') {
       classified.residencial.push({ ...item, type: el.tags.building });
     }
@@ -232,6 +251,10 @@ export async function queryMultiRadius(lat, lng) {
       transporte: inRadius(classified.transporte).length,
       gasolineras: inRadius(classified.gasolineras).length,
       residencial: inRadius(classified.residencial).length,
+      veterinarias: inRadius(classified.veterinarias).length,
+      petShops: inRadius(classified.petShops).length,
+      dogParks: inRadius(classified.dogParks).length,
+      publicHealth: inRadius(classified.publicHealth).length,
     };
   }
 
@@ -280,14 +303,16 @@ function haversine(lat1, lon1, lat2, lon2) {
 }
 
 /* ══════════════════════════════════════════
-   11-FACTOR SCORING MODEL
+   15-FACTOR SCORING MODEL
+   Enhanced with COFEPRIS, DENUE, Public Health, Vet Corridor
    ══════════════════════════════════════════ */
-export function calcLocationScores(study) {
+export function calcLocationScores(study, modelId) {
   const rs = study.radiusSummary || {};
   const r1 = rs['1km'] || {};
   const r500 = rs['500m'] || {};
   const r2 = rs['2km'] || {};
   const c = study.classified || {};
+  const isCoolPet = modelId && modelId.startsWith('coolpet');
 
   // If API failed, return minimal scores
   if (study.nearby?.apiError && !study.radiusSummary) {
@@ -353,7 +378,6 @@ export function calcLocationScores(study) {
   const f9_income = incomeProxy >= 20 ? 90 : incomeProxy >= 10 ? 75 : incomeProxy >= 5 ? 55 : incomeProxy >= 2 ? 35 : 15;
 
   // ── Factor 10: Market Saturation Index ──
-  // Ratio: pharmacies / (potential customers proxy)
   const potentialCustomers = resid1km * 10 + schools * 200 + health1km * 50 + markets * 100;
   const saturation = potentialCustomers > 0 ? pharm1km / (potentialCustomers / 1000) : pharm1km;
   const f10_saturation = saturation <= 0.5 ? 90 : saturation <= 1 ? 75 : saturation <= 2 ? 55 : saturation <= 4 ? 35 : 15;
@@ -363,25 +387,72 @@ export function calcLocationScores(study) {
   const nearestDist = nearestPharm?.distance || 9999;
   const f11_nearest = nearestDist >= 800 ? 95 : nearestDist >= 500 ? 82 : nearestDist >= 300 ? 65 : nearestDist >= 150 ? 45 : nearestDist >= 50 ? 25 : 10;
 
-  // ── Weighted Total ──
-  const weights = {
-    rezago: 0.10, compDensity: 0.15, compQuality: 0.10, health: 0.12,
-    traffic: 0.12, commercial: 0.08, transport: 0.08, residential: 0.10,
-    income: 0.05, saturation: 0.05, nearest: 0.05
+  // ── Factor 12: COFEPRIS 200m Compliance ──
+  // COFEPRIS requires minimum 200m between pharmacies
+  const cofeprisPass = nearestDist > 200;
+  const f12_cofepris = nearestDist >= 500 ? 95 : nearestDist >= 300 ? 80 : nearestDist > 200 ? 60 : nearestDist >= 100 ? 20 : 5;
+
+  // ── Factor 13: DENUE Census Validation ──
+  // Uses INEGI DENUE data if available from async enrichment
+  const denueData = study.denueValidation;
+  let f13_denue = 50; // neutral default if no DENUE data
+  if (denueData) {
+    const osmCount = pharm1km;
+    const denueCount = denueData.pharmacyCount || 0;
+    const delta = Math.abs(osmCount - denueCount);
+    // High confidence if counts match closely
+    if (delta <= 1) f13_denue = 85; // OSM matches INEGI = high trust
+    else if (delta <= 3) f13_denue = 70;
+    else if (osmCount < denueCount) f13_denue = 40; // OSM undercount = more competition unseen
+    else f13_denue = 60; // OSM overcount = less serious
+  }
+
+  // ── Factor 14: Public Health Infrastructure (IMSS/ISSSTE/SSA) ──
+  // Public health institutions generate high prescription volume
+  const pubHealth1km = r1.publicHealth || 0;
+  const pubHospitals = (c.publicHealth || []).filter(s => s.type === 'Hospital' && (s.distance||9999) <= 1000).length;
+  const pubClinics = (c.publicHealth || []).filter(s => (s.distance||9999) <= 1000).length;
+  const f14_publicHealth = pubHospitals >= 1 ? 95 : pubClinics >= 3 ? 85 : pubClinics >= 2 ? 72 : pubClinics >= 1 ? 55 : health1km >= 3 ? 40 : 20;
+
+  // ── Factor 15: Veterinary Corridor (CoolPet models) ──
+  // Weighted for pet-oriented businesses
+  const vets1km = r1.veterinarias || 0;
+  const pets1km = r1.petShops || 0;
+  const dogs1km = r1.dogParks || 0;
+  const vetScore = vets1km * 3 + pets1km * 2 + dogs1km * 2;
+  const f15_vetCorridor = vetScore >= 12 ? 95 : vetScore >= 8 ? 82 : vetScore >= 5 ? 68 : vetScore >= 2 ? 48 : 20;
+
+  // ── Weighted Total (15 factors, sum = 1.00) ──
+  const weights = isCoolPet ? {
+    // CoolPet: vet corridor + health weighted higher, COFEPRIS still important
+    rezago: 0.07, compDensity: 0.10, compQuality: 0.07, health: 0.08,
+    traffic: 0.09, commercial: 0.06, transport: 0.06, residential: 0.08,
+    income: 0.04, saturation: 0.04, nearest: 0.04,
+    cofepris: 0.06, denue: 0.03, publicHealth: 0.04, vetCorridor: 0.14
+  } : {
+    // Pharmacy: COFEPRIS + public health weighted higher, no vet corridor
+    rezago: 0.08, compDensity: 0.12, compQuality: 0.08, health: 0.10,
+    traffic: 0.10, commercial: 0.07, transport: 0.06, residential: 0.08,
+    income: 0.04, saturation: 0.04, nearest: 0.04,
+    cofepris: 0.08, denue: 0.03, publicHealth: 0.05, vetCorridor: 0.03
   };
 
   const factors = {
-    rezago:      { score: f1_rezago,      weight: weights.rezago,      label: 'Rezago Social' },
-    compDensity: { score: f2_compDensity, weight: weights.compDensity, label: 'Competencia (densidad)' },
-    compQuality: { score: f3_compQuality, weight: weights.compQuality, label: 'Competencia (cadenas)' },
-    health:      { score: f4_health,      weight: weights.health,      label: 'Corredor de Salud' },
-    traffic:     { score: f5_traffic,     weight: weights.traffic,     label: 'Generadores de Tráfico' },
-    commercial:  { score: f6_commercial,  weight: weights.commercial,  label: 'Densidad Comercial' },
-    transport:   { score: f7_transport,   weight: weights.transport,   label: 'Accesibilidad' },
-    residential: { score: f8_residential, weight: weights.residential, label: 'Densidad Residencial' },
-    income:      { score: f9_income,      weight: weights.income,      label: 'Nivel de Ingreso' },
-    saturation:  { score: f10_saturation, weight: weights.saturation,  label: 'Saturación' },
-    nearest:     { score: f11_nearest,    weight: weights.nearest,     label: 'Distancia al competidor' },
+    rezago:      { score: f1_rezago,      weight: weights.rezago,      label: 'Rezago Social',              emoji: '📊' },
+    compDensity: { score: f2_compDensity, weight: weights.compDensity, label: 'Competencia (densidad)',      emoji: '💊' },
+    compQuality: { score: f3_compQuality, weight: weights.compQuality, label: 'Competencia (cadenas)',       emoji: '🏷️' },
+    health:      { score: f4_health,      weight: weights.health,      label: 'Corredor de Salud',          emoji: '🏥' },
+    traffic:     { score: f5_traffic,     weight: weights.traffic,     label: 'Generadores de Tráfico',     emoji: '🚶' },
+    commercial:  { score: f6_commercial,  weight: weights.commercial,  label: 'Densidad Comercial',         emoji: '🏪' },
+    transport:   { score: f7_transport,   weight: weights.transport,   label: 'Accesibilidad',              emoji: '🚌' },
+    residential: { score: f8_residential, weight: weights.residential, label: 'Densidad Residencial',       emoji: '🏠' },
+    income:      { score: f9_income,      weight: weights.income,      label: 'Nivel de Ingreso',           emoji: '💰' },
+    saturation:  { score: f10_saturation, weight: weights.saturation,  label: 'Saturación',                 emoji: '📈' },
+    nearest:     { score: f11_nearest,    weight: weights.nearest,     label: 'Distancia al competidor',    emoji: '📍' },
+    cofepris:    { score: f12_cofepris,   weight: weights.cofepris,    label: 'COFEPRIS (200m)',            emoji: '🏛️' },
+    denue:       { score: f13_denue,      weight: weights.denue,       label: 'DENUE (censo INEGI)',        emoji: '📋' },
+    publicHealth:{ score: f14_publicHealth,weight: weights.publicHealth,label: 'Salud Pública (IMSS/ISSSTE)',emoji: '⚕️' },
+    vetCorridor: { score: f15_vetCorridor,weight: weights.vetCorridor, label: 'Corredor Veterinario',       emoji: '🐾' },
   };
 
   const total = Math.round(Object.values(factors).reduce((sum, f) => sum + f.score * f.weight, 0));
@@ -401,18 +472,24 @@ export function calcLocationScores(study) {
     salud: f4_health,
     comercios: f6_commercial,
     factors,
+    cofeprisCompliant: cofeprisPass,
+    cofeprisNearestDist: nearestDist < 9999 ? nearestDist : null,
     // Extra data for UI
     nearestCompetitor: nearestPharm ? { name: nearestPharm.name, distance: nearestPharm.distance, chain: nearestPharm.chain } : null,
     pharmacyCount1km: pharm1km,
     chainCount: chains.length,
     healthFacilities: health1km,
     hospitals,
+    publicHealthCount: pubClinics,
+    publicHealthHospitals: pubHospitals,
     trafficGenerators: { schools, churches, markets, gasolineras },
     transportStops: transport1km,
     residentialBuildings: resid1km,
     bankCount: banks,
     restaurantCount: restaurants,
     saturationIndex: saturation,
+    vetCorridorData: { vets: vets1km, petShops: pets1km, dogParks: dogs1km },
+    denueAvailable: !!denueData,
   };
 }
 
@@ -428,7 +505,50 @@ export function suggestScenario(totalScore) {
 }
 
 /* ══════════════════════════════════════════
-   FULL LOCATION STUDY (enhanced)
+   DENUE CENSUS VALIDATION (INEGI)
+   SCIAN 464111 = Farmacias sin minisuper
+   Free API — no auth token required for basic search
+   ══════════════════════════════════════════ */
+async function queryDENUE(lat, lng, radiusMeters = 1000) {
+  const DENUE_URL = 'https://www.inegi.org.mx/app/api/denue/v1/consulta/Buscar';
+  const keyword = 'farmacia';
+  const radius = Math.round(radiusMeters);
+
+  try {
+    const url = `${DENUE_URL}/${encodeURIComponent(keyword)}/${lat},${lng}/${radius}/0`;
+    const resp = await fetch(url, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(8000) // 8s timeout
+    });
+
+    if (!resp.ok) return null;
+    const data = await resp.json();
+
+    // DENUE returns array of establishments
+    const pharmacies = Array.isArray(data) ? data.filter(d =>
+      /farmacia|botica|drug/i.test(d.Nombre || '') ||
+      /4641/i.test(d.Codigo_Act || '')
+    ) : [];
+
+    return {
+      pharmacyCount: pharmacies.length,
+      totalEstablishments: Array.isArray(data) ? data.length : 0,
+      pharmacies: pharmacies.slice(0, 15).map(d => ({
+        name: d.Nombre || 'Sin nombre',
+        activity: d.Nombre_Act || '',
+        address: [d.Tipo_Vial, d.Nom_Vial, d.Numero_Ext].filter(Boolean).join(' '),
+        employees: d.Per_Ocu || null
+      })),
+      source: 'INEGI DENUE',
+    };
+  } catch (e) {
+    // DENUE is non-critical — fail silently
+    return null;
+  }
+}
+
+/* ══════════════════════════════════════════
+   FULL LOCATION STUDY (enhanced v3)
    ══════════════════════════════════════════ */
 export async function runLocationStudy(addressQuery) {
   const errors = [];
@@ -476,7 +596,15 @@ export async function runLocationStudy(addressQuery) {
     errors.push({ step: 'rezago', error: e.message });
   }
 
-  // Step 4: Build study object
+  // Step 4: DENUE enrichment (non-blocking)
+  let denueValidation = null;
+  try {
+    denueValidation = await queryDENUE(geocode.lat, geocode.lng);
+  } catch (e) {
+    errors.push({ step: 'denue', error: e.message });
+  }
+
+  // Step 5: Build study object
   const study = {
     address: addressQuery,
     displayName: geocode.displayName,
@@ -490,14 +618,15 @@ export async function runLocationStudy(addressQuery) {
     cp: geocode.cp,
     rezago,
     nearby,
-    // NEW enhanced data
+    // Enhanced data
     classified: multiRadius?.classified || null,
     radiusSummary: multiRadius?.radiusSummary || null,
     totalPOIs: multiRadius?.totalElements || 0,
+    denueValidation,
     scores: null,
     suggestion: null,
     lastUpdated: new Date().toISOString(),
-    version: 2,
+    version: 3,
     errors,
   };
 
@@ -509,7 +638,7 @@ export async function runLocationStudy(addressQuery) {
 
 /* ══════════════════════════════════════════
    FINANCIAL IMPACT MAPPER
-   Converts 11-factor scores → financial adjustments
+   Converts 15-factor scores → financial adjustments
    ══════════════════════════════════════════ */
 
 /**
@@ -529,6 +658,10 @@ const FACTOR_IMPACT_RANGES = {
   income:      { min: -0.03, max: 0.04, label: 'Nivel de Ingreso',      emoji: '💰' },
   saturation:  { min: -0.08, max: 0.04, label: 'Saturación',            emoji: '📈' },
   nearest:     { min: -0.04, max: 0.04, label: 'Distancia Competidor',  emoji: '📍' },
+  cofepris:    { min: -0.12, max: 0.03, label: 'COFEPRIS (200m)',       emoji: '🏛️' },
+  denue:       { min: -0.04, max: 0.02, label: 'DENUE (censo INEGI)',   emoji: '📋' },
+  publicHealth:{ min: -0.02, max: 0.06, label: 'Salud Pública',         emoji: '⚕️' },
+  vetCorridor: { min: -0.02, max: 0.05, label: 'Corredor Veterinario',  emoji: '🐾' },
 };
 
 /**

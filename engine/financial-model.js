@@ -207,7 +207,7 @@ export function runProjection(modelId, overrides={}) {
   };
 }
 
-function calcIRR(cf,guess=0.1,maxIter=100,tol=1e-6){let r=guess;for(let i=0;i<maxIter;i++){let n=0,d=0;for(let t=0;t<cf.length;t++){n+=cf[t]/Math.pow(1+r,t);d-=t*cf[t]/Math.pow(1+r,t+1);}if(Math.abs(d)<1e-12)break;const nr=r-n/d;if(Math.abs(nr-r)<tol)return nr;r=nr;}return r;}
+function calcIRR(cf,guess=0.1,maxIter=100,tol=1e-6){let r=guess;for(let i=0;i<maxIter;i++){let n=0,d=0;for(let t=0;t<cf.length;t++){n+=cf[t]/Math.pow(1+r,t);d-=t*cf[t]/Math.pow(1+r,t+1);}if(Math.abs(d)<1e-12)break;const nr=r-n/d;if(Math.abs(nr-r)<tol)return(isFinite(nr)&&Math.abs(nr)<=10)?nr:null;r=Math.max(-0.99,Math.min(10,nr));}return(isFinite(r)&&Math.abs(r)<=10)?r:null;}
 
 function calcScore({paybackMonth:pb,npv,rentPctRevenue:rp,breakEvenPctCapacity:bp,roi36,capitalRemaining:cr,recommendedReserve:rr}){
   let s=0;

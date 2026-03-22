@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BW² — Dashboard de Inversión</title>
   <meta name="description" content="Dashboard multi-sucursal para análisis de inversión en franquicia FarmaTuya">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -14,7 +15,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=bw36">
+  <link rel="stylesheet" href="styles.css?v=bw37">
   <script>
     window.addEventListener('error',e=>document.title='ERR:'+e.message);
     window.addEventListener('unhandledrejection',e=>document.title='REJ:'+e.reason);
@@ -23,95 +24,27 @@
   </script>
 </head>
 <body>
-  <!-- ═══ AUTHENTICATION GATE ═══ -->
-  <div id="bw2-auth-gate" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#f9fafb;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Inter',sans-serif;transition:opacity 0.3s ease;">
-    <div style="background:#fff;padding:3rem 2rem;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,0.05);text-align:center;max-width:400px;width:90%;border:1px solid #f3f4f6">
-      <svg viewBox="0 0 48 32" width="72" height="48" style="margin-bottom:1.5rem"><text x="0" y="24" font-family="Inter,sans-serif" font-weight="900" font-size="28" fill="#1A1A1A">BW</text><text x="44" y="16" font-family="Inter,sans-serif" font-weight="700" font-size="12" fill="#6B7A2E">²</text></svg>
-      <h2 style="margin:0 0 0.5rem 0;color:#111827;font-size:1.25rem;font-weight:700">Acceso Privado</h2>
-      <p style="margin:0 0 2rem 0;color:#6b7280;font-size:0.875rem">Ingresa tu código de acceso para entrar al Dashboard BW².</p>
-      <input type="password" id="bw2-auth-input" style="width:100%;padding:0.75rem;border:1px solid #d1d5db;border-radius:8px;font-size:1.25rem;margin-bottom:1rem;text-align:center;letter-spacing:0.2em;outline:none" placeholder="••••••••" autocomplete="current-password">
-      <button onclick="window.checkBw2Auth()" style="width:100%;padding:0.75rem;background:#111827;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:1rem;transition:background 0.2s">Entrar a Proyectos</button>
-      <div id="bw2-auth-error" style="color:#ef4444;font-size:0.875rem;margin-top:1rem;display:none;font-weight:500">Código incorrecto. Intenta de nuevo.</div>
-    </div>
-  </div>
-  <script>
-    (function(){
-      const gate = document.getElementById('bw2-auth-gate');
-      const input = document.getElementById('bw2-auth-input');
-      const err = document.getElementById('bw2-auth-error');
-      
-      // Hashed passwords (admin / bw2secure2026) -> SHA-256
-      // You can add more hashes here
-      const validHashes = [
-        '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', // admin
-        '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08', // test
-        '10bf97c6742533fac4eb1d4cc3f0ed006f1eb3d11b3fe4082dcfea4613b1fbcd'  // Nojom2026
-      ];
-
-      async function hashPassword(password) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      }
-
-      // Check if already authenticated
-      if (localStorage.getItem('bw2_access_granted') === 'true') {
-        gate.style.display = 'none';
-      } else {
-        input.addEventListener('keypress', function(e) {
-          if (e.key === 'Enter') window.checkBw2Auth();
-        });
-      }
-
-      window.checkBw2Auth = async function() {
-        const val = input.value.trim();
-        if(!val) return;
-        const hash = await hashPassword(val);
-        
-        if (validHashes.includes(hash)) {
-          localStorage.setItem('bw2_access_granted', 'true');
-          gate.style.opacity = '0';
-          setTimeout(() => gate.style.display = 'none', 300);
-        } else {
-          err.style.display = 'block';
-          input.value = '';
-          input.focus();
-        }
-      };
-
-      // Global logout
-      window.bw2Logout = function() {
-        localStorage.removeItem('bw2_access_granted');
-        location.reload();
-      };
-    })();
-  </script>
+  <!-- Auth removed -->
 
   <!-- ═══ ENTERPRISE HEADER ═══ -->
   <header id="app-header">
     <div class="header-left">
       <button class="header-home-btn" id="btn-bw2-home" title="Inicio BW²"><svg class="header-bw2-logo" viewBox="0 0 48 32" width="48" height="32"><text x="2" y="24" font-family="Inter,sans-serif" font-weight="900" font-size="22" fill="#1A1A1A">BW</text><text x="36" y="16" font-family="Inter,sans-serif" font-weight="700" font-size="10" fill="#6B7A2E">²</text></svg></button>
       <img src="assets/nojom-bird.png" alt="NOJOM" class="header-logo">
+      <nav class="header-breadcrumb" id="header-breadcrumb"></nav>
     </div>
     <div class="header-center" id="enterprise-header-info"></div>
-    <div class="header-right" style="margin-left:auto;display:flex;align-items:center;padding-right:1rem">
-      <button onclick="window.bw2Logout()" style="background:none;border:none;color:var(--text-3);font-size:0.75rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:0.3rem;transition:color 0.2s" title="Cerrar Sessión" onmouseover="this.style.color='var(--text-1)'" onmouseout="this.style.color='var(--text-3)'">
-        <span>Salir</span> <span style="font-size:1rem">🚪</span>
+    <div class="header-right">
+      <button class="profile-avatar-btn" id="btn-open-profile" title="Mi Perfil">
+        <span class="profile-avatar-initials" id="profile-avatar-initials">👤</span>
+        <img class="profile-avatar-img" id="profile-avatar-img" src="" alt="" style="display:none">
       </button>
     </div>
   </header>
 
-  <!-- ═══ MAIN NAV ═══ -->
+  <!-- ═══ CONTEXTUAL SIDEBAR NAV ═══ -->
   <nav id="main-nav">
-    <button class="nav-btn" data-view="bw2home">Inicio<small>Tus Empresas</small></button>
-    <button class="nav-btn" data-view="empresa">Ajustes<small>Capital y socios del proyecto</small></button>
-    <button class="nav-btn active" data-view="portfolio">Proyecto<small>Sucursales activas</small></button>
-    <button class="nav-btn" data-view="consolidated">Consolidado<small>Números totales del negocio</small></button>
-    <button class="nav-btn" data-view="comparador">Comparar<small>Sucursales lado a lado</small></button>
-    <div class="nav-spacer"></div>
-    <button class="btn-add" id="btn-add-branch">+ Nueva Sucursal</button>
+    <!-- JS populates this contextually based on current view level -->
   </nav>
 
 
@@ -146,12 +79,7 @@
         <button class="btn-export-pdf" id="btn-export-pdf" title="Generar reporte PDF de inversión" style="display:none">📄 Exportar PDF</button>
       </div>
 
-      <!-- ═══ 3-TAB NAVIGATION ═══ -->
-      <nav id="branch-tab-nav">
-        <button class="branch-tab-btn" data-tab="config">⚙️ Configuración</button>
-        <button class="branch-tab-btn active" data-tab="resultados">📊 Resultados</button>
-        <button class="branch-tab-btn" data-tab="socioeconomico">🌍 Estudio Socioeconómico</button>
-      </nav>
+      <!-- Branch tabs are now in the sidebar, no horizontal tab nav needed -->
 
       <!-- ═══ TAB 1: CONFIGURACIÓN ═══ -->
       <div id="btab-config" class="branch-tab-panel">
@@ -237,12 +165,29 @@
 
       <!-- ═══ TAB 2: RESULTADOS (default active) ═══ -->
       <div id="btab-resultados" class="branch-tab-panel active">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-          <h2 style="margin:0;font-size:1.25rem;display:flex;align-items:center;gap:0.75rem">
-            Métricas de Resultados
-            <button id="branch-market-indicator" class="btn-sm" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text-3);font-size:0.75rem;padding:0.25rem 0.6rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.2s" title="Clic para ver detalles">📍 Mercado: --</button>
-          </h2>
-          <button class="btn-sm btn-edit-layout" data-target="branch-resultados" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text-2);font-weight:600;padding:0.4rem 0.75rem;cursor:pointer;display:flex;align-items:center;gap:0.4rem;box-shadow:var(--shadow-sm);transition:all 0.2s"><span style="font-size:0.9rem">🛠️</span> Editar Layout</button>
+        <!-- ═══ UNIFIED CONTROLS BAR ═══ -->
+        <div class="resultados-controls-bar">
+          <div class="resultados-controls-row">
+            <h2 class="resultados-title">Métricas de Resultados</h2>
+            <button id="branch-market-indicator" class="branch-market-badge" style="display:none" title="Clic para ver detalles">📍 Mercado: --</button>
+          </div>
+          <div class="resultados-controls-row">
+            <div class="neu-segmented small" id="branch-scenario-selector-res">
+              <button class="seg-btn" data-scenario="conservative">🔴 Cons.</button>
+              <button class="seg-btn" data-scenario="base">🟡 Base</button>
+              <button class="seg-btn" data-scenario="upside">🟢 Upside</button>
+            </div>
+            <div class="res-royalty-inline" id="res-royalty-panel" style="display:none">
+              <span class="res-royalty-label">Regalía:</span>
+              <div class="neu-segmented small" id="res-royalty-selector">
+                <button class="seg-btn active" data-royalty="variable_2_5">💳 2.5%</button>
+                <button class="seg-btn" data-royalty="condonacion_6m">🎁 Cond.</button>
+                <button class="seg-btn" data-royalty="pago_unico">💰 Único</button>
+              </div>
+            </div>
+            <button class="btn-sm btn-edit-layout" data-target="branch-resultados" style="background:var(--surface);border:none;border-radius:var(--r-sm);color:var(--text-2);font-weight:600;padding:0.35rem 0.6rem;cursor:pointer;display:flex;align-items:center;gap:0.3rem;box-shadow:var(--shadow-neu-sm);transition:all 0.2s;font-size:0.7rem"><span style="font-size:0.8rem">✨</span> Editar Layout</button>
+          </div>
+          <p class="res-royalty-desc" id="res-royalty-desc" style="display:none"></p>
         </div>
         <div class="edit-layout-toolbar" id="toolbar-branch-resultados" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:1rem">
@@ -255,98 +200,127 @@
         </div>
 
         <div class="widget-grid" id="branch-resultados-grid">
-          <div style="display:flex; justify-content:flex-end; margin-bottom: 1rem;">
-            <div class="neu-segmented small" id="branch-scenario-selector-res">
-              <button class="seg-btn" data-scenario="conservative">🔴 Cons.</button>
-              <button class="seg-btn" data-scenario="base">🟡 Base</button>
-              <button class="seg-btn" data-scenario="upside">🟢 Upside</button>
+          <!-- Fila 1: 4 KPIs con formas variadas y personalidad única -->
+          <div class="widget wg-3 kpi-card kpi-card--bar" data-widget-id="wg-branch-eq">
+            <div class="kpi-card-header">
+              <span class="kpi-card-icon">📊</span>
+              <span class="kpi-card-label">Pto. Equilibrio</span>
+            </div>
+            <h3 class="kpi-card-value" id="branch-kpi-equilibrio">-</h3>
+            <div class="kpi-mini-bar" id="kpi-be-bar"><div class="kpi-mini-bar-fill"></div></div>
+            <span class="kpi-mini-label" id="kpi-be-pct"></span>
+          </div>
+
+          <div class="widget wg-3 kpi-card kpi-card--spark" data-widget-id="wg-branch-profit">
+            <div class="kpi-card-header">
+              <span class="kpi-card-icon">💰</span>
+              <span class="kpi-card-label">Ganancia / Mes</span>
+            </div>
+            <h3 class="kpi-card-value" id="branch-kpi-profit">-</h3>
+            <div class="kpi-sparkline" id="kpi-profit-sparkline"></div>
+          </div>
+
+          <div class="widget wg-3 kpi-card kpi-card--ring" data-widget-id="wg-branch-payback">
+            <div class="kpi-card-header">
+              <span class="kpi-card-icon">⏱</span>
+              <span class="kpi-card-label">Recuperación</span>
+            </div>
+            <div class="kpi-ring-layout">
+              <div class="kpi-ring-svg" id="kpi-payback-ring"></div>
+              <div class="kpi-ring-text">
+                <h3 class="kpi-card-value" id="branch-kpi-payback">-</h3>
+                <span class="kpi-ring-sub" id="kpi-payback-sub"></span>
+              </div>
             </div>
           </div>
-          <!-- Fila 1: KPIs Principales -->
-          <div class="widget wg-3" data-widget-id="wg-branch-eq">
-            <span class="widget-subtitle">Pto. Equilibrio</span>
-            <h3 class="widget-title" id="branch-kpi-equilibrio" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
-          </div>
-          <div class="widget wg-3" data-widget-id="wg-branch-profit">
-            <span class="widget-subtitle">Ganancia/Mes</span>
-            <h3 class="widget-title" id="branch-kpi-profit" style="font-size:1.25rem;color:var(--accent);margin-top:0.25rem">-</h3>
-          </div>
-          <div class="widget wg-3" data-widget-id="wg-branch-payback">
-            <span class="widget-subtitle">Recuperación</span>
-            <h3 class="widget-title" id="branch-kpi-payback" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
-          </div>
-          <div class="widget wg-3" data-widget-id="wg-branch-rating">
-            <span class="widget-subtitle">Calificación</span>
-            <h3 class="widget-title" id="branch-kpi-rating" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
+
+          <div class="widget wg-3 kpi-card kpi-card--gauge" data-widget-id="wg-branch-roi-gauge">
+            <div class="kpi-card-header">
+              <span class="kpi-card-icon">🎯</span>
+              <span class="kpi-card-label">ROI Anual</span>
+            </div>
+            <div class="kpi-gauge-wrap" id="kpi-roi-gauge"></div>
           </div>
 
-          <!-- Main Chart -->
+          <!-- Fila 2: Cashflow chart + Donut costos -->
           <div class="widget wg-8" data-widget-id="wg-branch-cashflow">
-            <h3 class="widget-title" style="margin-bottom:1rem">Flujo de Caja Acumulado (ROI)</h3>
+            <h3 class="widget-title" style="margin-bottom:0.5rem">Flujo de Caja Acumulado (ROI)</h3>
             <div class="chart-box"><canvas id="chart-branch-cashflow"></canvas></div>
           </div>
-          
-          <!-- Viabilidad Gauge -->
-          <div class="widget wg-4" data-widget-id="wg-branch-gauge">
-            <h3 class="widget-title" style="text-align:center;margin-bottom:1rem">Viabilidad</h3>
-            <div id="branch-gauge" style="width:100%;display:flex;justify-content:center"></div>
-            <div id="branch-viability-badge" style="text-align:center;margin-top:1rem;font-size:0.875rem;font-weight:700"></div>
+          <div class="widget wg-4" data-widget-id="wg-branch-cost-donut">
+            <h3 class="widget-title" style="margin-bottom:0.5rem">Estructura de Costos</h3>
+            <div class="chart-box" style="height:200px"><canvas id="chart-branch-costs-main"></canvas></div>
+            <div id="cost-donut-legend" class="donut-legend"></div>
           </div>
 
-          <!-- Market Factors (Conditionally visible) -->
+          <!-- Fila 3: Market Radar + Variables table -->
+          <div class="widget wg-4" id="market-radar-panel" data-widget-id="wg-branch-market-radar" style="display:none">
+            <h3 class="widget-title" style="margin-bottom:0.5rem">Perfil de Mercado</h3>
+            <div class="chart-box" style="height:240px"><canvas id="chart-market-radar-main"></canvas></div>
+          </div>
           <div class="widget wg-8" id="market-study-panel" data-widget-id="wg-branch-market" style="display:none">
-            <h3 class="widget-title" style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">Variables del Mercado <label class="mvar-toggle"><input type="checkbox" id="market-master-switch"><span class="mvar-slider"></span></label><span id="market-combined-factor" style="font-size:0.85rem;color:var(--text-1);font-weight:500"></span></h3>
+            <h3 class="widget-title" style="margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+              Variables del Mercado
+              <div style="display:flex;align-items:center;gap:0.5rem;flex:1;min-width:200px;max-width:400px">
+                <input type="text" id="market-inline-address" class="input-text" placeholder="Cambiar dirección..." style="flex:1;font-size:0.7rem;padding:0.3rem 0.5rem;border-radius:6px;min-width:0">
+                <button id="market-inline-refresh" class="btn-sm" title="Re-evaluar estudio" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:0.3rem 0.5rem;cursor:pointer;font-size:0.7rem;white-space:nowrap;box-shadow:var(--shadow-neu-sm);transition:all 0.2s">🔄</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.5rem">
+                <label class="mvar-toggle"><input type="checkbox" id="market-master-switch"><span class="mvar-slider"></span></label>
+                <span id="market-combined-factor" style="font-size:0.85rem;color:var(--text-1);font-weight:500"></span>
+              </div>
+            </h3>
             <p class="loc-subtitle">Factores que impactan las ventas en esta ubicación base.</p>
             <div id="market-study-body" style="margin-top:1rem;max-height:350px;overflow-y:auto"></div>
           </div>
 
-          <!-- Checkout / Checklist -->
-          <div class="widget wg-4" data-widget-id="wg-branch-checklist">
-            <h3 class="widget-title" style="margin-bottom:1rem">Checklist de Cierre</h3>
-            <div id="branch-checklist" style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem"></div>
-          </div>
+          <!-- Royalty panel moved to controls bar -->
 
-          <!-- Alertas -->
-          <div class="widget wg-12" data-widget-id="wg-branch-alerts">
-            <h3 class="widget-title" style="margin-bottom:1rem">Alertas y Sugerencias</h3>
-            <div id="branch-alerts" style="display:flex;flex-wrap:wrap;gap:1rem"></div>
+          <!-- Fila 4: Checklist + Alertas lado a lado -->
+          <div class="widget wg-6" data-widget-id="wg-branch-checklist">
+            <h3 class="widget-title" style="margin-bottom:0.5rem">Checklist de Cierre</h3>
+            <div id="branch-checklist" style="display:grid;grid-template-columns:1fr 1fr;gap:0.25rem 1rem"></div>
+          </div>
+          <div class="widget wg-6" data-widget-id="wg-branch-alerts">
+            <h3 class="widget-title" style="margin-bottom:0.5rem">Alertas y Sugerencias</h3>
+            <div id="branch-alerts" style="display:flex;flex-direction:column;gap:0.5rem"></div>
           </div>
         </div>
 
         <!-- Collapsible Sub-sections for Detailed Results -->
-        <div class="resultados-details" style="margin-top:2rem">
-          <h3 style="font-size:1.125rem;font-weight:800;color:var(--text-1);margin-bottom:1rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border)">Análisis Detallado</h3>
+        <div class="resultados-details" style="margin-top:0.75rem">
+          <h3 style="font-size:0.9375rem;font-weight:800;color:var(--text-1);margin-bottom:0.5rem;padding-bottom:0.375rem;border-bottom:1px solid var(--border)">Análisis Detallado</h3>
           
           <div class="widget-grid" id="branch-an-grid">
             <!-- P&L Chart -->
             <div class="widget wg-8" data-widget-id="wg-branch-pnlchart">
-              <h3 class="widget-title" style="margin-bottom:1rem">Ingresos vs EBITDA</h3>
+              <h3 class="widget-title" style="margin-bottom:0.5rem">Ingresos vs EBITDA</h3>
               <div class="chart-box"><canvas id="chart-branch-pnl"></canvas></div>
             </div>
             
             <!-- Fixed Costs Donut -->
             <div class="widget wg-4" data-widget-id="wg-branch-donut">
-              <h3 class="widget-title" style="margin-bottom:1rem">Costos fijos</h3>
-              <div class="chart-box" style="height:220px"><canvas id="chart-branch-donut"></canvas></div>
+              <h3 class="widget-title" style="margin-bottom:0.5rem">Costos fijos</h3>
+              <div class="chart-box" style="height:180px"><canvas id="chart-branch-donut"></canvas></div>
             </div>
 
             <!-- Annual P&L -->
             <div class="widget wg-12" data-widget-id="wg-branch-annual">
-              <h3 class="widget-title" style="margin-bottom:1rem">Resumen Anual (Proyectado)</h3>
+              <h3 class="widget-title" style="margin-bottom:0.5rem">Resumen Anual (Proyectado)</h3>
               <div class="table-scroll" id="branch-annual-table"></div>
             </div>
 
             <!-- Escenarios Chart -->
             <div class="widget wg-8" data-widget-id="wg-branch-scenchart">
-              <h3 class="widget-title" style="margin-bottom:1rem">Flujo por Escenario</h3>
+              <h3 class="widget-title" style="margin-bottom:0.5rem">Flujo por Escenario</h3>
               <div class="chart-box"><canvas id="chart-scenarios-cf"></canvas></div>
               <div class="table-scroll" id="scenarios-comparison-table" style="margin-top:1rem"></div>
             </div>
 
             <!-- Tornado de Sensibilidad -->
             <div class="widget wg-4" data-widget-id="wg-branch-tornado">
-              <h3 class="widget-title" style="margin-bottom:1rem">Tornado de Sensibilidad (EBITDA)</h3>
-              <div class="chart-box" style="height:250px"><canvas id="chart-branch-tornado"></canvas></div>
+              <h3 class="widget-title" style="margin-bottom:0.5rem">Tornado de Sensibilidad (EBITDA)</h3>
+              <div class="chart-box" style="height:220px"><canvas id="chart-branch-tornado"></canvas></div>
             </div>
 
             <!-- Full P&L Table -->
@@ -372,7 +346,7 @@
               <div id="loc-address-status" class="colonia-status" style="position:absolute;right:8px;top:50%;transform:translateY(-50%)"></div>
               <div class="colonia-suggestions" id="loc-address-suggestions"></div>
             </div>
-            <button class="btn-action" id="btn-run-location-study" style="display:none">Evaluar</button>
+            <button class="btn-action" id="btn-run-location-study">📍 Evaluar</button>
           </div>
           <div id="loc-status" class="loc-status"></div>
         </div>
@@ -547,9 +521,10 @@
           </div>
           <div class="form-group" style="margin-top:0.5rem">
             <label>Logo de la Sociedad</label>
-            <div style="display:flex;align-items:center;gap:1rem;margin-top:0.25rem">
-              <img id="emp-logo-preview" src="assets/nojom-bird.png" style="width:40px;height:40px;object-fit:contain;border-radius:4px;border:1px solid var(--border);background:var(--bg-card)">
-              <input type="file" id="emp-logo-upload" accept="image/*" style="font-size:0.85rem">
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.25rem">
+              <img id="emp-logo-preview" src="assets/nojom-bird.png" style="width:40px;height:40px;object-fit:contain;border-radius:var(--r-sm);box-shadow:var(--shadow-neu-sm);padding:4px;background:var(--surface)">
+              <input type="file" id="emp-logo-upload" accept="image/*" style="display:none">
+              <label for="emp-logo-upload" style="cursor:pointer;background:var(--surface);border:none;border-radius:var(--r-sm);padding:0.4rem 0.75rem;font-size:0.75rem;font-weight:600;color:var(--text-2);box-shadow:var(--shadow-neu-sm);transition:all 0.2s;font-family:var(--font)">📁 Seleccionar</label>
             </div>
             <small class="field-help" style="display:block;margin-top:0.25rem">Se recomienda imagen cuadrada PNG/JPG</small>
           </div>
@@ -651,6 +626,46 @@
       <div class="modal-actions">
         <button class="btn-sm" id="modal-confirm-cancel">Cancelar</button>
         <button class="btn-sm danger" id="modal-confirm-ok">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PROFILE POPUP MODAL ═══ -->
+  <div class="bw2-modal-overlay" id="modal-profile" style="display:none">
+    <div class="bw2-modal profile-modal">
+      <div class="bw2-modal-header">
+        <h3>👤 Mi Perfil</h3>
+        <button class="bw2-modal-close" id="btn-close-profile">✕</button>
+      </div>
+      <div class="bw2-modal-body">
+        <!-- Photo/Logo Upload -->
+        <div class="profile-photo-section">
+          <div class="profile-photo-upload" id="profile-photo-dropzone">
+            <div class="profile-photo-placeholder" id="profile-photo-placeholder">
+              <span class="profile-photo-icon">📷</span>
+              <span>Sube tu foto o logo</span>
+              <small>Arrastra o haz clic · JPG, PNG</small>
+            </div>
+            <div class="profile-photo-preview" id="profile-photo-preview" style="display:none">
+              <img id="profile-photo-img" src="" alt="Preview">
+              <button class="profile-photo-remove" id="btn-remove-profile-photo" title="Eliminar foto">✕</button>
+            </div>
+            <input type="file" id="profile-photo-input" accept="image/*" style="display:none">
+          </div>
+        </div>
+        <!-- Name Fields -->
+        <div class="bw2-form-group">
+          <label for="profile-nombre">Nombre</label>
+          <input type="text" class="input-text" id="profile-nombre" placeholder="Tu nombre">
+        </div>
+        <div class="bw2-form-group">
+          <label for="profile-apellido">Apellido</label>
+          <input type="text" class="input-text" id="profile-apellido" placeholder="Tu apellido">
+        </div>
+      </div>
+      <div class="bw2-modal-footer">
+        <button class="btn-secondary" id="btn-cancel-profile">Cancelar</button>
+        <button class="btn-primary" id="btn-save-profile">Guardar</button>
       </div>
     </div>
   </div>

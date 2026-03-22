@@ -5,7 +5,7 @@ import { MODELS, SCENARIOS, LOCATIONS, BENCHMARKS } from './data/model-registry.
 import { runProjection, runSensitivity, generateHeatmap, calcStress, generateChecklist, evaluateAlerts } from './engine/financial-model.js?v=bw4';
 import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw4';
 import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw4';
-import { runLocationStudy, calcCombinedMarketFactor } from './engine/location-engine.js?v=bw4';
+import { runLocationStudy, calcCombinedMarketFactor } from './engine/location-engine.js?v=bw5';
 import { generateBranchPDF } from './pdf-export.js?v=bw4';
 
 /* ═══ GLOBALS & STATE ═══ */
@@ -17,7 +17,7 @@ let ws = {
 };
 
 // State view: dashboard, bw2home, comparador, etc.
-let state = { view: 'bw2home', activeBranchId: null, showInactive: false };
+let state = { view: 'bw2home', activeBranchId: null, showInactive: false, activeTab: 'resultados' };
 
 /* ═══ WIDGET LAYOUT MANAGER ═══ */
 const WidgetManager = {
@@ -146,12 +146,12 @@ const WidgetManager = {
         size: sizes.find(s => w.classList.contains(s)) || 'wg-4'
       };
     });
-    const key = `bw2_layout_${target}`;
+    const key = `bw2_layout_v2_${target}`;
     localStorage.setItem(key, JSON.stringify(layout));
   },
 
   loadLayout(target) {
-    const saved = localStorage.getItem(`bw2_layout_${target}`);
+    const saved = localStorage.getItem(`bw2_layout_v2_${target}`);
     if(!saved) return;
     try {
       const layout = JSON.parse(saved);
@@ -215,9 +215,39 @@ function resizeImageToDataURL(file, maxSize = 256) {
   });
 }
 
-Chart.defaults.color='#6B7280';Chart.defaults.font.family="'Inter',sans-serif";Chart.defaults.font.size=11;
-Chart.defaults.plugins.legend.labels.boxWidth=12;Chart.defaults.elements.bar.borderRadius=3;
-Chart.defaults.scale.grid={color:'rgba(0,0,0,0.06)'};
+Chart.defaults.color='#6B7280';
+Chart.defaults.font.family="'Inter',-apple-system,sans-serif";
+Chart.defaults.font.size=11;
+Chart.defaults.font.weight=500;
+Chart.defaults.plugins.legend.labels.boxWidth=12;
+Chart.defaults.plugins.legend.labels.padding=16;
+Chart.defaults.plugins.legend.labels.usePointStyle=true;
+Chart.defaults.plugins.legend.labels.pointStyle='circle';
+Chart.defaults.elements.bar.borderRadius=6;
+Chart.defaults.elements.bar.borderSkipped=false;
+Chart.defaults.elements.line.tension=0.35;
+Chart.defaults.elements.line.borderWidth=2.5;
+Chart.defaults.elements.point.radius=0;
+Chart.defaults.elements.point.hoverRadius=5;
+Chart.defaults.elements.point.hoverBorderWidth=2;
+// Scale defaults — merge, don't replace
+Object.assign(Chart.defaults.scale.grid, {color:'rgba(0,0,0,0.04)', drawBorder:false});
+if(Chart.defaults.scale.border) Object.assign(Chart.defaults.scale.border, {display:false});
+// Tooltip — merge into existing defaults (replacing entire object breaks Chart.js)
+Object.assign(Chart.defaults.plugins.tooltip, {
+  backgroundColor:'rgba(17,24,39,0.92)',
+  cornerRadius:10,
+  borderColor:'rgba(255,255,255,0.1)',
+  borderWidth:1,
+  boxPadding:4,
+  caretSize:6,
+  displayColors:true,
+});
+Chart.defaults.plugins.tooltip.titleFont = {size:12, weight:700};
+Chart.defaults.plugins.tooltip.bodyFont = {size:11};
+Chart.defaults.plugins.tooltip.padding = {x:12, y:8};
+Chart.defaults.animation.duration = 800;
+Chart.defaults.animation.easing = 'easeOutQuart';
 
 const $=id=>document.getElementById(id);
 const fmt={m:v=>'$'+Math.round(v).toLocaleString('es-MX'),mk:v=>'$'+(v/1000).toFixed(0)+'K',p:v=>(v*100).toFixed(1)+'%',pi:v=>Math.round(v*100)+'%',mo:v=>v?v+' m':'∞'};
@@ -235,53 +265,26 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 /* ═══ NAVIGATION ═══ */
 function initNav(){
-  document.querySelectorAll('#main-nav .nav-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      state.view=btn.dataset.view;
-      state.activeBranchId=null;
-      document.querySelectorAll('#main-nav .nav-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      const addBtn=$('btn-add-branch');
-      if(addBtn) addBtn.style.display = state.view==='portfolio' ? '' : 'none';
-      renderCurrentView();
-    });
-  });
-  // Add branch button
-  const addBtn=$('btn-add-branch');
-  if(addBtn) addBtn.addEventListener('click',showAddBranchModal);
-  // BW² Home button
+  // BW² Home button (always present in header)
   const homeBtn=$('btn-bw2-home');
   if(homeBtn) homeBtn.addEventListener('click',()=>{
     state.view='bw2home';
     state.activeBranchId=null;
     renderCurrentView();
   });
+  // Nav is now built dynamically by updateNav() called from renderCurrentView()
 }
 
 function renderCurrentView() {
   const isBW2Home = state.view === 'bw2home';
   const mainNav=$('main-nav');
-  const addBranchBtn=$('btn-add-branch');
   const mainContent=$('main-content');
   const appFooter=$('app-footer');
   const colorLegend = document.querySelector('.color-legend');
 
-  // ALWAYS show nav and margins
-  if(mainNav) mainNav.style.display = 'flex';
-  if(mainContent) mainContent.style.marginLeft = '';
-  if(appFooter) appFooter.style.marginLeft = '';
   if(colorLegend) colorLegend.remove();
 
   const empresa=getEmpresa();
-
-  // Hide or show project-specific sidebar buttons
-  if(mainNav) {
-    mainNav.querySelectorAll('.nav-btn').forEach(btn => {
-      if(btn.dataset.view !== 'bw2home') {
-        btn.style.display = empresa ? '' : 'none';
-      }
-    });
-  }
 
   // Hide all views
   ['view-bw2-home','view-portfolio','view-branch','view-consolidated','view-comparador','view-empresa','view-glosario'].forEach(id=>{
@@ -298,13 +301,24 @@ function renderCurrentView() {
     if(hInfo) hInfo.innerHTML='<span style="color:var(--text-3);font-size:0.85rem">Selecciona una empresa y proyecto</span>';
     if(headerLogo) headerLogo.style.display = 'none';
     if(headerBrand) headerBrand.style.display = 'none';
+    // Full width when no sidebar
+    if(mainContent) mainContent.style.marginLeft = '0';
+    if(appFooter) appFooter.style.marginLeft = '0';
   } else {
     if(headerLogo) headerLogo.style.display = '';
     if(headerBrand) headerBrand.style.display = '';
     updateEnterpriseHeader(empresa);
+    // Restore sidebar spacing
+    if(mainContent) mainContent.style.marginLeft = '';
+    if(appFooter) appFooter.style.marginLeft = '';
 
     if(state.view==='portfolio') { $('view-portfolio').style.display='block'; renderPortfolio(empresa); }
-    else if(state.view==='branch'&&state.activeBranchId) { $('view-branch').style.display='block'; renderBranchDetail(empresa); }
+    else if(state.view==='branch'&&state.activeBranchId) {
+      $('view-branch').style.display='block';
+      // Ensure active tab is shown
+      switchBranchTab(state.activeTab || 'resultados');
+      renderBranchDetail(empresa);
+    }
     else if(state.view==='consolidated') { $('view-consolidated').style.display='block'; renderConsolidated(empresa); }
     else if(state.view==='comparador') { $('view-comparador').style.display='block'; renderComparador(empresa); }
     else if(state.view==='empresa') { $('view-empresa').style.display='block'; renderEmpresaSettings(empresa); }
@@ -312,12 +326,9 @@ function renderCurrentView() {
     else { $('view-portfolio').style.display='block'; renderPortfolio(empresa); }
   }
 
-  if(addBranchBtn) addBranchBtn.style.display = (empresa && state.view==='portfolio') ? '' : 'none';
-
-  // Activate correct nav button
-  document.querySelectorAll('#main-nav .nav-btn').forEach(b=>{
-    b.classList.toggle('active', b.dataset.view===(isBW2Home || !empresa ? 'bw2home' : state.view));
-  });
+  // Update contextual sidebar and breadcrumb
+  updateNav();
+  updateBreadcrumb();
 }
 
 function updateEnterpriseHeader(empresa){
@@ -536,8 +547,8 @@ function bindBW2Events(){
 }
 
 function showBW2Modal(type, empId, projId){
-  // Remove existing modal
-  const old = document.querySelector('.bw2-modal-overlay');
+  // Remove existing dynamically-created modal (not static ones like profile)
+  const old = document.querySelector('.bw2-modal-overlay:not([id])');
   if(old) old.remove();
 
   let title='', fields='', submitLabel='Guardar';
@@ -786,7 +797,7 @@ function renderPortfolio(empresa){
 }
 
 // Global action handlers
-window._openBranch = (id)=>{ state.view='branch'; state.activeBranchId=id; state.branchOverrides={}; renderCurrentView(); selectNav('branch'); };
+window._openBranch = (id)=>{ state.view='branch'; state.activeBranchId=id; state.activeTab='resultados'; state.branchOverrides={}; renderCurrentView(); };
 window._activateBranch = (id)=>{ activateBranch(id); };
 window._restoreBranch = (id)=>{ restoreBranch(id); };
 
@@ -841,8 +852,170 @@ window._deleteBranch = (id)=>{
 };
 
 function selectNav(view) {
-  const targetView = view === 'branch' ? 'portfolio' : view;
-  document.querySelectorAll('#main-nav .nav-btn').forEach(b=>{b.classList.toggle('active',b.dataset.view===targetView);});
+  // Legacy compatibility — calls updateNav instead
+  updateNav();
+}
+
+/* ══════════════════════════════════════════
+   CONTEXTUAL SIDEBAR NAVIGATION
+   ══════════════════════════════════════════ */
+function updateNav() {
+  const nav = $('main-nav');
+  if (!nav) return;
+
+  const empresa = getEmpresa();
+  const isBW2Home = state.view === 'bw2home' || !empresa;
+  const isBranch = state.view === 'branch' && state.activeBranchId;
+  const branch = isBranch ? getBranch(state.activeBranchId) : null;
+
+  // Level class for CSS
+  nav.className = '';
+  if (isBW2Home) {
+    nav.classList.add('nav-level-home');
+  }
+
+  let html = '';
+
+  if (isBW2Home) {
+    // Level 1: Home — sidebar hidden (BW² logo is enough)
+    nav.innerHTML = '';
+    nav.style.display = 'none';
+    return;
+  }
+
+  nav.style.display = 'flex';
+
+  if (isBranch && branch) {
+    // Level 3: Inside a Branch
+    html += `<button class="nav-back" id="nav-back-project"><span class="nav-back-icon">←</span> Sucursales</button>`;
+    html += `<div class="nav-divider"></div>`;
+    html += `<div class="nav-section">Sucursal</div>`;
+    html += `<button class="nav-btn ${state.activeTab === 'resultados' ? 'active' : ''}" data-branch-tab="resultados"><span class="nav-icon">📊</span>Resultados</button>`;
+    html += `<button class="nav-btn ${state.activeTab === 'config' ? 'active' : ''}" data-branch-tab="config"><span class="nav-icon">⚙️</span>Configuración</button>`;
+    html += `<button class="nav-btn ${state.activeTab === 'socioeconomico' ? 'active' : ''}" data-branch-tab="socioeconomico"><span class="nav-icon">🌍</span>Estudio de Mercado</button>`;
+    html += `<div class="nav-divider"></div>`;
+    html += `<div class="nav-spacer"></div>`;
+    html += `<button class="btn-add" id="nav-export-pdf" style="background:var(--surface);color:var(--text-2);box-shadow:var(--shadow-neu-sm)"><span class="nav-icon">📄</span> Exportar PDF</button>`;
+  } else {
+    // Level 2: Inside a Project
+    html += `<div class="nav-section">Proyecto</div>`;
+    html += `<button class="nav-btn ${state.view === 'portfolio' ? 'active' : ''}" data-view="portfolio"><span class="nav-icon">📁</span>Sucursales</button>`;
+    html += `<button class="nav-btn ${state.view === 'consolidated' ? 'active' : ''}" data-view="consolidated"><span class="nav-icon">📊</span>Consolidado</button>`;
+    html += `<button class="nav-btn ${state.view === 'comparador' ? 'active' : ''}" data-view="comparador"><span class="nav-icon">⚖️</span>Comparar</button>`;
+    html += `<div class="nav-divider"></div>`;
+    html += `<div class="nav-section">Configuración</div>`;
+    html += `<button class="nav-btn ${state.view === 'empresa' ? 'active' : ''}" data-view="empresa"><span class="nav-icon">⚙️</span>Sociedad y Socios</button>`;
+    html += `<div class="nav-spacer"></div>`;
+    html += `<button class="btn-add" id="btn-add-branch">+ Nueva Sucursal</button>`;
+  }
+
+  nav.innerHTML = html;
+
+  // Wire up events
+  if (isBranch) {
+    // Back to project
+    const backBtn = nav.querySelector('#nav-back-project');
+    if (backBtn) backBtn.addEventListener('click', () => {
+      state.view = 'portfolio'; state.activeBranchId = null; renderCurrentView();
+    });
+    // Branch tab buttons
+    nav.querySelectorAll('[data-branch-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        switchBranchTab(btn.dataset.branchTab);
+        updateNav(); // refresh active state
+      });
+    });
+    // PDF export
+    const pdfBtn = nav.querySelector('#nav-export-pdf');
+    if (pdfBtn) pdfBtn.addEventListener('click', () => {
+      const mainPdfBtn = $('btn-export-pdf');
+      if (mainPdfBtn) mainPdfBtn.click();
+    });
+  } else {
+    // Project-level nav buttons
+    nav.querySelectorAll('[data-view]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.view = btn.dataset.view;
+        state.activeBranchId = null;
+        renderCurrentView();
+      });
+    });
+    // Add branch
+    const addBtn = nav.querySelector('#btn-add-branch');
+    if (addBtn) addBtn.addEventListener('click', showAddBranchModal);
+  }
+}
+
+/* ── Breadcrumb in header ── */
+function updateBreadcrumb() {
+  const bc = $('header-breadcrumb');
+  if (!bc) return;
+
+  const empresa = getEmpresa();
+  const isBW2Home = state.view === 'bw2home' || !empresa;
+
+  if (isBW2Home) {
+    bc.innerHTML = '';
+    return;
+  }
+
+  const emp = getActiveEmpresa();
+  const proy = getActiveProyecto();
+  const isBranch = state.view === 'branch' && state.activeBranchId;
+  const branch = isBranch ? getBranch(state.activeBranchId) : null;
+
+  let crumbs = [];
+
+  // Empresa name
+  if (emp) {
+    crumbs.push({ label: emp.name || 'Empresa', action: 'home' });
+  }
+  // Proyecto name
+  if (proy) {
+    crumbs.push({ label: proy.name || 'Proyecto', action: 'portfolio' });
+  }
+  // Current view label
+  if (isBranch && branch) {
+    crumbs.push({ label: branch.name || 'Sucursal', action: null });
+  } else {
+    const viewLabels = {
+      portfolio: 'Sucursales', consolidated: 'Consolidado',
+      comparador: 'Comparar', empresa: 'Ajustes'
+    };
+    if (viewLabels[state.view]) {
+      crumbs.push({ label: viewLabels[state.view], action: null });
+    }
+  }
+
+  bc.innerHTML = crumbs.map((c, i) => {
+    const isLast = i === crumbs.length - 1;
+    const sep = i > 0 ? '<span class="breadcrumb-sep">›</span>' : '';
+    if (isLast) {
+      return `${sep}<span class="breadcrumb-item current">${c.label}</span>`;
+    }
+    return `${sep}<button class="breadcrumb-item" data-bc-action="${c.action}">${c.label}</button>`;
+  }).join('');
+
+  // Wire breadcrumb clicks
+  bc.querySelectorAll('[data-bc-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.bcAction;
+      if (action === 'home') {
+        state.view = 'bw2home'; state.activeBranchId = null;
+      } else if (action === 'portfolio') {
+        state.view = 'portfolio'; state.activeBranchId = null;
+      }
+      renderCurrentView();
+    });
+  });
+}
+
+/* ── Switch branch tab from sidebar ── */
+function switchBranchTab(tabName) {
+  state.activeTab = tabName;
+  document.querySelectorAll('.branch-tab-panel').forEach(p => p.classList.remove('active'));
+  const targetPanel = $(`btab-${tabName}`);
+  if (targetPanel) targetPanel.classList.add('active');
 }
 
 /* ─── GEOCODING AUTOCOMPLETE HELPER ─── */
@@ -940,13 +1113,16 @@ function updateMarketIndicators(branch) {
   let title = '';
   
   if (hasStudy) {
-    if (isActive) {
-      const { combinedFactor } = calcCombinedMarketFactor(branch.locationStudy.scores.factors || branch.locationStudy.scores, branch.overrides?.marketStudyToggles);
+    if (isActive && branch.locationStudy.scores?.factors) {
+      const { combinedFactor } = calcCombinedMarketFactor(branch.locationStudy.scores.factors, branch.overrides?.marketStudyToggles);
       const pct = ((combinedFactor - 1)*100).toFixed(1);
       label = `📍 Impacto Mercado: ${pct > 0 ? '+'+pct : pct}%`;
       color = pct >= 0 ? '#10b981' : '#ef4444'; // green or red
       bg = pct >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
       title = 'El estudio de mercado está ajustando las proyecciones. Clic para ver detalles.';
+    } else if (isActive) {
+      label = '📍 Estudio sin scoring';
+      title = 'El estudio de mercado no tiene datos de scoring. Re-ejecuta la evaluación.';
     } else {
       label = '📍 Mercado Ignorado';
       color = 'var(--text-2)';
@@ -977,10 +1153,20 @@ function updateMarketIndicators(branch) {
              }
          };
          el.style.cursor = 'pointer';
-      } else {
-         el.onclick = null;
-         el.style.cursor = 'default';
-      }
+       } else {
+         el.onclick = () => {
+           // Navigate to Estudio Socioeconómico tab
+           document.querySelectorAll('.branch-tab-btn').forEach(b => b.classList.remove('active'));
+           document.querySelectorAll('.branch-tab-panel').forEach(p => p.classList.remove('active'));
+           const socioBtn = document.querySelector('[data-tab="socioeconomico"]');
+           if (socioBtn) socioBtn.classList.add('active');
+           const socioPanel = $('btab-socioeconomico');
+           if (socioPanel) { socioPanel.classList.add('active'); socioPanel.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+           // Focus the search input
+           setTimeout(() => { const inp = $('loc-address-input'); if (inp) inp.focus(); }, 200);
+         };
+         el.style.cursor = 'pointer';
+       }
     }
   });
 }
@@ -1056,12 +1242,10 @@ function renderBranchDetail(empresa){
   if (gotoMapBtn) {
     gotoMapBtn.addEventListener('click', () => {
       // Activate Estudio Socioeconómico tab
-      document.querySelectorAll('.branch-tab-btn').forEach(b=>b.classList.remove('active'));
-      document.querySelectorAll('.branch-tab-panel').forEach(p=>p.classList.remove('active'));
-      const socioBtn = document.querySelector('[data-tab="socioeconomico"]');
-      if(socioBtn) socioBtn.classList.add('active');
+      switchBranchTab('socioeconomico');
+      updateNav();
       const socioPanel = $('btab-socioeconomico');
-      if(socioPanel) { socioPanel.classList.add('active'); socioPanel.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      if(socioPanel) { socioPanel.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     });
   }
   // Format selector
@@ -1076,6 +1260,38 @@ function renderBranchDetail(empresa){
   // Royalty active state
   const currentRoyalty = branch.overrides?.royaltyMode || 'variable_2_5';
   document.querySelectorAll('#branch-royalty-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.royalty===currentRoyalty);});
+
+  // ═══ RESULTS-LEVEL ROYALTY PANEL ═══
+  const resRoyaltyPanel = $('res-royalty-panel');
+  if (resRoyaltyPanel) {
+    if (isFranchise && branch.format === 'super') {
+      resRoyaltyPanel.style.display = '';
+      const royaltyDescs = {
+        variable_2_5: '💳 Pagas 2.5% de ingresos como regalía mensual.',
+        condonacion_6m: '🎁 Los primeros 6 meses se condonan las regalías.',
+        pago_unico: '💰 Pago único de $125,000 — sin regalías futuras.'
+      };
+      const descEl = $('res-royalty-desc');
+      document.querySelectorAll('#res-royalty-selector .seg-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.royalty === currentRoyalty);
+        const clone = btn.cloneNode(true);
+        btn.parentNode.replaceChild(clone, btn);
+        clone.classList.toggle('active', clone.dataset.royalty === currentRoyalty);
+        clone.addEventListener('click', () => {
+          if (!state.activeBranchId) return;
+          document.querySelectorAll('#res-royalty-selector .seg-btn').forEach(b => b.classList.remove('active'));
+          clone.classList.add('active');
+          updateBranchOverrides(state.activeBranchId, { royaltyMode: clone.dataset.royalty });
+          if (descEl) descEl.textContent = royaltyDescs[clone.dataset.royalty] || '';
+          renderBranchDetail(getEmpresa());
+        });
+      });
+      if (descEl) descEl.textContent = royaltyDescs[currentRoyalty] || '';
+    } else {
+      resRoyaltyPanel.style.display = 'none';
+    }
+  }
+
   // Timeline selector active state
   const currentPreOpen = String(branch.overrides?.preOpenMonths || 0);
   document.querySelectorAll('#branch-timeline-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.preopen===currentPreOpen);});
@@ -1123,7 +1339,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Colonia autocomplete — geocoding suggestions
   setupGeocodingAutocomplete('branch-colonia-input', 'colonia-suggestions', 'colonia-status', (name, full) => {
     if(state.activeBranchId){
+      _suppressFullRender = true;
+      updateBranchLocation(state.activeBranchId, null);
       updateBranch(state.activeBranchId,{colonia:name,coloniaFull:full});
+      _suppressFullRender = false;
       // Sync to location study + auto-run
       const locInput=$('loc-address-input');
       if(locInput) locInput.value=name;
@@ -1131,7 +1350,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(studyBtn) studyBtn.click();
     }
   });
-  // Royalty selector
+  // Royalty selector (Config tab)
   document.querySelectorAll('#branch-royalty-selector .seg-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
       if(!state.activeBranchId)return;
@@ -1139,19 +1358,44 @@ document.addEventListener('DOMContentLoaded',()=>{
       renderBranchDetail(getEmpresa());
     });
   });
+
+  // ═══ INLINE MARKET ADDRESS REFRESH ═══
+  const marketRefreshBtn = $('market-inline-refresh');
+  const marketAddrInput = $('market-inline-address');
+  if (marketRefreshBtn && marketAddrInput) {
+    // Populate with current address
+    const currentBranch = getBranch(state.activeBranchId);
+    if (currentBranch?.colonia) marketAddrInput.value = currentBranch.colonia;
+    else if (currentBranch?.locationStudy?.address) marketAddrInput.value = currentBranch.locationStudy.address;
+
+    const doRefresh = async () => {
+      const query = marketAddrInput.value.trim();
+      if (!query || !state.activeBranchId) return;
+      marketRefreshBtn.disabled = true;
+      marketRefreshBtn.textContent = '⏳';
+      try {
+        const study = await runLocationStudy(query);
+        updateBranchLocation(state.activeBranchId, study);
+        updateBranch(state.activeBranchId, { colonia: query });
+        renderBranchDetail(getEmpresa());
+      } catch (e) {
+        console.error('[BW2] inline market refresh error', e);
+      } finally {
+        marketRefreshBtn.disabled = false;
+        marketRefreshBtn.textContent = '🔄';
+      }
+    };
+    marketRefreshBtn.addEventListener('click', doRefresh);
+    marketAddrInput.addEventListener('keydown', e => { if (e.key === 'Enter') doRefresh(); });
+  }
+
+  // (Royalty panel init moved to renderBranchDetail where branch is available)
   // Advanced panel toggle
   // (branch-adv-toggle removed — now using edit-section toggles)
-  // Back button
+  // Back button (legacy — sidebar also has this)
   const bb=$('btn-back-portfolio');
-  if(bb) bb.addEventListener('click',()=>{state.view='portfolio';state.activeBranchId=null;renderCurrentView();selectNav('portfolio');});
-  // Branch tabs
-  document.querySelectorAll('.branch-tab-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      document.querySelectorAll('.branch-tab-btn').forEach(b=>b.classList.remove('active'));
-      document.querySelectorAll('.branch-tab-panel').forEach(p=>p.classList.remove('active'));
-      btn.classList.add('active');$(`btab-${btn.dataset.tab}`).classList.add('active');
-    });
-  });
+  if(bb) bb.addEventListener('click',()=>{state.view='portfolio';state.activeBranchId=null;renderCurrentView();});
+  // Branch tabs are now in the sidebar (handled by updateNav)
   const tb=$('branch-toggle-pnl');
   if(tb) tb.addEventListener('click',()=>{const t=$('branch-pnl-table-full');t.classList.toggle('collapsed');tb.textContent=t.classList.contains('collapsed')?'Expandir ▼':'Colapsar ▲';});
   // Results sub-section collapsible toggles
@@ -1187,28 +1431,124 @@ document.addEventListener('DOMContentLoaded',()=>{
 function updateBranchKPIBar(r){
   const be=r.breakEvenPctCapacity, net=r.perPartnerMonthly[0]?.monthlyIncome||0;
   const pm=r.paybackMetrics;
-  const fmtMo2=(m,ext)=>m!=null?(m+(ext?' (est.)':''))+' m':'∞';
   
   const elEq = $('branch-kpi-equilibrio');
   const elProfit = $('branch-kpi-profit');
   const elPayback = $('branch-kpi-payback');
-  const elRating = $('branch-kpi-rating');
 
+  // Animated counter helper
+  function animateValue(el, end, prefix='', suffix='', duration=900) {
+    if(!el) return;
+    const start = 0;
+    const startTime = performance.now();
+    const isNeg = end < 0;
+    const absEnd = Math.abs(end);
+    function update(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(start + (absEnd - start) * eased);
+      el.textContent = prefix + (isNeg?'-':'') + current.toLocaleString('es-MX') + suffix;
+      if (progress < 1) requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+  }
+
+  // 1) Break-Even KPI + mini progress bar
   if(elEq) {
-    elEq.textContent = fmt.m(r.breakEvenRevenue);
+    animateValue(elEq, Math.round(r.breakEvenRevenue), '$');
     elEq.style.color = be<0.5?'var(--green)':be<0.7?'var(--text-1)':'var(--red)';
   }
+  const beBar = document.querySelector('#kpi-be-bar .kpi-mini-bar-fill');
+  const bePct = $('kpi-be-pct');
+  if(beBar) {
+    const pct = Math.min(be * 100, 100);
+    setTimeout(() => { beBar.style.width = pct + '%'; }, 50);
+  }
+  if(bePct) bePct.textContent = (be*100).toFixed(0) + '% cap.';
+
+  // 2) Profit KPI + sparkline
   if(elProfit) {
-    elProfit.textContent = fmt.m(r.avgMonthlyEBITDA);
+    animateValue(elProfit, Math.round(r.avgMonthlyEBITDA), '$');
     elProfit.style.color = r.avgMonthlyEBITDA>0?'var(--green)':'var(--red)';
   }
-  if(elPayback) {
-    elPayback.textContent = fmtMo2(pm.rampa.month,pm.rampa.extrapolated);
-    elPayback.style.color = pm.rampa.month&&pm.rampa.month<=36?'var(--green)':pm.rampa.month&&pm.rampa.month<=48?'var(--text-1)':'var(--red)';
+  const sparkEl = $('kpi-profit-sparkline');
+  if(sparkEl && r.months && r.months.length > 1) {
+    const data = r.months.slice(-12).map(m => m.ebitda);
+    const min = Math.min(...data), max = Math.max(...data);
+    const range = max - min || 1;
+    const w = 100, h = 28, pad = 2;
+    const pts = data.map((v,i) => {
+      const x = pad + (i/(data.length-1))*(w-2*pad);
+      const y = h-pad - ((v-min)/range)*(h-2*pad);
+      return `${x},${y}`;
+    });
+    const col = r.avgMonthlyEBITDA > 0 ? '#34d399' : '#f87171';
+    sparkEl.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+      <defs><linearGradient id="spkGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${col}" stop-opacity="0.3"/><stop offset="100%" stop-color="${col}" stop-opacity="0.02"/></linearGradient></defs>
+      <polygon points="${pts[0].split(',')[0]},${h} ${pts.join(' ')} ${pts[pts.length-1].split(',')[0]},${h}" fill="url(#spkGrad)"/>
+      <polyline points="${pts.join(' ')}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>`;
   }
-  if(elRating) {
-    elRating.textContent = r.viabilityScore+'/100';
-    elRating.style.color = r.viabilityScore>=60?'var(--green)':r.viabilityScore>=40?'var(--text-1)':'var(--red)';
+
+  // 3) Payback KPI + ring gauge
+  const pbVal = pm.rampa.month;
+  const pbColor = pbVal&&pbVal<=36?'#34d399':pbVal&&pbVal<=48?'#fbbf24':'#f87171';
+  if(elPayback) {
+    if(pbVal != null) {
+      animateValue(elPayback, pbVal, '', ' m');
+    } else {
+      elPayback.textContent = '∞';
+    }
+    elPayback.style.color = pbColor;
+  }
+  const pbSub = $('kpi-payback-sub');
+  if(pbSub) pbSub.textContent = pm.rampa.extrapolated ? 'estimado' : 'recuperación';
+
+  const ringEl = $('kpi-payback-ring');
+  if(ringEl) {
+    const total = r.months.length || 60;
+    const month = pbVal || total;
+    const pct = Math.min(month / total, 1);
+    const R = 26, cx = 30, cy = 30, sw = 5;
+    const circ = 2 * Math.PI * R;
+    const filled = circ * pct;
+    ringEl.innerHTML = `<svg width="60" height="60" viewBox="0 0 60 60">
+      <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface-alt)" stroke-width="${sw}"/>
+      <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${pbColor}" stroke-width="${sw}"
+        stroke-dasharray="${filled} ${circ}" stroke-linecap="round"
+        transform="rotate(-90,${cx},${cy})" style="transition:stroke-dasharray 1s ease"/>
+      <text x="${cx}" y="${cy+1}" text-anchor="middle" dominant-baseline="central"
+        font-size="11" font-weight="800" fill="${pbColor}">${pbVal||'∞'}</text>
+    </svg>`;
+  }
+
+  // 4) ROI circular gauge
+  const roiEl = $('kpi-roi-gauge');
+  if(roiEl) {
+    const roi = r.roi12 || 0;
+    const roiClamped = Math.min(Math.max(roi, -50), 100);
+    const pct = (roiClamped + 50) / 150; // normalize -50..100 to 0..1
+    const R = 36, cx = 42, cy = 42, sw = 6;
+    const circ = 2 * Math.PI * R;
+    const arcLen = circ * 0.75; // 270 degrees
+    const filled = arcLen * pct;
+    const color = roi > 20 ? '#34d399' : roi > 0 ? '#fbbf24' : '#f87171';
+    roiEl.innerHTML = `
+      <svg width="84" height="76" viewBox="0 0 84 76">
+        <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface-alt)" stroke-width="${sw}"
+          stroke-dasharray="${arcLen} ${circ}" stroke-linecap="round"
+          transform="rotate(135,${cx},${cy})"/>
+        <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${color}" stroke-width="${sw}"
+          stroke-dasharray="${filled} ${circ}" stroke-linecap="round"
+          transform="rotate(135,${cx},${cy})"
+          style="transition:stroke-dasharray 0.8s ease"/>
+      </svg>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-55%);text-align:center">
+        <span class="kpi-gauge-value" style="color:${color}">${roi.toFixed(1)}%</span>
+        <span class="kpi-gauge-label">12 meses</span>
+      </div>`;
+    roiEl.style.position = 'relative';
   }
 }
 
@@ -1224,19 +1564,46 @@ function updateBranchAuditBadges(model){
 
 function renderAlerts(alerts,id){
   const el=$(id);if(!el)return;
-  if(!alerts.length){el.innerHTML='<div class="alert-item success"><span class="alert-icon">✅</span><div class="alert-content"><div class="alert-label">Sin alertas</div></div></div>';return;}
-  el.innerHTML=alerts.map(a=>`<div class="alert-item ${a.severity}"><span class="alert-icon">${a.icon}</span><div class="alert-content"><div class="alert-label">${a.label}</div><div class="alert-message">${a.message}</div></div></div>`).join('');
+  if(!alerts.length){el.innerHTML='<div class="alert-item success"><div class="alert-icon-wrap success"><span>✅</span></div><div class="alert-content"><div class="alert-label">Sin alertas — proyecto saludable</div></div></div>';return;}
+  el.innerHTML=alerts.map(a=>`<div class="alert-item ${a.severity}"><div class="alert-icon-wrap ${a.severity}"><span>${a.icon}</span></div><div class="alert-content"><div class="alert-label">${a.label}</div><div class="alert-message">${a.message}</div></div></div>`).join('');
 }
 
 /* ─── BRANCH RESUMEN ─── */
 function renderBranchResumen(r){
-  const color=r.viabilityScore>=60?'#34d399':r.viabilityScore>=40?'#fbbf24':'#f87171';
-  const label=r.viabilityScore>=80?'EXCELENTE':r.viabilityScore>=60?'VIABLE':r.viabilityScore>=40?'FRÁGIL':'NO VIABLE';
-  $('branch-gauge').innerHTML=`<div class="viability-gauge"><div class="gauge-score" style="color:${color}">${r.viabilityScore}</div><div class="gauge-label" style="color:${color}">${label}</div><div class="gauge-bar"><div class="gauge-fill" style="width:${r.viabilityScore}%;background:${color}"></div></div></div>`;
   const cl=generateChecklist(r);
-  $('branch-checklist').innerHTML=cl.map(c=>`<div class="checklist-item"><span class="check-icon">${c.pass?'✅':'❌'}</span><span class="check-label">${c.item}</span><span class="check-detail">${c.detail}</span></div>`).join('');
+  const passed = cl.filter(c=>c.pass).length;
+  const total = cl.length;
+  const pctPass = Math.round((passed/total)*100);
+  $('branch-checklist').innerHTML=`
+    <div class="checklist-summary" style="grid-column:1/-1;display:flex;align-items:center;gap:0.75rem;padding-bottom:0.375rem;border-bottom:1px solid var(--border);margin-bottom:0.125rem">
+      <div class="checklist-progress-ring" style="flex-shrink:0">
+        <svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="none" stroke="var(--surface-alt)" stroke-width="3"/><circle cx="16" cy="16" r="13" fill="none" stroke="${passed===total?'var(--green)':'var(--yellow)'}" stroke-width="3" stroke-linecap="round" stroke-dasharray="${2*Math.PI*13}" stroke-dashoffset="${2*Math.PI*13 - (pctPass/100)*2*Math.PI*13}" transform="rotate(-90,16,16)" style="transition:stroke-dashoffset 0.8s ease"/></svg>
+      </div>
+      <div><span style="font-weight:700;font-size:0.8125rem;color:var(--text-1)">${passed}/${total} criterios</span><span style="font-size:0.6875rem;color:var(--text-3);margin-left:0.5rem">${passed===total?'✨ Todos aprobados':'⚠️ '+(total-passed)+' pendiente'+(total-passed>1?'s':'')}</span></div>
+    </div>
+  `+cl.map(c=>`<div class="checklist-item ${c.pass?'pass':'fail'}"><span class="check-icon">${c.pass?'<svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" fill="rgba(22,163,74,0.12)"/><path d="M5.5 9.5L7.5 11.5L12.5 6.5" stroke="#16a34a" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>':'<svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" fill="rgba(220,38,38,0.1)"/><path d="M6.5 6.5L11.5 11.5M11.5 6.5L6.5 11.5" stroke="#dc2626" stroke-width="1.5" stroke-linecap="round"/></svg>'}</span><span class="check-label">${c.item}</span><span class="check-detail">${c.detail}</span></div>`).join('');
   dc('branch-cashflow');const ctx=$('chart-branch-cashflow');if(!ctx)return;
-  charts['branch-cashflow']=new Chart(ctx,{type:'line',data:{labels:r.months.map(m=>'M'+m.month),datasets:[{label:'Acumulado',data:r.months.map(m=>m.cumulativeCashFlow),borderColor:'#4d7cfe',backgroundColor:'rgba(77,124,254,0.1)',fill:true,tension:0.3,pointRadius:0,borderWidth:2.5},{label:'Mensual',data:r.months.map(m=>m.cashFlow),type:'bar',backgroundColor:r.months.map(m=>m.cashFlow>=0?'rgba(52,211,153,0.35)':'rgba(248,113,113,0.3)'),borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt.m(c.parsed.y)}`}}},scales:{y:{ticks:{callback:v=>fmt.mk(v)}}}}});
+  // Create gradient for the cumulative line
+  const ctxCanvas = ctx.getContext('2d');
+  const grad = ctxCanvas.createLinearGradient(0, 0, 0, ctx.parentElement.clientHeight || 300);
+  grad.addColorStop(0, 'rgba(77,124,254,0.18)');
+  grad.addColorStop(0.5, 'rgba(77,124,254,0.06)');
+  grad.addColorStop(1, 'rgba(77,124,254,0.01)');
+  charts['branch-cashflow']=new Chart(ctx,{type:'line',data:{labels:r.months.map(m=>'M'+m.month),datasets:[{label:'Acumulado',data:r.months.map(m=>m.cumulativeCashFlow),borderColor:'#4d7cfe',backgroundColor:grad,fill:true,pointRadius:0,borderWidth:2.5,pointHoverRadius:5,pointHoverBackgroundColor:'#4d7cfe',pointHoverBorderColor:'#fff',pointHoverBorderWidth:2},{label:'Mensual',data:r.months.map(m=>m.cashFlow),type:'bar',backgroundColor:r.months.map(m=>m.cashFlow>=0?'rgba(52,211,153,0.45)':'rgba(248,113,113,0.35)'),borderRadius:4,maxBarThickness:8}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt.m(c.parsed.y)}`}}},scales:{y:{ticks:{callback:v=>fmt.mk(v)}}}}});
+
+  // Cost structure donut (main section)
+  dc('branch-costs-main');const cDonut=$('chart-branch-costs-main');if(cDonut){
+    const bd=r.fixedCostBreakdown;
+    const colors=['#f87171','#4d7cfe','#818cf8','#8b5cf6','#34d399','#fbbf24'];
+    const labels=['Renta','Nómina','C.Social','Sistemas','Contab.','Serv/Pap'];
+    const data=[bd.renta,bd.nomina,bd.cargaSocial,bd.sistemas,bd.contabilidad,bd.serviciosPap];
+    const total=data.reduce((a,b)=>a+b,0);
+    charts['branch-costs-main']=new Chart(cDonut,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${fmt.m(c.parsed)} (${(c.parsed/total*100).toFixed(0)}%)`}}}}});
+    // Render compact legend
+    const legendEl=$('cost-donut-legend');
+    if(legendEl) legendEl.innerHTML=labels.map((l,i)=>`<span class="donut-legend-item"><span class="donut-legend-dot" style="background:${colors[i]}"></span>${l}</span>`).join('');
+  }
+
   renderAlerts(evaluateAlerts(r),'branch-alerts');
 }
 
@@ -1249,12 +1616,29 @@ function renderMarketStudyPanel(branch) {
   if (!panel || !body) return;
 
   const study = branch.locationStudy;
+  const radarPanel = $('market-radar-panel');
   if (!study?.scores?.factors) {
     panel.style.display = 'none';
+    if(radarPanel) radarPanel.style.display = 'none';
     return;
   }
 
   panel.style.display = 'block';
+  if(radarPanel) radarPanel.style.display = 'block';
+
+  // Render radar chart for market factors
+  dc('market-radar-main');const radarCanvas=$('chart-market-radar-main');
+  if(radarCanvas && study.scores.factors){
+    const factors = study.scores.factors;
+    const factorKeys = Object.keys(factors);
+    const factorLabels = factorKeys.map(k => {
+      const meta = {trafico:'Tráfico',traffic:'Tráfico',competencia:'Competencia',compDensity:'Densidad',compQuality:'Calidad',distComp:'Dist.Comp',salud:'Salud',health:'Salud',cofepris:'COFEPRIS',COFEPRIS:'COFEPRIS',bancos:'Bancos',restaurantes:'Rest.',residencial:'Resid.',residential:'Residencial',saturacion:'Saturación',saturation:'Saturación',rezago:'Rezago',Rezago:'Rezago',confianza:'Confianza',commercial:'Comercio',transport:'Transporte',nearest:'Cercanía',denue:'DENUE',publicHealth:'Salud Púb.',vetCorridor:'Corredor',income:'Ingreso'};
+      return meta[k] || k;
+    });
+    const factorScores = factorKeys.map(k => factors[k]?.score || 0);
+    charts['market-radar-main']=new Chart(radarCanvas,{type:'radar',data:{labels:factorLabels,datasets:[{label:'Score',data:factorScores,backgroundColor:'rgba(107,122,46,0.15)',borderColor:'rgba(107,122,46,0.7)',borderWidth:2,pointBackgroundColor:factorScores.map(s=>s>=75?'#34d399':s>=50?'#fbbf24':'#f87171'),pointRadius:3,pointHoverRadius:5}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{beginAtZero:true,max:100,ticks:{stepSize:25,font:{size:8},backdropColor:'transparent'},grid:{color:'rgba(0,0,0,0.06)'},pointLabels:{font:{size:8,weight:'600'},color:'var(--text-2)'}}},plugins:{legend:{display:false}}}});
+  }
+
   const toggles = branch.overrides?.marketStudyToggles || {};
   const masterEnabled = branch.overrides?.marketStudyEnabled !== false;
   if (masterSwitch) masterSwitch.checked = masterEnabled;
@@ -1316,7 +1700,7 @@ function renderBranchPnL(r,model,overrides){
       kc('ROI 12m',r.roi12.toFixed(1)+'%','Año 1',r.roi12>0?'success':'danger'),
       kc('ROI 36m',r.roi36.toFixed(1)+'%','3 años',r.roi36>60?'success':r.roi36>0?'warning':'danger'),
       kc('VPN',fmt.m(r.npv),'WACC 12%',r.npv>0?'success':'danger'),
-      kc('TIR',r.irr!=null?(r.irr*100).toFixed(1)+'%':'N/A','Interna',r.irr&&r.irr>0.12?'success':'danger'),
+      kc('TIR',r.irr!=null&&isFinite(r.irr)&&Math.abs(r.irr)<=10?(r.irr*100).toFixed(1)+'%':'N/A','Interna',r.irr&&r.irr>0.12?'success':'danger'),
     ].join('');
   }
   dc('branch-pnl-bars');const c1=$('chart-branch-pnl');if(c1){
@@ -1378,7 +1762,7 @@ function renderBranchScenarios(branch, empresa) {
     { l: 'ROI 12m', f: r => r.roi12.toFixed(1) + '%', color: r => r.roi12 > 0 ? 'positive' : 'negative' },
     { l: 'ROI 36m', f: r => r.roi36.toFixed(1) + '%', color: r => r.roi36 > 20 ? 'positive' : 'negative' },
     { l: 'VPN', f: r => fmt.m(r.npv), color: r => r.npv > 0 ? 'positive' : 'negative' },
-    { l: 'TIR', f: r => r.irr != null ? (r.irr * 100).toFixed(1) + '%' : 'N/A', color: r => r.irr && r.irr > 0.12 ? 'positive' : 'negative' },
+    { l: 'TIR', f: r => r.irr != null && isFinite(r.irr) && Math.abs(r.irr) <= 10 ? (r.irr * 100).toFixed(1) + '%' : 'N/A', color: r => r.irr && r.irr > 0.12 ? 'positive' : 'negative' },
     { l: 'Calificación', f: r => r.viabilityScore + '/100' },
     { l: 'Ganancia 5 Años', f: r => fmt.m(r.annualSummary.year1.netIncome + r.annualSummary.year2.netIncome + r.annualSummary.year3.netIncome + (r.annualSummary.year4?.netIncome||0) + (r.annualSummary.year5?.netIncome||0)) },
   ];
@@ -1718,14 +2102,20 @@ function renderBranchLocation(branch) {
   const emptyEl = $('loc-empty-state');
   const statusEl = $('loc-status');
 
-  // Pre-fill address
-  if (addrInput) addrInput.value = study?.address || branch.colonia || '';
+  // Pre-fill address: branch.colonia (user's latest choice) takes precedence over old study address
+  if (addrInput) addrInput.value = branch.colonia || study?.address || '';
   if (statusEl) statusEl.innerHTML = '';
 
   // Setup Geocoding Autocomplete
   setupGeocodingAutocomplete('loc-address-input', 'loc-address-suggestions', 'loc-address-status', (name, full) => {
-    // Also save to branch if it's new
+    // Suppress re-render while we update colonia + run study
+    _suppressFullRender = true;
+    // Clear stale study since location changed
+    updateBranchLocation(branch.id, null);
     updateBranch(branch.id, { colonia: name, coloniaFull: full });
+    // Restore input value (in case re-render slipped through)
+    if (addrInput) addrInput.value = name;
+    _suppressFullRender = false;
     const btn = $('btn-run-location-study');
     if (btn) btn.click();
   });
@@ -1736,6 +2126,10 @@ function renderBranchLocation(branch) {
     btn.onclick = async () => {
       const query = addrInput.value.trim();
       if (!query) { statusEl.innerHTML = '<span class="loc-error">Ingresa una colonia o dirección</span>'; return; }
+      // Sync colonia with whatever user typed
+      _suppressFullRender = true;
+      updateBranch(branch.id, { colonia: query });
+      _suppressFullRender = false;
       btn.disabled = true;
       btn.textContent = '⏳ ...';
       if (emptyEl) emptyEl.style.display = 'none'; // hide while loading
@@ -1744,6 +2138,12 @@ function renderBranchLocation(branch) {
         const result = await runLocationStudy(query);
         updateBranchLocation(branch.id, result);
         renderLocationResults(result);
+        // Update market indicators and panels without full re-render
+        const freshBranch = getBranch(branch.id);
+        if (freshBranch) {
+          renderMarketStudyPanel(freshBranch);
+          updateMarketIndicators(freshBranch);
+        }
         if (result.errors && result.errors.length) {
           statusEl.innerHTML = '<span class="loc-warning">⚠️ Estudio parcial: ' + result.errors.map(e => e.error).join('; ') + '</span>';
         } else {
@@ -1754,7 +2154,7 @@ function renderBranchLocation(branch) {
         if (emptyEl && (!study || !study.coordinates)) emptyEl.style.display = 'block';
       }
       btn.disabled = false;
-      btn.textContent = 'Evaluar';
+      btn.textContent = '📍 Evaluar';
     };
   }
 
@@ -1767,6 +2167,9 @@ function renderBranchLocation(branch) {
     if (emptyEl) emptyEl.style.display = 'none';
     renderLocationResults(study);
     if (statusEl) statusEl.innerHTML = '<span class="loc-success">📍 Último estudio: ' + new Date(study.lastUpdated).toLocaleString('es-MX') + '</span>';
+  } else if (addrInput && addrInput.value.trim().length >= 3 && btn) {
+    // Auto-run: branch has a colonia but no saved study — trigger automatically
+    setTimeout(() => { if (btn && !btn.disabled) btn.click(); }, 300);
   } else {
     if (emptyEl) emptyEl.style.display = 'block';
     if (resultsEl) resultsEl.style.display = 'none';
@@ -1819,7 +2222,7 @@ function renderLocationResults(study) {
     kc('Tráfico', apiOk ? (s.trafficGenerators ? Object.values(s.trafficGenerators).reduce((a,b)=>a+b,0) : 0) : '—', apiOk ? 'generadores' : 'Sin dato', apiOk ? sc(s.factors?.traffic?.score || 0) : 'warning'),
   ].join('');
 
-  // ── RADAR CHART (11 factors) ──
+  // ── RADAR CHART (15 factors) ──
   if (s.factors) {
     const radarCanvas = $('loc-radar-chart');
     if (radarCanvas) {
@@ -1992,7 +2395,7 @@ function renderLocationResults(study) {
       <div class="loc-indicator"><span class="loc-ind-label">🎯 Confianza geocode</span><span class="loc-ind-value">${study.geocodeConfidence || '—'}</span><span class="loc-ind-source">${study.geocodeSource || ''}</span></div>
       <div class="loc-indicator"><span class="loc-ind-label">📐 Coordenadas</span><span class="loc-ind-value">${study.coordinates ? study.coordinates.lat.toFixed(5) + ', ' + study.coordinates.lng.toFixed(5) : '—'}</span></div>
       <div class="loc-indicator"><span class="loc-ind-label">🔢 POIs Totales</span><span class="loc-ind-value">${study.totalPOIs || '—'}</span><span class="loc-ind-source">Elementos analizados en 2km</span></div>
-      <div class="loc-indicator"><span class="loc-ind-label">💡 Escenario sugerido</span><span class="loc-ind-value">${sug.label} (factor ${sug.factor}x)</span><span class="loc-ind-source">⚡ Score ponderado de 11 factores</span></div>
+      <div class="loc-indicator"><span class="loc-ind-label">💡 Escenario sugerido</span><span class="loc-ind-value">${sug.label} (factor ${sug.factor}x)</span><span class="loc-ind-source">⚡ Score ponderado de 15 factores</span></div>
     `;
   }
 
@@ -2023,7 +2426,7 @@ function renderLocationResults(study) {
         <div class="loc-source-item"><span class="loc-src-badge dato">📍</span> Geocodificación: <strong>${study.geocodeSource || '—'}</strong></div>
         <div class="loc-source-item"><span class="loc-src-badge dato">🏪</span> POIs: <strong>${study.nearby?.source || '—'}</strong> (${study.totalPOIs || 0} elementos)</div>
         <div class="loc-source-item"><span class="loc-src-badge oficial">${study.rezago ? '📊' : '⚠️'}</span> Rezago social: <strong>${study.rezago?.fuente || 'No disponible'}</strong> <em>(${study.rezago?.nivel || '—'})</em></div>
-        <div class="loc-source-item"><span class="loc-src-badge derivado">⚡</span> Scoring: <strong>11 factores ponderados v2</strong> — modelo propio, no dato oficial</div>
+        <div class="loc-source-item"><span class="loc-src-badge derivado">⚡</span> Scoring: <strong>15 factores ponderados v3</strong> — COFEPRIS, DENUE, Salud Pública, Corredor Vet</div>
       </div>
       ${study.nearby?.note ? '<p class="loc-note">⚠️ ' + study.nearby.note + '</p>' : ''}
       ${study.errors?.length ? '<p class="loc-note">⚠️ Errores parciales: ' + study.errors.map(e => e.step + ': ' + e.error).join(', ') + '</p>' : ''}
@@ -2380,4 +2783,161 @@ function renderGlosario(filter=''){
 document.addEventListener('DOMContentLoaded',()=>{
   const si=$('glosario-search');
   if(si) si.addEventListener('input',e=>renderGlosario(e.target.value));
+});
+
+/* ═══ PROFILE POPUP MODULE ═══ */
+const PROFILE_KEY = 'bw2_user_profile';
+
+function getProfile() {
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || {}; }
+  catch(e) { return {}; }
+}
+
+function saveProfile(data) {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(data));
+}
+
+function getInitials(first, last) {
+  const f = (first || '').trim();
+  const l = (last || '').trim();
+  if (!f && !l) return '';
+  return ((f[0] || '') + (l[0] || '')).toUpperCase();
+}
+
+function updateHeaderAvatar() {
+  const profile = getProfile();
+  const initialsEl = $('profile-avatar-initials');
+  const imgEl = $('profile-avatar-img');
+  if (!initialsEl || !imgEl) return;
+
+  if (profile.photo) {
+    imgEl.src = profile.photo;
+    imgEl.style.display = 'block';
+    initialsEl.style.display = 'none';
+  } else {
+    imgEl.style.display = 'none';
+    initialsEl.style.display = '';
+    const initials = getInitials(profile.firstName, profile.lastName);
+    if (initials) {
+      initialsEl.textContent = initials;
+      initialsEl.classList.add('has-name');
+    } else {
+      initialsEl.textContent = '👤';
+      initialsEl.classList.remove('has-name');
+    }
+  }
+}
+
+function openProfilePopup() {
+  const modal = $('modal-profile');
+  if (!modal) return;
+
+  const profile = getProfile();
+
+  // Populate fields
+  const nombreInput = $('profile-nombre');
+  const apellidoInput = $('profile-apellido');
+  if (nombreInput) nombreInput.value = profile.firstName || '';
+  if (apellidoInput) apellidoInput.value = profile.lastName || '';
+
+  // Photo state
+  const placeholder = $('profile-photo-placeholder');
+  const preview = $('profile-photo-preview');
+  const previewImg = $('profile-photo-img');
+  let pendingPhoto = profile.photo || null;
+
+  if (pendingPhoto) {
+    previewImg.src = pendingPhoto;
+    preview.style.display = 'flex';
+    placeholder.style.display = 'none';
+  } else {
+    preview.style.display = 'none';
+    placeholder.style.display = 'flex';
+  }
+
+  // Show modal
+  modal.style.display = '';
+
+  // ── Photo upload handlers (set up once, then clean up) ──
+  const dropzone = $('profile-photo-dropzone');
+  const fileInput = $('profile-photo-input');
+  const removeBtn = $('btn-remove-profile-photo');
+
+  function showPhotoPreview(dataURL) {
+    pendingPhoto = dataURL;
+    previewImg.src = dataURL;
+    preview.style.display = 'flex';
+    placeholder.style.display = 'none';
+  }
+  function clearPhotoPreview() {
+    pendingPhoto = null;
+    previewImg.src = '';
+    preview.style.display = 'none';
+    placeholder.style.display = 'flex';
+  }
+
+  async function handleFile(file) {
+    if (!file || !file.type.startsWith('image/')) { showToast('Solo se aceptan imágenes', 'error'); return; }
+    if (file.size > 2 * 1024 * 1024) { showToast('Imagen muy grande (máx 2MB)', 'error'); return; }
+    try {
+      const dataURL = await resizeImageToDataURL(file, 256);
+      showPhotoPreview(dataURL);
+    } catch(e) { showToast('Error al procesar imagen', 'error'); }
+  }
+
+  const onDropzoneClick = (e) => {
+    if (e.target === fileInput) return;
+    if (e.target.closest('#btn-remove-profile-photo')) return;
+    fileInput.click();
+  };
+  const onFileChange = () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); };
+  const onDragOver = (e) => { e.preventDefault(); dropzone.classList.add('dragover'); };
+  const onDragLeave = () => { dropzone.classList.remove('dragover'); };
+  const onDrop = (e) => {
+    e.preventDefault(); dropzone.classList.remove('dragover');
+    handleFile(e.dataTransfer.files[0]);
+  };
+  const onRemove = (e) => { e.stopPropagation(); clearPhotoPreview(); };
+
+  dropzone.addEventListener('click', onDropzoneClick);
+  fileInput.addEventListener('change', onFileChange);
+  dropzone.addEventListener('dragover', onDragOver);
+  dropzone.addEventListener('dragleave', onDragLeave);
+  dropzone.addEventListener('drop', onDrop);
+  if (removeBtn) removeBtn.addEventListener('click', onRemove);
+
+  // ── Close/Save handlers ──
+  function closeModal() {
+    modal.style.display = 'none';
+    // Clean up event listeners
+    dropzone.removeEventListener('click', onDropzoneClick);
+    fileInput.removeEventListener('change', onFileChange);
+    dropzone.removeEventListener('dragover', onDragOver);
+    dropzone.removeEventListener('dragleave', onDragLeave);
+    dropzone.removeEventListener('drop', onDrop);
+    if (removeBtn) removeBtn.removeEventListener('click', onRemove);
+    fileInput.value = '';
+  }
+
+  $('btn-close-profile').onclick = closeModal;
+  $('btn-cancel-profile').onclick = closeModal;
+  modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+
+  $('btn-save-profile').onclick = () => {
+    const firstName = (nombreInput?.value || '').trim();
+    const lastName = (apellidoInput?.value || '').trim();
+    saveProfile({ firstName, lastName, photo: pendingPhoto });
+    updateHeaderAvatar();
+    closeModal();
+    showToast('Perfil guardado', 'success');
+  };
+
+  // Focus first field
+  setTimeout(() => { if (nombreInput) nombreInput.focus(); }, 150);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateHeaderAvatar();
+  const openBtn = $('btn-open-profile');
+  if (openBtn) openBtn.addEventListener('click', openProfilePopup);
 });
