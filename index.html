@@ -61,13 +61,16 @@
           </div>
           <button class="btn-primary" id="btn-create-empresa">+ Nueva Empresa</button>
         </div>
+        <!-- Global Consolidated Summary -->
+        <div id="bw2-global-summary" class="bw2-global-summary" style="display:none"></div>
         <div id="bw2-empresas-grid" class="bw2-empresas-grid"></div>
       </div>
     </section>
 
     <!-- ═══ PORTFOLIO VIEW ═══ -->
     <section id="view-portfolio">
-      <div class="view-header"><h2 id="portfolio-title">Sucursales del Proyecto</h2><p>Haz clic en 📊 <strong>Ver</strong> para explorar los detalles de cada sucursal</p></div>
+      <div id="portfolio-summary" class="bw2-global-summary" style="display:none;margin-bottom:0.75rem"></div>
+      <div class="view-header"><h2 id="portfolio-title">Sucursales de Proyecto</h2><p>Haz clic en 📊 <strong>Ver</strong> para explorar los detalles de cada sucursal</p></div>
       <div class="portfolio-grid" id="portfolio-grid"></div>
     </section>
 
@@ -192,7 +195,7 @@
         <div class="edit-layout-toolbar" id="toolbar-branch-resultados" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:1rem">
              <span style="font-weight:600">Modo Edición:</span>
-             <span style="font-size:0.85rem;color:var(--text-2)">Arrastra las tarjetas para reordenarlas. Usa las flechas (← →) para ajustar su tamaño.</span>
+             <span style="font-size:0.85rem;color:var(--text-2)">Arrastra las tarjetas para reordenarlas. Usa ← → para ancho y ↑ ↓ para alto.</span>
           </div>
           <div style="display:flex;gap:0.5rem">
              <button class="btn-sm primary btn-save-layout" data-target="branch-resultados">Guardar Layout</button>

@@ -379,6 +379,9 @@ function renderBW2Home(){
   const empresas = getEmpresas();
   const ws = getWorkspace();
 
+  // Global consolidated summary
+  renderGlobalSummary(empresas);
+
   if(!empresas.length){
     container.innerHTML='<div class="bw2-empty"><p>No hay empresas registradas.</p><p>Crea tu primera empresa para comenzar.</p></div>';
     bindBW2Events();
@@ -1428,6 +1431,165 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
 });
 
+/* ═══ WIDGET EDIT MODE SYSTEM ═══ */
+(function initWidgetEditMode(){
+  const COL_SIZES = [2,3,4,6,8,12];
+  const ROW_SIZES = [1,2,3];
+
+  function getColSpan(w){ for(const s of [...COL_SIZES].reverse()) if(w.classList.contains('wg-'+s)) return s; return 6; }
+  function getRowSpan(w){ for(const s of [...ROW_SIZES].reverse()) if(w.classList.contains('wg-h'+s)) return s; return 1; }
+  function setColSpan(w,s){ COL_SIZES.forEach(c=>w.classList.remove('wg-'+c)); w.classList.add('wg-'+s); }
+  function setRowSpan(w,s){ ROW_SIZES.forEach(r=>w.classList.remove('wg-h'+r)); if(s>1) w.classList.add('wg-h'+s); }
+  function nextSize(arr,cur,dir){ const i=arr.indexOf(cur); const ni=i+dir; return ni>=0&&ni<arr.length?arr[ni]:cur; }
+
+  function addOverlays(grid){
+    grid.querySelectorAll('.widget[data-widget-id]').forEach(w=>{
+      if(w.querySelector('.widget-edit-overlay')) return;
+      const cs=getColSpan(w), rs=getRowSpan(w);
+
+      const ov=document.createElement('div');
+      ov.className='widget-edit-overlay';
+      ov.innerHTML=`
+        <button class="widget-control-btn" data-action="col-down" title="← Más angosto">←</button>
+        <button class="widget-control-btn" data-action="col-up" title="→ Más ancho">→</button>
+        <button class="widget-control-btn" data-action="row-down" title="↑ Menos alto">↑</button>
+        <button class="widget-control-btn" data-action="row-up" title="↓ Más alto">↓</button>
+      `;
+      w.appendChild(ov);
+
+      // Size badge
+      const badge=document.createElement('span');
+      badge.className='widget-resize-badge';
+      badge.textContent=cs+'×'+rs;
+      w.appendChild(badge);
+
+      // Click handlers
+      ov.querySelectorAll('.widget-control-btn').forEach(btn=>{
+        btn.addEventListener('click',e=>{
+          e.stopPropagation();
+          const action=btn.dataset.action;
+          let c=getColSpan(w), r=getRowSpan(w);
+          if(action==='col-up') c=nextSize(COL_SIZES,c,1);
+          else if(action==='col-down') c=nextSize(COL_SIZES,c,-1);
+          else if(action==='row-up') r=nextSize(ROW_SIZES,r,1);
+          else if(action==='row-down') r=nextSize(ROW_SIZES,r,-1);
+          setColSpan(w,c); setRowSpan(w,r);
+          badge.textContent=c+'×'+r;
+        });
+      });
+
+      // Drag-and-drop
+      w.setAttribute('draggable','true');
+      w.addEventListener('dragstart',e=>{
+        e.dataTransfer.setData('text/plain',w.dataset.widgetId);
+        w.classList.add('widget-dragging');
+        setTimeout(()=>w.style.opacity='0.4',0);
+      });
+      w.addEventListener('dragend',()=>{
+        w.classList.remove('widget-dragging');
+        w.style.opacity='';
+      });
+      w.addEventListener('dragover',e=>{e.preventDefault();w.classList.add('widget-drag-over');});
+      w.addEventListener('dragleave',()=>w.classList.remove('widget-drag-over'));
+      w.addEventListener('drop',e=>{
+        e.preventDefault();
+        w.classList.remove('widget-drag-over');
+        const srcId=e.dataTransfer.getData('text/plain');
+        const src=grid.querySelector(`[data-widget-id="${srcId}"]`);
+        if(src&&src!==w){
+          const rect=w.getBoundingClientRect();
+          const midY=rect.top+rect.height/2;
+          if(e.clientY<midY) grid.insertBefore(src,w);
+          else grid.insertBefore(src,w.nextSibling);
+        }
+      });
+    });
+  }
+
+  function removeOverlays(grid){
+    grid.querySelectorAll('.widget-edit-overlay').forEach(o=>o.remove());
+    grid.querySelectorAll('.widget-resize-badge').forEach(b=>b.remove());
+    grid.querySelectorAll('.widget[draggable]').forEach(w=>{w.removeAttribute('draggable');w.style.opacity='';});
+  }
+
+  function saveLayout(gridId){
+    const grid=document.getElementById(gridId);
+    if(!grid) return;
+    const layout=[];
+    grid.querySelectorAll('.widget[data-widget-id]').forEach((w,i)=>{
+      layout.push({id:w.dataset.widgetId,col:getColSpan(w),row:getRowSpan(w),order:i});
+    });
+    try{localStorage.setItem('bw2_layout_'+gridId,JSON.stringify(layout));}catch(e){}
+  }
+
+  function restoreLayout(gridId){
+    const grid=document.getElementById(gridId);
+    if(!grid) return;
+    let layout;
+    try{layout=JSON.parse(localStorage.getItem('bw2_layout_'+gridId));}catch(e){return;}
+    if(!layout||!Array.isArray(layout)) return;
+    const widgets=Array.from(grid.querySelectorAll('.widget[data-widget-id]'));
+    const map=Object.fromEntries(widgets.map(w=>[w.dataset.widgetId,w]));
+    // Apply sizes
+    layout.forEach(item=>{
+      const w=map[item.id];
+      if(w){setColSpan(w,item.col);setRowSpan(w,item.row);}
+    });
+    // Apply order
+    layout.sort((a,b)=>a.order-b.order).forEach(item=>{
+      const w=map[item.id];
+      if(w) grid.appendChild(w);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    // Toggle edit mode on all grids
+    document.addEventListener('click',e=>{
+      const editBtn=e.target.closest('.btn-edit-layout');
+      if(!editBtn) return;
+      const targetId=editBtn.dataset.target;
+      const gridId=targetId+'-grid';
+      const grid=document.getElementById(gridId);
+      const toolbar=document.getElementById('toolbar-'+targetId);
+      if(!grid) return;
+
+      const panel=grid.closest('.branch-tab-panel')||document.body;
+      const isEditing=panel.classList.contains('dashboard-edit-mode');
+
+      if(!isEditing){
+        panel.classList.add('dashboard-edit-mode');
+        if(toolbar) toolbar.style.display='flex';
+        addOverlays(grid);
+        editBtn.innerHTML='<span style="font-size:0.8rem">💾</span> Guardar';
+        editBtn.style.background='var(--accent)';editBtn.style.color='#fff';
+      } else {
+        panel.classList.remove('dashboard-edit-mode');
+        if(toolbar) toolbar.style.display='none';
+        removeOverlays(grid);
+        saveLayout(gridId);
+        editBtn.innerHTML='<span style="font-size:0.8rem">✨</span> Editar Layout';
+        editBtn.style.background='var(--surface)';editBtn.style.color='var(--text-2)';
+        if(typeof showToast==='function') showToast('✅ Layout guardado','success');
+      }
+    });
+
+    // Save button in toolbar
+    document.addEventListener('click',e=>{
+      const saveBtn=e.target.closest('.btn-save-layout');
+      if(!saveBtn) return;
+      const targetId=saveBtn.dataset.target;
+      const gridId=targetId+'-grid';
+      saveLayout(gridId);
+      // Exit edit mode
+      const editBtn=document.querySelector(`.btn-edit-layout[data-target="${targetId}"]`);
+      if(editBtn) editBtn.click();
+    });
+
+    // Restore saved layouts
+    ['branch-resultados-grid'].forEach(id=>restoreLayout(id));
+  });
+})();
+
 function updateBranchKPIBar(r){
   const be=r.breakEvenPctCapacity, net=r.perPartnerMonthly[0]?.monthlyIncome||0;
   const pm=r.paybackMetrics;
@@ -1523,26 +1685,27 @@ function updateBranchKPIBar(r){
     </svg>`;
   }
 
-  // 4) ROI circular gauge
+  // 4) ROI circular gauge — large, prominent
   const roiEl = $('kpi-roi-gauge');
   if(roiEl) {
     const roi = r.roi12 || 0;
     const roiClamped = Math.min(Math.max(roi, -50), 100);
-    const pct = (roiClamped + 50) / 150; // normalize -50..100 to 0..1
-    const R = 36, cx = 42, cy = 42, sw = 6;
+    const pct = (roiClamped + 50) / 150;
+    const R = 40, cx = 48, cy = 48, sw = 7;
     const circ = 2 * Math.PI * R;
-    const arcLen = circ * 0.75; // 270 degrees
+    const arcLen = circ * 0.75;
     const filled = arcLen * pct;
     const color = roi > 20 ? '#34d399' : roi > 0 ? '#fbbf24' : '#f87171';
+    const glow = roi > 20 ? 'rgba(52,211,153,0.3)' : roi > 0 ? 'rgba(251,191,36,0.3)' : 'rgba(248,113,113,0.3)';
     roiEl.innerHTML = `
-      <svg width="84" height="76" viewBox="0 0 84 76">
+      <svg width="96" height="86" viewBox="0 0 96 86">
         <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface-alt)" stroke-width="${sw}"
           stroke-dasharray="${arcLen} ${circ}" stroke-linecap="round"
           transform="rotate(135,${cx},${cy})"/>
         <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${color}" stroke-width="${sw}"
           stroke-dasharray="${filled} ${circ}" stroke-linecap="round"
           transform="rotate(135,${cx},${cy})"
-          style="transition:stroke-dasharray 0.8s ease"/>
+          style="transition:stroke-dasharray 1s cubic-bezier(0.2,0.8,0.2,1);filter:drop-shadow(0 0 6px ${glow})"/>
       </svg>
       <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-55%);text-align:center">
         <span class="kpi-gauge-value" style="color:${color}">${roi.toFixed(1)}%</span>
