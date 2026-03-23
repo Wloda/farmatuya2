@@ -134,7 +134,7 @@ const KPI_TIPS = {
   'Recuperación': 'Meses estimados para recuperar la inversión total. Menor es mejor. Óptimo: <24 meses.',
   'Score': 'Puntuación de viabilidad 0-100. Combina payback, ROI, EBITDA y riesgo. ≥ 80 = Excelente.',
   'Capital Total': 'Suma del capital de todos los proyectos en esta empresa.',
-  'Comprometido': 'Capital ya asignado a inversiones en sucursales activas y planificadas.',
+  'Inv. Prop.': 'Inversión total de sucursales × % de participación del socio. Si excede su capital, necesita más fondos.',
   'Capital Libre': 'Capital disponible para nuevas inversiones. Debe ser > 20% del total.',
   'ROI 12m': 'Retorno sobre inversión en los primeros 12 meses. Positivo = ganancia en año 1.',
   'ROI 36m': 'Retorno acumulado a 3 años. > 60% se considera bueno.',
@@ -2397,13 +2397,15 @@ function renderBranchEditPanel(branch, model) {
   if (fcEl) {
     const nomina = fc.payroll ?? defFC.payroll;
     const cargaSocial = fc.socialCharge ?? defFC.socialCharge ?? (nomina * 0.30);
+    const cargaPct = nomina > 0 ? (cargaSocial / nomina) * 100 : 30;
+    const defCargaPct = defFC.payroll > 0 ? ((defFC.socialCharge ?? defFC.payroll * 0.30) / defFC.payroll) * 100 : 30;
     fcEl.innerHTML = [
-      editField('Renta', 'fc.rent', fc.rent ?? defFC.rent, defFC.rent, 1000, '$', undefined, undefined, 'Costo mensual del local comercial (sin IVA)'),
+      editField('Renta', 'fc.rent', fc.rent ?? defFC.rent, defFC.rent, 1000, '$', undefined, undefined, 'Costo mensual del local comercial (PDF indica +/- 25% según zona)'),
       editField('Nómina', 'fc.payroll', nomina, defFC.payroll, 1000, '$', undefined, undefined, 'Sueldo bruto total del personal (incluye farmacéutico, cajero, repartidor)'),
-      readonlyField('Carga Social', cargaSocial, '$', '= Nómina × 30%', 'IMSS, Infonavit, ISN y prestaciones del personal'),
+      editField('Carga Social (%)', 'fc.socialChargePct', cargaPct, defCargaPct, 0.5, '%', 5, 50, 'PDF doc. = ' + defCargaPct.toFixed(1) + '%. Estándar MX (IMSS+SAR+Infonavit+ISN): 28-35%. Ajustar según régimen real.'),
       editField('Sistemas', 'fc.systems', fc.systems ?? defFC.systems, defFC.systems, 100, '$', undefined, undefined, 'Software POS, inventarios, sistema de facturación y licencias'),
       editField('Contabilidad', 'fc.accounting', fc.accounting ?? defFC.accounting, defFC.accounting, 100, '$', undefined, undefined, 'Honorarios del contador externo o servicio contable'),
-      editField('Serv/Papelería (M3+)', 'fc.servPapM3', fc.servPap?.m3 ?? defFC.servPap.m3, defFC.servPap.m3, 500, '$', undefined, undefined, 'Luz, agua, limpieza, papelería y servicios generales a partir del mes 3'),
+      editField('Serv/Papelería (M3+)', 'fc.servPapM3', fc.servPap?.m3 ?? defFC.servPap.m3, defFC.servPap.m3, 500, '$', undefined, undefined, 'Luz, agua, limpieza, papelería y servicios generales a partir del mes 3 (M1=50%, M2=75% automático)'),
     ].join('');
   }
 
@@ -2415,15 +2417,16 @@ function renderBranchEditPanel(branch, model) {
     const isFranchise = proj?.isFranchise !== false;
 
     let fields = [
-      editField('COGS (Inventario)', 'vc.cogs', (vc.cogs ?? defVC.cogs) * 100, defVC.cogs * 100, 0.5, '%', 40, 80, 'Costo de la mercancía vendida como % de las ventas. ≈59% para farmacia'),
+      editField('COGS (Inventario)', 'vc.cogs', (vc.cogs ?? defVC.cogs) * 100, defVC.cogs * 100, 0.5, '%', 40, 80, 'Costo de la mercancía vendida como % de las ventas. ≈59-65% para farmacia'),
       editField('Comisión Venta', 'vc.comVenta', (vc.comVenta ?? defVC.comVenta) * 100, defVC.comVenta * 100, 0.1, '%', 0, 10, 'Comisión pagada al equipo de ventas sobre ingresos'),
       editField('Merma', 'vc.merma', (vc.merma ?? defVC.merma) * 100, defVC.merma * 100, 0.1, '%', 0, 5, 'Pérdida por caducidad, robo o daño del inventario'),
-      editField('Publicidad', 'vc.pubDir', (vc.pubDir ?? defVC.pubDir) * 100, defVC.pubDir * 100, 0.5, '%', 0, 10, 'Marketing digital, volanteo, señalización y promociones')
+      editField('Publicidad Directa', 'vc.pubDir', (vc.pubDir ?? defVC.pubDir) * 100, defVC.pubDir * 100, 0.5, '%', 0, 10, 'Marketing local en zona: volanteo, señalización, promociones')
     ];
     if (isFranchise) {
-      fields.push(editField('Regalía', 'vc.regalia', (vc.regalia ?? defVC.regalia) * 100, defVC.regalia * 100, 0.1, '%', 0, 10, 'Pago mensual a la franquicia por uso de marca (% sobre ventas)'));
+      fields.push(editField('Regalía FT', 'vc.regalia', (vc.regalia ?? defVC.regalia) * 100, defVC.regalia * 100, 0.1, '%', 0, 10, 'Regalías y publicidad corporativa FarmaTuya (% sobre ventas)'));
     }
     fields.push(editField('Bancario', 'vc.bancario', (vc.bancario ?? defVC.bancario) * 100, defVC.bancario * 100, 0.1, '%', 0, 5, 'Comisión por pagos con tarjeta (terminal bancaria)'));
+    fields.push(editField('Omisiones y Errores', 'vc.omisiones', ((vc.omisiones ?? defVC.omisiones) || 0) * 100, (defVC.omisiones || 0) * 100, 0.1, '%', 0, 5, 'Faltantes de caja, errores administrativos, diferencias de inventario'));
     
     vcEl.innerHTML = fields.join('');
   }
@@ -2558,6 +2561,13 @@ function applyEditField(branchId, key, val) {
   } else if (key.startsWith('fc.')) {
     const fcKey = key.split('.')[1];
     ov.fixedCosts = { ...(ov.fixedCosts || {}), [fcKey]: val };
+    // Handle socialChargePct: convert % to dollar amount using current payroll
+    if (fcKey === 'socialChargePct') {
+      const model = MODELS[branch.modelId];
+      const payroll = ov.fixedCosts?.payroll ?? model?.fixedCosts?.payroll ?? 18510.52;
+      ov.fixedCosts.socialCharge = payroll * (val / 100);
+      delete ov.fixedCosts.socialChargePct;
+    }
     // Handle servPap specially
     if (fcKey === 'servPapM3') {
       const sp = ov.fixedCosts.servPap || { m1: 0, m2: 0, m3: 0 };
@@ -3049,7 +3059,8 @@ function renderConsolidated(empresa){
   }
 
   // Partner table (compact horizontal)
-  $('consol-partners').innerHTML=`<table class="data-table partner-table"><thead><tr><th>Socio</th><th class="num">Capital</th><th class="num">Part.</th><th class="num">Comprometido</th><th class="num">Ret./mes</th><th class="num">Ret. 5A</th><th class="num">ROI 5A</th></tr></thead><tbody>${consol.perPartner.map(pp=>`<tr><td><strong>👤 ${pp.name}</strong></td><td class="num">${fm(pp.capital)}</td><td class="num">${fmt.pi(pp.equity)}</td><td class="num">${fm(pp.capitalCommitted)}</td><td class="num" style="color:${pp.monthlyReturn>=0?'var(--sem-positive)':'var(--sem-negative)'}">${fm(pp.monthlyReturn)}</td><td class="num">${fm(pp.totalReturn60)}</td><td class="num">${pp.roi60.toFixed(1)}%</td></tr>`).join('')}</tbody></table>`;
+  $('consol-partners').innerHTML=`<table class="data-table partner-table"><thead><tr><th>Socio</th><th class="num">Capital</th><th class="num">Part.</th><th class="num" title="Inversión total de sucursales × % participación del socio">Inv. Prop.</th><th class="num">Ret./mes</th><th class="num">Ret. 5A</th><th class="num">ROI 5A</th></tr></thead><tbody>${consol.perPartner.map(pp=>{const over=pp.capitalCommitted>pp.capital;return`<tr><td><strong>👤 ${pp.name}</strong></td><td class="num">${fm(pp.capital)}</td><td class="num">${fmt.pi(pp.equity)}</td><td class="num" ${over?'style="color:var(--sem-warning)"':''}>${fm(pp.capitalCommitted)}${over?' ⚠':''}
+</td><td class="num" style="color:${pp.monthlyReturn>=0?'var(--sem-positive)':'var(--sem-negative)'}">${fm(pp.monthlyReturn)}</td><td class="num">${fm(pp.totalReturn60)}</td><td class="num">${pp.roi60.toFixed(1)}%</td></tr>`}).join('')}</tbody></table>`;
 
   // Branch breakdown table
   $('consol-branch-table').innerHTML=`<table class="data-table"><thead><tr><th>Sucursal</th><th>Formato</th><th>Colonia</th><th class="num">Inversión</th><th class="num">EBITDA</th><th class="num">PB Simple</th><th class="num">Score</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody>${consol.branchResults.map(({branch:b,result:r})=>{
@@ -3177,7 +3188,7 @@ function renderPartnersTable(partners, consol){
 
   container.innerHTML = `<div class="socios-table-wrap"><table class="data-table socios-table"><thead><tr>
     <th>Nombre</th><th class="num">Capital</th><th class="num">%</th>
-    <th class="num" title="Capital invertido en sucursales activas">Comprometido</th><th class="num" title="Lo que gana cada socio al mes">Ganancia/mes</th><th class="num" title="Retorno en 5 años por cada peso invertido">Retorno 5A</th><th class="num" title="Meses para recuperar la inversión">Recuperación</th><th></th>
+    <th class="num" title="Inversión total × % participación del socio">Inv. Prop.</th><th class="num" title="Lo que gana cada socio al mes">Ganancia/mes</th><th class="num" title="Retorno en 5 años por cada peso invertido">Retorno 5A</th><th class="num" title="Meses para recuperar la inversión">Recuperación</th><th></th>
   </tr></thead><tbody>${partners.map(p => {
     const pp = ppMap[p.id] || {};
     const retColor = (pp.monthlyReturn || 0) >= 0 ? 'var(--green)' : 'var(--red)';
@@ -3329,8 +3340,8 @@ const GLOSSARY = [
   {cat:'🏪 Operación',term:'Comisión sobre Venta',def:'Porcentaje de ventas destinado a pagar comisiones al personal de mostrador.',where:'Costos variables'},
   {cat:'🏪 Operación',term:'Regalía',def:'Porcentaje que se paga a la franquicia por usar la marca. Solo aplica al modelo Súper (2.5%).',where:'Config de branch'},
   {cat:'🏢 Estructura',term:'Capital Total',def:'Todo el dinero disponible de la sociedad para invertir en sucursales.',where:'Header y Empresa'},
-  {cat:'🏢 Estructura',term:'Capital Comprometido',def:'La suma de las inversiones de todas las sucursales activas y planeadas.',where:'Header'},
-  {cat:'🏢 Estructura',term:'Capital Libre',def:'Capital Total menos el Comprometido. Si es negativo (rojo), la empresa necesita más fondos.',where:'Header'},
+  {cat:'🏢 Estructura',term:'Inv. Proporcional',def:'Inversión total de todas las sucursales × % de participación de cada socio. Muestra cuánto le corresponde cubrir.',where:'Tabla de Socios'},
+  {cat:'🏢 Estructura',term:'Capital Libre',def:'Capital Total menos la Inv. Proporcional. Si es negativo (rojo), la empresa necesita más fondos.',where:'Header'},
   {cat:'🏢 Estructura',term:'Reserva Corporativa',def:'Dinero apartado para imprevistos o gastos corporativos que no se asigna a sucursales.',where:'Empresa settings'},
   {cat:'🏢 Estructura',term:'Participación (%)',def:'El porcentaje de la empresa que le corresponde a cada socio. Determina reparto de utilidades.',where:'Consolidado, Empresa'},
   {cat:'🔬 Riesgo',term:'Score de Viabilidad',def:'Calificación de 0-100 que resume qué tan viable es la sucursal. 60+ es VIABLE, 40-59 es FRÁGIL, <40 NO VIABLE.',where:'Cards, gauge'},

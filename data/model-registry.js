@@ -77,17 +77,18 @@ export const MODELS = {
       socialChargeNote: 'Valor del PDF documentado = $2,279 (12.3% de nómina). El estándar IMSS+SAR+Infonavit+ISN es 28-35% ($5,553). Diferencia: $3,275/mes. Verificar si aplica régimen de subcontratación o salarios mínimos.',
       socialChargeStandard: 5553.16, // 30% reference for comparison
       servPap: { m1: 3700.50, m2: 5550.75, m3: 7401.00 },
-      omissions: { m1: 571.64, m2: 603.65, m3: 603.65 },
-      totalDocumented: { m1: 53432.68, m2: 55282.93, m3: 57090.20 },
-      totalReconciled: 57090.20,
+      omissions: { m1: 0, m2: 0, m3: 0 }, // Moved to variableCosts as 1% (per PDF)
+      totalDocumented: { m1: 52861.04, m2: 54679.28, m3: 56486.55 }, // Excludes omissions (now variable)
+      totalReconciled: 56486.55,
       auditStatus: 'RECONCILED',
-      auditNote: 'socialCharge uses PDF documented value $2,279 (not 30% = $5,553). Matches PDF Resumen (3).pdf page 2.'
+      auditNote: 'Omisiones y Errores reclasificado de gasto fijo → variable 1% (como indica PDF). socialCharge uses PDF documented value $2,279.'
     },
 
     variableCosts: {
       cogs: 0.65, comVenta: 0.01, merma: 0.003, pubDir: 0.02,
       regalia: 0.025, bancario: 0.0057,
-      cvTotal: 0.7137, mc: 0.2863
+      omisiones: 0.01, // 1% de ventas — "Omisiones y Errores" en PDF original
+      cvTotal: 0.7237, mc: 0.2763 // Incluye omisiones 1%
     },
 
     sales: {

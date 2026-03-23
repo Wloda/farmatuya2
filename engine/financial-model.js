@@ -47,6 +47,8 @@ export function calcFixedCostBreakdown(fc) {
 /* ── Variable Cost Rate ── */
 export function calcVarRate(vc, royaltyMode, month) {
   let r = vc.cogs + vc.comVenta + vc.merma + vc.pubDir + vc.bancario;
+  // Omisiones y Errores: 1% of sales in documented Súper format (variable, not fixed)
+  r += (vc.omisiones || 0);
   if (!royaltyMode || royaltyMode==='variable_2_5') r += vc.regalia;
   else if (royaltyMode==='condonacion_6m' && month>6) r += vc.regalia;
   // pago_unico: no royalty added
