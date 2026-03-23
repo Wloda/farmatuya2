@@ -2389,14 +2389,13 @@ function updateBranchKPIBar(r){
     const roi = r.roi12 || 0;
     const roiClamped = Math.min(Math.max(roi, -50), 100);
     const pct = (roiClamped + 50) / 150;
-    const R = 26, cx = 36, cy = 34, sw = 5;
+    const R = 36, cx = 48, cy = 46, sw = 6;
     const circ = 2 * Math.PI * R;
     const arcLen = circ * 0.75;
     const filled = arcLen * pct;
     const color = roi > 20 ? '#34d399' : roi > 0 ? '#fbbf24' : '#f87171';
-    const glow = roi > 20 ? 'rgba(52,211,153,0.3)' : roi > 0 ? 'rgba(251,191,36,0.3)' : 'rgba(248,113,113,0.3)';
     roiEl.innerHTML = `
-      <svg width="72" height="66" viewBox="0 0 72 66" style="display:block;margin:0 auto">
+      <svg width="96" height="88" viewBox="0 0 96 88" style="display:block;margin:0 auto">
         <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface-alt)" stroke-width="${sw}"
           stroke-dasharray="${arcLen} ${circ}" stroke-linecap="round"
           transform="rotate(135,${cx},${cy})"/>
@@ -2404,11 +2403,12 @@ function updateBranchKPIBar(r){
           stroke-dasharray="${filled} ${circ}" stroke-linecap="round"
           transform="rotate(135,${cx},${cy})"
           style="transition:stroke-dasharray 0.8s ease"/>
-      </svg>
-      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-55%);text-align:center">
-        <span class="kpi-gauge-value" style="color:${color}">${roi.toFixed(1)}%</span>
-        <span class="kpi-gauge-label">12 meses</span>
-      </div>`;
+        <text x="${cx}" y="${cy - 2}" text-anchor="middle" dominant-baseline="central"
+          font-size="16" font-weight="900" fill="${color}" font-family="Inter,sans-serif">${roi.toFixed(1)}%</text>
+        <text x="${cx}" y="${cy + 14}" text-anchor="middle"
+          font-size="7" font-weight="800" fill="var(--text-3)" font-family="Inter,sans-serif"
+          text-transform="uppercase" letter-spacing="0.5">12 MESES</text>
+      </svg>`;
     roiEl.style.position = 'relative';
   }
 

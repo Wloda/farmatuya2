@@ -2109,7 +2109,7 @@ body:has(#app-header){padding-top:50px}
 .kpi-gauge-wrap{
   display:flex;flex-direction:column;align-items:center;
   justify-content:center;flex:1;position:relative;
-  min-height:56px;overflow:hidden;
+  min-height:80px;
 }
 .kpi-gauge-wrap svg{filter:drop-shadow(0 1px 4px rgba(0,0,0,0.06));max-width:100%}
 .kpi-gauge-value{
