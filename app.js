@@ -280,6 +280,9 @@ function computeAggregate(branches, empresa) {
 /* ── Global Escape key handler for modals ── */
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
+  // Close command palette first
+  const cp = document.querySelector('.cmd-palette-overlay');
+  if (cp) { cp.remove(); return; }
   // Close dynamically-created modal overlays
   const overlay = document.querySelector('.bw2-modal-overlay');
   if (overlay) { overlay.remove(); return; }
@@ -290,6 +293,160 @@ document.addEventListener('keydown', (e) => {
       m.style.display = 'none';
     }
   });
+});
+
+/* ── Score ring gauge SVG helper ── */
+function scoreRing(score, size=48) {
+  const r = (size/2) - 4;
+  const circ = 2 * Math.PI * r;
+  const pct = Math.min(100, Math.max(0, score)) / 100;
+  const offset = circ * (1 - pct);
+  const color = score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--yellow)' : 'var(--red)';
+  return `<div class="score-ring" style="width:${size}px;height:${size}px">
+    <svg viewBox="0 0 ${size} ${size}"><circle class="ring-bg" cx="${size/2}" cy="${size/2}" r="${r}" stroke-dasharray="${circ}" stroke-dashoffset="0"/><circle class="ring-fg" cx="${size/2}" cy="${size/2}" r="${r}" stroke="${color}" stroke-dasharray="${circ}" stroke-dashoffset="${offset}"/></svg>
+    <span class="ring-label">${score}</span>
+  </div>`;
+}
+
+/* ── Sparkline SVG helper ── */
+function sparklineSVG(values, w=120, h=28) {
+  if (!values || values.length < 2) return '';
+  const max = Math.max(...values), min = Math.min(...values);
+  const range = max - min || 1;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * w;
+    const y = h - 2 - ((v - min) / range) * (h - 4);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const line = pts.join(' ');
+  const area = pts.join(' ') + ` ${w},${h} 0,${h}`;
+  const trend = values[values.length-1] >= values[0] ? 'var(--green)' : 'var(--red)';
+  return `<div class="sparkline-container"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <defs><linearGradient id="spG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${trend}" stop-opacity="0.3"/><stop offset="100%" stop-color="${trend}" stop-opacity="0"/></linearGradient></defs>
+    <polygon points="${area}" fill="url(#spG)"/>
+    <polyline points="${line}" fill="none" stroke="${trend}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg></div>`;
+}
+
+/* ── Smart alerts generator ── */
+function generateAlerts() {
+  const alerts = [];
+  const empresas = getEmpresas();
+  empresas.forEach(emp => {
+    (emp.proyectos||[]).forEach(proj => {
+      // Capital warning
+      const agg = computeAggregate(proj.branches||[], proj);
+      const free = (proj.totalCapital||0) - agg.totalInv;
+      if (proj.totalCapital > 0 && free / proj.totalCapital < 0.2) {
+        alerts.push({ type: 'warn', icon: '⚠️', text: `${esc(emp.name)}: Capital libre < 20%` });
+      }
+      // Negative EBITDA branches
+      (proj.branches||[]).forEach(b => {
+        if (b.status === 'archived') return;
+        try {
+          const r = runBranchProjection(b, proj);
+          if (r && r.avgMonthlyEBITDA < 0) {
+            alerts.push({ type: 'danger', icon: '📉', text: `${esc(b.name)}: EBITDA negativo` });
+          }
+          if (r && r.paybackMonth && r.paybackMonth <= 18) {
+            alerts.push({ type: 'success', icon: '🎯', text: `${esc(b.name)}: Payback < 18m — ¡Excelente!` });
+          }
+        } catch(e) {}
+      });
+    });
+  });
+  return alerts;
+}
+
+function renderAlertStrip(container) {
+  const alerts = generateAlerts();
+  if (!alerts.length) return;
+  const strip = document.createElement('div');
+  strip.className = 'alert-strip';
+  strip.innerHTML = alerts.slice(0, 6).map(a =>
+    `<span class="alert-chip ${a.type}">${a.icon} ${a.text}</span>`
+  ).join('');
+  container.prepend(strip);
+}
+
+/* ── Command Palette (⌘K quick navigation) ── */
+function openCommandPalette() {
+  if (document.querySelector('.cmd-palette-overlay')) return;
+  const empresas = getEmpresas();
+  // Build index of all navigable items
+  const items = [];
+  empresas.forEach(emp => {
+    items.push({ icon: '🏢', label: emp.name, path: 'Empresa', action: () => { setActiveEmpresa(emp.id); state.view = 'empresa'; renderCurrentView(); }});
+    (emp.proyectos||[]).forEach(proj => {
+      items.push({ icon: '📁', label: proj.name || proj.projectName || 'Proyecto', path: emp.name, action: () => { setActiveEmpresa(emp.id); setActiveProyecto(proj.id); state.view = 'proyecto'; renderCurrentView(); }});
+      (proj.branches||[]).forEach(b => {
+        items.push({ icon: '📍', label: b.name, path: `${emp.name} › ${proj.name||'Proyecto'}`, action: () => { setActiveEmpresa(emp.id); setActiveProyecto(proj.id); state.view = 'branch'; state.activeBranchId = b.id; state.activeTab = 'resultados'; renderCurrentView(); }});
+      });
+    });
+  });
+
+  const overlay = document.createElement('div');
+  overlay.className = 'cmd-palette-overlay';
+  overlay.innerHTML = `
+    <div class="cmd-palette">
+      <input class="cmd-palette-input" placeholder="Buscar empresa, proyecto o sucursal…" autofocus>
+      <div class="cmd-palette-results"></div>
+      <div class="cmd-palette-hint"><span><kbd>↑↓</kbd> Navegar</span><span><kbd>↵</kbd> Abrir</span><span><kbd>Esc</kbd> Cerrar</span></div>
+    </div>`;
+
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  const input = overlay.querySelector('.cmd-palette-input');
+  const results = overlay.querySelector('.cmd-palette-results');
+  let activeIdx = 0;
+  let filtered = items;
+
+  function renderResults() {
+    if (!filtered.length) {
+      results.innerHTML = '<div class="cmd-palette-empty">🔍 Sin resultados</div>';
+      return;
+    }
+    results.innerHTML = filtered.map((it, i) =>
+      `<div class="cmd-palette-item${i===activeIdx?' active':''}" data-idx="${i}">
+        <span class="cmd-icon">${it.icon}</span>
+        <span class="cmd-label">${esc(it.label)}</span>
+        <span class="cmd-path">${esc(it.path)}</span>
+      </div>`
+    ).join('');
+    results.querySelectorAll('.cmd-palette-item').forEach(el => {
+      el.addEventListener('click', () => { overlay.remove(); filtered[+el.dataset.idx].action(); });
+      el.addEventListener('mouseenter', () => { activeIdx = +el.dataset.idx; renderResults(); });
+    });
+    // Scroll active into view
+    const active = results.querySelector('.active');
+    if (active) active.scrollIntoView({ block: 'nearest' });
+  }
+
+  function filterItems() {
+    const q = input.value.toLowerCase().trim();
+    filtered = q ? items.filter(it => it.label.toLowerCase().includes(q) || it.path.toLowerCase().includes(q)) : items;
+    activeIdx = 0;
+    renderResults();
+  }
+
+  input.addEventListener('input', filterItems);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx+1, filtered.length-1); renderResults(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(activeIdx-1, 0); renderResults(); }
+    else if (e.key === 'Enter' && filtered[activeIdx]) { overlay.remove(); filtered[activeIdx].action(); }
+  });
+
+  renderResults();
+  input.focus();
+}
+
+// ⌘K / Ctrl+K shortcut
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    openCommandPalette();
+  }
 });
 
 let _suppressFullRender = false;
@@ -473,9 +630,15 @@ function renderBW2Home(){
   </div>`;
 
   if(!empresas.length){
-    h += `<div class="bw2-empty"><p>No hay empresas registradas.</p><p style="color:var(--text-3)">Crea tu primera empresa para comenzar.</p></div>`;
+    h += `<div class="empty-state">
+      <div class="empty-state-icon">🏢</div>
+      <div class="empty-state-title">Crea tu primera empresa</div>
+      <div class="empty-state-desc">Organiza tus inversiones en franquicias por empresa, proyecto y sucursal. Analiza viabilidad financiera, estudio de mercado y más.</div>
+      <button class="empty-state-cta" id="btn-empty-create">+ Crear Empresa</button>
+    </div>`;
     container.innerHTML = h;
     $('btn-create-empresa').onclick = ()=>showBW2Modal('crear-empresa');
+    $('btn-empty-create').onclick = ()=>showBW2Modal('crear-empresa');
     return;
   }
 
@@ -504,6 +667,21 @@ function renderBW2Home(){
       ? `<img src="${emp.logo}" alt="" style="width:28px;height:28px;border-radius:6px;object-fit:cover">`
       : '<span style="font-size:1.25rem">🏢</span>';
 
+    // Compute sparkline data (monthly EBITDA for last 12 months)
+    let sparkData = [];
+    (emp.proyectos||[]).forEach(proj => {
+      (proj.branches||[]).forEach(b => {
+        if (b.status === 'archived') return;
+        try {
+          const r = runBranchProjection(b, proj);
+          if (r && r.months) {
+            const last12 = r.months.slice(-12);
+            last12.forEach((m,i) => { sparkData[i] = (sparkData[i]||0) + (m.ebitda||0); });
+          }
+        } catch(e) {}
+      });
+    });
+
     h += `<div class="emp-dash-proj-card" data-emp-id="${emp.id}">
       <div class="emp-dash-proj-header">
         <div style="display:flex;align-items:center;gap:0.5rem">
@@ -521,8 +699,9 @@ function renderBW2Home(){
       <div class="emp-dash-proj-kpis">
         <div class="emp-dash-kpi"><span class="emp-dash-kpi-label">EBITDA/mes</span><span class="emp-dash-kpi-value" style="color:${ebitda>=0?'var(--accent)':'var(--red)'}">${fmt.m(ebitda)}</span></div>
         <div class="emp-dash-kpi"><span class="emp-dash-kpi-label">Recuperación</span><span class="emp-dash-kpi-value">${payback?payback+' m':'—'}</span></div>
-        <div class="emp-dash-kpi"><span class="emp-dash-kpi-label">Score</span><span class="emp-dash-kpi-value" style="color:${sc}">${aScore}/100</span></div>
+        <div class="emp-dash-kpi" style="display:flex;align-items:center;gap:0.4rem"><span class="emp-dash-kpi-label">Score</span>${scoreRing(aScore, 36)}</div>
       </div>
+      ${sparkData.length >= 2 ? sparklineSVG(sparkData) : ''}
       <div class="emp-dash-proj-footer">
         <div class="emp-dash-proj-meta-foot">${pCount} proyecto${pCount!==1?'s':''} · ${bCount} sucursal${bCount!==1?'es':''}</div>
         <button class="btn-open-empresa btn-compact-open" data-emp-id="${emp.id}">Abrir →</button>
@@ -538,6 +717,7 @@ function renderBW2Home(){
 
   container.innerHTML = h;
   bindBW2Events();
+  renderAlertStrip(container);
   const cardBtn = $('btn-create-empresa-card');
   if(cardBtn) cardBtn.onclick = ()=>showBW2Modal('crear-empresa');
 }
