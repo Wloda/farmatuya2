@@ -533,7 +533,7 @@ function updateEnterpriseHeader(empresa){
     <span class="ent-stat">Capital: ${fmt.m(empresa.totalCapital)}</span>
     <span class="ent-stat">Comprometido: ${fmt.m(consol.capitalCommitted)}</span>
     <span class="ent-stat ${consol.capitalFree<0?'danger':''}">Libre: ${fmt.m(consol.capitalFree)}</span>
-    <span class="ent-stat">Sucursales: ${consol.branchCountActive} activas</span>
+    <span class="ent-stat">Sucursales: ${consol.branchCount} (${consol.branchCountActive} activa${consol.branchCountActive!==1?'s':''}, ${consol.branchCountPlanned} plan.)</span>
     <span class="ent-stat"><span class="sem-dot ${scoreColor}"></span> Score: ${consol.avgScore}</span>`;
   // Update brand
   const brandName=$('header-brand-name');
@@ -1163,7 +1163,7 @@ function renderPortfolio(empresa){
 }
 
 // Global action handlers
-window._openBranch = (id)=>{ state.view='branch'; state.activeBranchId=id; state.activeTab='resultados'; state.branchOverrides={}; renderCurrentView(); };
+window._openBranch = (id)=>{ const b=getBranch(id); state.view='branch'; state.activeBranchId=id; state.activeTab=(b&&b.status==='active')?'resultados':'configuracion'; state.branchOverrides={}; renderCurrentView(); };
 window._activateBranch = (id)=>{ activateBranch(id); };
 window._restoreBranch = (id)=>{ restoreBranch(id); };
 
@@ -1649,6 +1649,19 @@ function renderBranchDetail(empresa){
   // Update branch header
   $('branch-detail-title').textContent=branch.name;
   $('branch-detail-subtitle').textContent=`${model.emoji} ${model.label} · ${sc.emoji} ${sc.label}`;
+
+  // Planning banner for non-active branches
+  const resBanner = document.querySelector('#btab-resultados .branch-status-banner');
+  if(resBanner) resBanner.remove();
+  if(branch.status !== 'active'){
+    const bannerDiv = document.createElement('div');
+    bannerDiv.className = 'branch-status-banner';
+    const statusEmoji = branch.status==='planned'?'📋':'📦';
+    const statusText = branch.status==='planned'?'Planeada — los resultados son proyecciones estimadas':'Archivada — resultados históricos';
+    bannerDiv.innerHTML = `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.625rem 1rem;background:var(--yellow-soft);border-radius:var(--r-md);margin-bottom:0.75rem;font-size:0.8125rem;font-weight:600;color:var(--text-1)">${statusEmoji} ${statusText}</div>`;
+    const resPanel = $('btab-resultados');
+    if(resPanel) resPanel.insertBefore(bannerDiv, resPanel.firstChild);
+  }
 
   // Colonia display (read-only)
   const coloniaDisp = $('colonia-display');
