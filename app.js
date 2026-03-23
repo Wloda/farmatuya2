@@ -2888,6 +2888,59 @@ function _renderLeafletMap(study, c, s) {
     setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 100);
     setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 400);
     setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 1000);
+
+    // ── Click-to-select location ──
+    locMap.getContainer().style.cursor = 'crosshair';
+    locMap.on('click', async (e) => {
+      if (!state.activeBranchId) return;
+      const { lat, lng } = e.latlng;
+      // Show temporary marker immediately
+      const tmpMarker = L.marker([lat, lng], {
+        icon: L.divIcon({ className: 'map-click-marker', html: '📍', iconSize: [24, 24], iconAnchor: [12, 24] })
+      }).addTo(locMap).bindPopup('⏳ Analizando...').openPopup();
+
+      const statusEl = $('loc-status');
+      const addrInput = $('loc-address-input');
+      if (statusEl) statusEl.innerHTML = '<span class="loc-loading">📍 Reverse geocoding → calculando scores...</span>';
+
+      try {
+        // Reverse geocode via Nominatim
+        const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&accept-language=es`, { headers: { 'User-Agent': 'BW2-Dashboard/1.0' } });
+        const data = await resp.json();
+        const addr = data.address || {};
+        const name = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city_district || data.display_name?.split(',')[0] || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        const full = data.display_name || name;
+
+        // Update input
+        if (addrInput) addrInput.value = name;
+
+        // Run study with pre-geocoded coords
+        _suppressFullRender = true;
+        updateBranch(state.activeBranchId, { colonia: name, coloniaFull: full });
+        _suppressFullRender = false;
+
+        const result = await runLocationStudy(name, { lat, lng, display_name: full, colonia: name, municipio: addr.city || addr.town || addr.state || '' });
+        updateBranchLocation(state.activeBranchId, result);
+
+        // Re-render
+        const freshBranch = getBranch(state.activeBranchId);
+        if (freshBranch) {
+          renderLocationResults(result);
+          renderMarketStudyPanel(freshBranch);
+          updateMarketIndicators(freshBranch);
+        }
+
+        if (result.errors?.length) {
+          if (statusEl) statusEl.innerHTML = '<span class="loc-warning">⚠️ Estudio parcial: ' + result.errors.map(e => e.error).join('; ') + '</span>';
+        } else {
+          if (statusEl) statusEl.innerHTML = '<span class="loc-success">✅ Estudio completo — ' + new Date(result.lastUpdated).toLocaleString('es-MX') + '</span>';
+        }
+      } catch (err) {
+        console.error('[BW2] Map click study error:', err);
+        if (statusEl) statusEl.innerHTML = '<span class="loc-error">❌ Error: ' + err.message + '</span>';
+        tmpMarker.setPopupContent('❌ Error').openPopup();
+      }
+    });
   } catch (e) { console.error('Leaflet map error:', e); }
 }
 

@@ -1266,6 +1266,16 @@ body:has(#app-header){padding-top:50px}
 .loc-note{font-size:0.6875rem;color:var(--text-2);margin-top:0.5rem;padding:0.375rem 0.5rem;background:var(--yellow-soft);border-radius:var(--r-sm);border-left:3px solid var(--yellow)}
 .loc-meta{font-size:0.75rem}
 #loc-map .leaflet-control-attribution{font-size:9px;opacity:0.6}
+#loc-map{cursor:crosshair !important}
+.map-click-marker{font-size:20px;line-height:1;text-align:center;background:none;border:none}
+#loc-map::after{
+  content:'Clic en el mapa para seleccionar ubicación';
+  position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
+  background:rgba(30,41,59,0.85);color:#f1f5f9;font-size:0.625rem;font-weight:600;
+  padding:0.25rem 0.75rem;border-radius:var(--r-sm);z-index:1000;
+  pointer-events:none;opacity:0.8;transition:opacity 0.3s;white-space:nowrap
+}
+#loc-map:hover::after{opacity:1}
 
 /* ═══ COLONIA AUTOCOMPLETE ═══ */
 .colonia-config{min-width:240px}
