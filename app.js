@@ -2196,14 +2196,14 @@ function updateBranchKPIBar(r){
     const roi = r.roi12 || 0;
     const roiClamped = Math.min(Math.max(roi, -50), 100);
     const pct = (roiClamped + 50) / 150;
-    const R = 28, cx = 34, cy = 34, sw = 5;
+    const R = 26, cx = 36, cy = 34, sw = 5;
     const circ = 2 * Math.PI * R;
     const arcLen = circ * 0.75;
     const filled = arcLen * pct;
     const color = roi > 20 ? '#34d399' : roi > 0 ? '#fbbf24' : '#f87171';
     const glow = roi > 20 ? 'rgba(52,211,153,0.3)' : roi > 0 ? 'rgba(251,191,36,0.3)' : 'rgba(248,113,113,0.3)';
     roiEl.innerHTML = `
-      <svg width="68" height="62" viewBox="0 0 68 62">
+      <svg width="72" height="66" viewBox="0 0 72 66" style="display:block;margin:0 auto">
         <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface-alt)" stroke-width="${sw}"
           stroke-dasharray="${arcLen} ${circ}" stroke-linecap="round"
           transform="rotate(135,${cx},${cy})"/>
