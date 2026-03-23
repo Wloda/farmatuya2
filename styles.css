@@ -52,6 +52,26 @@
   --success:var(--green);
   --warn:var(--yellow);
 
+  /* ═══ Semantic Design Tokens ═══ */
+  --sem-positive:#16a34a;
+  --sem-negative:#dc2626;
+  --sem-warning:#ca8a04;
+  --sem-neutral:#6B7A2E;
+
+  /* Typography Scale */
+  --fs-kpi:1.125rem;
+  --fs-label:0.5625rem;
+  --fs-body:0.8125rem;
+  --fw-bold:700;
+  --fw-xbold:800;
+
+  /* Spacing Scale (8px grid) */
+  --space-xs:4px;
+  --space-sm:8px;
+  --space-md:16px;
+  --space-lg:24px;
+  --space-xl:32px;
+
   /* Borders — subtle for neumorphism */
   --border:rgba(163,177,198,0.15);
   --border-hover:rgba(107,122,46,0.25);
@@ -342,6 +362,10 @@ body:has(#app-header){padding-top:50px}
   margin-bottom:1rem;
   box-shadow:var(--shadow-sm);
   animation:fadeInUp 0.35s ease both;
+  /* Sticky: pin below header on scroll */
+  position:sticky;
+  top:56px;
+  z-index:90;
 }
 .kpi-strip-item{
   flex:1;

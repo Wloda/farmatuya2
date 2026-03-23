@@ -461,10 +461,7 @@ function updateEnterpriseHeader(empresa){
   const el=$('enterprise-header-info');
   const scoreColor = consol.avgScore >= 80 ? 'green' : consol.avgScore >= 60 ? 'yellow' : 'red';
   if(el) el.innerHTML=`<span class="ent-stat project-badge">📁 ${projName}</span>
-    <span class="ent-stat">Capital: ${fmt.m(empresa.totalCapital)}</span>
-    <span class="ent-stat">Comprometido: ${fmt.m(consol.capitalCommitted)}</span>
     <span class="ent-stat ${consol.capitalFree<0?'danger':''}">Libre: ${fmt.m(consol.capitalFree)}</span>
-    <span class="ent-stat">Sucursales: ${consol.branchCount} (${consol.branchCountActive} activa${consol.branchCountActive!==1?'s':''}, ${consol.branchCountPlanned} plan.)</span>
     <span class="ent-stat"><span class="sem-dot ${scoreColor}"></span> Score: ${consol.avgScore}</span>`;
   // Update brand
   const brandName=$('header-brand-name');
@@ -1948,7 +1945,7 @@ function updateBranchKPIBar(r){
   const pm = r.paybackMetrics;
   const be = r.breakEvenPctCapacity;
 
-  // 1) Break-Even
+  // 1) Pto. Equilibrio
   const elEq = $('branch-kpi-equilibrio');
   if(elEq) {
     elEq.textContent = fmt.m(r.breakEvenRevenue);
@@ -3055,7 +3052,7 @@ function renderComparador(empresa){
   const results=activeBranches.map(b=>({branch:b,result:runBranchProjection(b,empresa)}));
   const metrics=[
     {l:'EBITDA',f:r=>fmt.m(r.avgMonthlyEBITDA)},
-    {l:'Break-Even',f:r=>fmt.m(r.breakEvenRevenue)},
+    {l:'Pto. Equilibrio',f:r=>fmt.m(r.breakEvenRevenue)},
     {l:'PB Simple',f:r=>{const pm=r.paybackMetrics;return pm.simple.min!=null?`${pm.simple.min.toFixed(0)}–${pm.simple.max.toFixed(0)}m`:'∞';}},
     {l:'PB Rampa',f:r=>r.paybackMetrics?.rampa?.month?r.paybackMetrics.rampa.month+'m':'∞'},
     {l:'BE Operativo',f:r=>r.paybackMetrics?.beOperativo?.month?r.paybackMetrics.beOperativo.month+'m':'∞'},
@@ -3276,10 +3273,10 @@ const GLOSSARY = [
   {cat:'📊 Inversión',term:'Payback Simple',def:'¿Cuántos meses tarda en recuperarse la inversión, asumiendo utilidad constante? Se divide inversión total entre utilidad mensual estabilizada.',where:'KPI strip'},
   {cat:'📊 Inversión',term:'Payback Rampa',def:'¿Cuántos meses tarda en recuperarse la inversión usando el flujo real mes a mes (que empieza bajo y sube)? Es más realista que el simple.',where:'KPI strip, cards'},
   {cat:'📊 Inversión',term:'Payback Promedio 5A',def:'Usa la utilidad promedio de 5 años para calcular el retorno. Útil cuando la utilidad varía mucho.',where:'Comparador'},
-  {cat:'📊 Inversión',term:'Break-Even Operativo (BE Op.)',def:'Mes en el que la sucursal empieza a dar utilidad positiva de forma sostenida. Antes de ese mes, opera a pérdida.',where:'KPI strip'},
+  {cat:'📊 Inversión',term:'B/E Operativo (Break-Even Operativo)',def:'Mes en el que la sucursal empieza a dar utilidad positiva de forma sostenida. Antes de ese mes, opera a pérdida.',where:'KPI strip'},
   {cat:'📊 Inversión',term:'VPN (Valor Presente Neto)',def:'Cuánto vale hoy todo el flujo futuro de 5 años, descontado al 12%. Si es positivo, la inversión genera valor real.',where:'Tab P&L'},
   {cat:'📊 Inversión',term:'TIR (Tasa Interna de Retorno)',def:'La tasa de rendimiento anual que genera la inversión. Si supera el costo de oportunidad (~12%), conviene invertir.',where:'Tab P&L'},
-  {cat:'🏪 Operación',term:'Break-Even Revenue',def:'Nivel de ventas mínimo para cubrir todos los costos. Si vendes menos que esto, pierdes dinero.',where:'KPI strip'},
+  {cat:'🏪 Operación',term:'Pto. Equilibrio (Break-Even Revenue)',def:'Nivel de ventas mínimo para cubrir todos los costos. Si vendes menos que esto, pierdes dinero.',where:'KPI strip'},
   {cat:'🏪 Operación',term:'COGS (Costo de Mercancía)',def:'Lo que cuesta comprar los productos que vendes. En farmacia típicamente es 62-65% de la venta.',where:'Tab P&L, donut de costos variables'},
   {cat:'🏪 Operación',term:'Merma',def:'Productos que se pierden (caducos, rotos, robados). Se mide como porcentaje de ventas, típicamente 1-2%.',where:'Sliders avanzados'},
   {cat:'🏪 Operación',term:'Comisión sobre Venta',def:'Porcentaje de ventas destinado a pagar comisiones al personal de mostrador.',where:'Costos variables'},
@@ -3532,7 +3529,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (appFooter) appFooter.style.display = 'none';
   }
 
-  if (isAuthenticated()) {
+  if (typeof isAuthenticated === 'function' ? isAuthenticated() : true) {
     showApp();
   } else {
     showAuth();
