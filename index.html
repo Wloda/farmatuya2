@@ -15,7 +15,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=bw51">
+  <link rel="stylesheet" href="styles.css?v=bw52">
   <script>
     window.addEventListener('error',e=>document.title='ERR:'+e.message);
     window.addEventListener('unhandledrejection',e=>document.title='REJ:'+e.reason);
@@ -296,13 +296,19 @@
           <div class="widget-grid" id="branch-an-grid">
             <!-- P&L Chart -->
             <div class="widget wg-8" data-widget-id="wg-branch-pnlchart">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Ingresos vs EBITDA</h3>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+                <h3 class="widget-title" style="margin:0">Ingresos vs EBITDA</h3>
+                <button class="btn-sm" onclick="screenshotChart('chart-branch-pnl')">📸</button>
+              </div>
               <div class="chart-box"><canvas id="chart-branch-pnl"></canvas></div>
             </div>
             
             <!-- Fixed Costs Donut -->
             <div class="widget wg-4" data-widget-id="wg-branch-donut">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Costos fijos</h3>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+                <h3 class="widget-title" style="margin:0">Costos fijos</h3>
+                <button class="btn-sm" onclick="screenshotChart('chart-branch-donut')">📸</button>
+              </div>
               <div class="chart-box" style="height:180px"><canvas id="chart-branch-donut"></canvas></div>
             </div>
 
@@ -321,7 +327,10 @@
 
             <!-- Tornado de Sensibilidad -->
             <div class="widget wg-4" data-widget-id="wg-branch-tornado">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Tornado de Sensibilidad (EBITDA)</h3>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+                <h3 class="widget-title" style="margin:0">Tornado de Sensibilidad (EBITDA)</h3>
+                <button class="btn-sm" onclick="screenshotChart('chart-branch-tornado')">📸</button>
+              </div>
               <div class="chart-box" style="height:220px"><canvas id="chart-branch-tornado"></canvas></div>
             </div>
 

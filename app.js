@@ -256,8 +256,74 @@ Chart.defaults.animation.easing = 'easeOutQuart';
 
 const $=id=>document.getElementById(id);
 const fmt={m:v=>'$'+Math.round(v).toLocaleString('es-MX'),mk:v=>'$'+(v/1000).toFixed(0)+'K',p:v=>(v*100).toFixed(1)+'%',pi:v=>Math.round(v*100)+'%',mo:v=>v?v+' m':'∞'};
+
+/* ── Projection Cache (cleared each render cycle) ── */
+const _projCache = new Map();
+let _projCacheGen = 0;
+function cachedProjection(branch, empresa) {
+  const key = `${_projCacheGen}:${branch.id}:${branch.scenarioId||'base'}`;
+  if (_projCache.has(key)) return _projCache.get(key);
+  const r = runBranchProjection(branch, empresa);
+  _projCache.set(key, r);
+  return r;
+}
+function invalidateCache() { _projCacheGen++; _projCache.clear(); }
+
+/* ── CSV Export Utility ── */
+function exportCSV(filename, headers, rows) {
+  const bom = '\uFEFF';
+  const csv = bom + [headers.join(','), ...rows.map(r => r.map(c => {
+    const s = String(c ?? '');
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }).join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+  showToast(`📁 ${filename} exportado`, 'success');
+}
+
+/* ── KPI Tooltip Definitions ── */
+const KPI_TIPS = {
+  'EBITDA/mes': 'Ganancias antes de intereses, impuestos, depreciación y amortización. Mide la rentabilidad operativa mensual.',
+  'Ganancia/mes': 'Es el EBITDA promedio mensual estabilizado de la sucursal o proyecto.',
+  'Recuperación': 'Meses estimados para recuperar la inversión total. Menor es mejor. Óptimo: <24 meses.',
+  'Score': 'Puntuación de viabilidad 0-100. Combina payback, ROI, EBITDA y riesgo. ≥ 80 = Excelente.',
+  'Capital Total': 'Suma del capital de todos los proyectos en esta empresa.',
+  'Comprometido': 'Capital ya asignado a inversiones en sucursales activas y planificadas.',
+  'Capital Libre': 'Capital disponible para nuevas inversiones. Debe ser > 20% del total.',
+  'ROI 12m': 'Retorno sobre inversión en los primeros 12 meses. Positivo = ganancia en año 1.',
+  'ROI 36m': 'Retorno acumulado a 3 años. > 60% se considera bueno.',
+  'VPN': 'Valor Presente Neto a WACC 12%. Positivo = proyecto crea valor.',
+  'TIR': 'Tasa Interna de Retorno. > 12% supera el costo de capital.',
+  'Renta Máx.': 'Renta máxima que el negocio soporta antes de perder viabilidad.',
+  'Venta Mín.': 'Nivel mínimo de ventas para cubrir todos los costos (punto de equilibrio).',
+  'Fragilidad': 'Porcentaje de escenarios de estrés donde el negocio no es viable. Menor es mejor.',
+  'Impacto Mercado': 'Factor de ajuste basado en el estudio de ubicación (demografía, competencia, tráfico).',
+};
+
+/* ── Tab Memory ── */
+const _tabMemory = {};
+function rememberTab(viewKey, tabId) { _tabMemory[viewKey] = tabId; }
+function recallTab(viewKey, fallback) { return _tabMemory[viewKey] || fallback; }
+
+/* ── Chart Screenshot ── */
+function screenshotChart(chartId) {
+  const canvas = document.getElementById(chartId);
+  if (!canvas) { showToast('Gráfico no encontrado', 'error'); return; }
+  const url = canvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = url; a.download = `bw2_${chartId}_${Date.now()}.png`; a.click();
+  showToast('📸 Captura guardada', 'success');
+}
+
+/* ── Clipboard Copy ── */
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => showToast('📋 Copiado', 'success')).catch(() => showToast('Error al copiar', 'error'));
+}
 function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
-function kc(l,v,d,s,tip){return `<div class="kpi-card" data-status="${s}"${tip?' title="'+tip+'"':''}><div class="kpi-label">${l}</div><div class="kpi-value">${v}</div><div class="kpi-detail">${d}</div></div>`;}
+function kc(l,v,d,s,tip){const t=tip||KPI_TIPS[l]||'';return `<div class="kpi-card" data-status="${s}"${t?` title="${esc(t)}"`:''} style="cursor:${t?'help':'default'}"><div class="kpi-label">${l}</div><div class="kpi-value" data-animate>${v}</div><div class="kpi-detail">${d}</div></div>`;}
 
 /* ── Shared KPI aggregation helper (eliminates redundancy across Home/L2/Portfolio) ── */
 function computeAggregate(branches, empresa) {
@@ -506,8 +572,8 @@ function renderCurrentView() {
     const emp = getActiveEmpresa();
     if(emp) {
       renderEmpresaDashboard(emp);
-      if(hInfo) hInfo.innerHTML=`<span class="ent-stat">🏢 ${esc(emp.name)}</span>`;
     }
+    if(hInfo) hInfo.innerHTML=''; // breadcrumb already shows empresa name
     if(headerLogo) headerLogo.style.display = '';
     if(headerBrand) headerBrand.style.display = 'none';
     if(mainContent) mainContent.style.marginLeft = '';
@@ -619,7 +685,7 @@ function renderBW2Home(){
       <div class="global-summary-card"><span class="global-summary-label">Capital Libre</span><span class="global-summary-value" style="color:${gFree>=0?'var(--green)':'var(--red)'}">${fmt.m(gFree)}</span></div>
       <div class="global-summary-card"><span class="global-summary-label">Sucursales</span><span class="global-summary-value">${gBranches}</span><span class="global-summary-sub">${empresas.length} empresa${empresas.length!==1?'s':''}</span></div>
       <div class="global-summary-card"><span class="global-summary-label">EBITDA/mes</span><span class="global-summary-value" style="color:${gEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(gEBITDA)}</span></div>
-      <div class="global-summary-card"><span class="global-summary-label">Score</span><span class="global-summary-value" style="color:${sCol}">${gAvg}<small>/100</small></span></div>
+      <div class="global-summary-card"><span class="global-summary-label">Score</span><span class="global-summary-value">${scoreRing(gAvg, 40)}</span></div>
     </div>
   </div>`;
 
@@ -779,7 +845,7 @@ function renderPortfolioSummary(empresa){
       </div>
       <div class="global-summary-card">
         <span class="global-summary-label">Score</span>
-        <span class="global-summary-value" style="color:${consol.avgScore>=80?'var(--green)':consol.avgScore>=60?'var(--yellow)':'var(--red)'}">${consol.avgScore}<small>/100</small></span>
+        <span class="global-summary-value">${scoreRing(consol.avgScore, 40)}</span>
       </div>
     </div>`;
 }
@@ -822,7 +888,7 @@ function renderEmpresaDashboard(empresa){
         <div class="global-summary-card"><span class="global-summary-label">Capital Libre</span><span class="global-summary-value" style="color:${totalFree>=0?'var(--green)':'var(--red)'}">${fmt.m(totalFree)}</span></div>
         <div class="global-summary-card"><span class="global-summary-label">Sucursales</span><span class="global-summary-value">${totalBranches}</span><span class="global-summary-sub">${empresa.proyectos.length} proyecto${empresa.proyectos.length!==1?'s':''}</span></div>
         <div class="global-summary-card"><span class="global-summary-label">EBITDA/mes</span><span class="global-summary-value" style="color:${totalEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(totalEBITDA)}</span></div>
-        <div class="global-summary-card"><span class="global-summary-label">Score</span><span class="global-summary-value" style="color:${avgScore>=80?'var(--green)':avgScore>=60?'var(--yellow)':'var(--red)'}">${avgScore}<small>/100</small></span></div>
+        <div class="global-summary-card"><span class="global-summary-label">Score</span><span class="global-summary-value">${scoreRing(avgScore, 40)}</span></div>
       </div>`;
   }
 
@@ -864,7 +930,7 @@ function renderEmpresaDashboard(empresa){
       <div class="emp-dash-proj-kpis">
         <div class="emp-dash-kpi"><span class="emp-dash-kpi-label">Ganancia/mes</span><span class="emp-dash-kpi-value" style="color:${projEBITDA>=0?'var(--accent)':'var(--red)'}">${fmt.m(projEBITDA)}</span></div>
         <div class="emp-dash-kpi"><span class="emp-dash-kpi-label">Recuperación</span><span class="emp-dash-kpi-value">${projPayback?projPayback+' m':'—'}</span></div>
-        <div class="emp-dash-kpi"><span class="emp-dash-kpi-label">Score</span><span class="emp-dash-kpi-value" style="color:${scoreCol}">${pScore}/100</span></div>
+        <div class="emp-dash-kpi" style="display:flex;align-items:center;gap:0.4rem"><span class="emp-dash-kpi-label">Score</span>${scoreRing(pScore, 36)}</div>
       </div>
       <button class="btn-open-proyecto-dash" data-emp-id="${empresa.id}" data-proj-id="${proj.id}">Abrir Proyecto →</button>
     </div>`;
@@ -1158,7 +1224,7 @@ function renderPortfolio(empresa){
         <div class="branch-kpi"><span class="bk-label" title="Ganancia mensual antes de impuestos">Ganancia/mes</span><span class="bk-value" style="color:${r.avgMonthlyEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(r.avgMonthlyEBITDA)}</span></div>
         <div class="branch-kpi"><span class="bk-label" title="Venta mínima mensual para cubrir todos los costos">Pto. Equilibrio</span><span class="bk-value">${fmt.m(r.breakEvenRevenue)}</span></div>
         <div class="branch-kpi"><span class="bk-label" title="Meses reales para recuperar la inversión (flujo acumulado desde apertura)">Recuperación</span><span class="bk-value" style="color:${r.paybackMonth&&r.paybackMonth<=36?'var(--green)':r.paybackMonth&&r.paybackMonth<=48?'var(--yellow)':'var(--red)'}">${r.paybackMonth?r.paybackMonth+' meses':'∞'}</span></div>
-        <div class="branch-kpi"><span class="bk-label" title="Calificación de viabilidad: 0-100">Calificación</span><span class="bk-value" style="color:${color}">${score}/100</span></div>
+        <div class="branch-kpi" style="display:flex;align-items:center;gap:0.35rem"><span class="bk-label" title="Calificación de viabilidad: 0-100">Calif.</span>${scoreRing(score, 32)}</div>
       </div>`:'<div class="branch-kpis"><span style="color:var(--text-3)">Sin datos</span></div>'}
       <div class="branch-actions">${actionBtns}</div>
     </div>`;
@@ -2319,10 +2385,43 @@ function renderBranchPnL(r,model,overrides){
     charts['branch-cv-bar']=new Chart(c4,{type:'bar',data:{labels:['COGS','ComVta','Merma','Pub','Regalía','Banc'],datasets:[{label:'% Venta',data:[vc.cogs*100,vc.comVenta*100,vc.merma*100,vc.pubDir*100,vc.regalia*100,vc.bancario*100],backgroundColor:['#f87171','#4d7cfe','#fbbf24','#d946ef','#818cf8','#6366f1']}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{ticks:{callback:v=>v+'%'}}}}});
   }
   const as=r.annualSummary;const ys=['year1','year2','year3','year4','year5'].filter(y=>as[y]);
-  $('branch-annual-table').innerHTML=`<table class="data-table"><thead><tr><th>Año</th><th class="num">Ingresos</th><th class="num">Ut.Neta</th><th class="num">Flujo</th></tr></thead><tbody>${ys.map((y,i)=>`<tr><td>Año ${i+1}</td><td class="num">${fmt.m(as[y].revenue)}</td><td class="num ${as[y].netIncome>=0?'positive':'negative'}">${fmt.m(as[y].netIncome)}</td><td class="num ${as[y].cashFlow>=0?'positive':'negative'}">${fmt.m(as[y].cashFlow)}</td></tr>`).join('')}</tbody></table>`;
+  $('branch-annual-table').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem"><span style="font-size:0.7rem;font-weight:700;color:var(--text-2);text-transform:uppercase">Resumen Anual</span><button class="btn-sm" onclick="exportCSV('resumen_anual.csv',['Año','Ingresos','Ut.Neta','Flujo'],[${ys.map((y,i)=>`['Año ${i+1}',${as[y].revenue},${as[y].netIncome},${as[y].cashFlow}]`).join(',')}])">📥 CSV</button></div><table class="data-table"><thead><tr><th>Año</th><th class="num">Ingresos</th><th class="num">Ut.Neta</th><th class="num">Flujo</th></tr></thead><tbody>${ys.map((y,i)=>`<tr><td>Año ${i+1}</td><td class="num">${fmt.m(as[y].revenue)}</td><td class="num ${as[y].netIncome>=0?'positive':'negative'}">${fmt.m(as[y].netIncome)}</td><td class="num ${as[y].cashFlow>=0?'positive':'negative'}">${fmt.m(as[y].cashFlow)}</td></tr>`).join('')}</tbody></table>`;
   const cols=['Mes','Venta','COGS','Ut.Br','CF','CV','EBITDA','Imp','Ut.Net','Acum'];
-  $('branch-pnl-table-full').innerHTML=`<table class="data-table"><thead><tr>${cols.map(c=>`<th class="${c!=='Mes'?'num':''}">${c}</th>`).join('')}</tr></thead><tbody>${r.months.map(m=>`<tr><td>M${m.month}</td><td class="num">${fmt.m(m.revenue)}</td><td class="num">${fmt.m(m.cogs)}</td><td class="num">${fmt.m(m.grossProfit)}</td><td class="num">${fmt.m(m.totalFixedCosts)}</td><td class="num">${fmt.m(m.variableCosts)}</td><td class="num ${m.ebitda>=0?'positive':'negative'}">${fmt.m(m.ebitda)}</td><td class="num">${fmt.m(m.taxes)}</td><td class="num ${m.netIncome>=0?'positive':'negative'}">${fmt.m(m.netIncome)}</td><td class="num ${m.cumulativeCashFlow>=0?'positive':'negative'}">${fmt.m(m.cumulativeCashFlow)}</td></tr>`).join('')}</tbody></table>`;
+  $('branch-pnl-table-full').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem"><span style="font-size:0.7rem;font-weight:700;color:var(--text-2);text-transform:uppercase">Estado de Resultados (60 meses)</span><button class="btn-sm" onclick="window._exportPnL()">📥 CSV</button></div><table class="data-table"><thead><tr>${cols.map(c=>`<th class="${c!=='Mes'?'num':''}">${c}</th>`).join('')}</tr></thead><tbody>${r.months.map(m=>`<tr><td>M${m.month}</td><td class="num">${fmt.m(m.revenue)}</td><td class="num">${fmt.m(m.cogs)}</td><td class="num">${fmt.m(m.grossProfit)}</td><td class="num">${fmt.m(m.totalFixedCosts)}</td><td class="num">${fmt.m(m.variableCosts)}</td><td class="num ${m.ebitda>=0?'positive':'negative'}">${fmt.m(m.ebitda)}</td><td class="num">${fmt.m(m.taxes)}</td><td class="num ${m.netIncome>=0?'positive':'negative'}">${fmt.m(m.netIncome)}</td><td class="num ${m.cumulativeCashFlow>=0?'positive':'negative'}">${fmt.m(m.cumulativeCashFlow)}</td></tr>`).join('')}</tbody></table>`;
 }
+
+/* ── P&L CSV Export ── */
+window._exportPnL = function() {
+  const branch = getBranch(state.activeBranchId);
+  if (!branch) return;
+  const empresa = getActiveEmpresa ? getActiveEmpresa() : getEmpresa();
+  const overrides = {...branch.overrides};
+  const r = runProjection(branch.format, overrides);
+  if (!r || !r.months) { showToast('Sin datos para exportar', 'error'); return; }
+  const headers = ['Mes','Venta','COGS','Ut.Bruta','Costos Fijos','Costos Variables','EBITDA','Impuestos','Ut.Neta','Flujo Acumulado'];
+  const rows = r.months.map(m => [
+    m.month, Math.round(m.revenue), Math.round(m.cogs), Math.round(m.grossProfit),
+    Math.round(m.totalFixedCosts), Math.round(m.variableCosts), Math.round(m.ebitda),
+    Math.round(m.taxes), Math.round(m.netIncome), Math.round(m.cumulativeCashFlow)
+  ]);
+  exportCSV(`pnl_${branch.name.replace(/\s+/g,'_')}_60m.csv`, headers, rows);
+};
+
+/* ── Comparison CSV Export ── */
+window._exportComparison = function() {
+  const empresa = getActiveEmpresa ? getActiveEmpresa() : getEmpresa();
+  if (!empresa) return;
+  const branches = (empresa.branches || empresa.proyectos?.flatMap(p => p.branches || []) || []).filter(b => b.status !== 'archived');
+  const headers = ['Sucursal','Formato','EBITDA/mes','Inversión','Payback','Score','ROI 12m','VPN'];
+  const rows = branches.map(b => {
+    try {
+      const r = runBranchProjection(b, empresa);
+      return [b.name, b.format, Math.round(r?.avgMonthlyEBITDA||0), Math.round(r?.totalInvestment||0),
+              r?.paybackMonth||'∞', r?.viabilityScore||0, (r?.roi12||0).toFixed(1)+'%', Math.round(r?.npv||0)];
+    } catch(e) { return [b.name, b.format, 0, 0, '∞', 0, '0%', 0]; }
+  });
+  exportCSV(`comparativa_${empresa.name?.replace(/\s+/g,'_')||'empresa'}.csv`, headers, rows);
+};
 
 /* ─── BRANCH STRESS ─── */
 function renderBranchStress(r,model,overrides){
