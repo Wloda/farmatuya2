@@ -2218,6 +2218,40 @@ function updateBranchKPIBar(r){
       </div>`;
     roiEl.style.position = 'relative';
   }
+
+  // 5) Market Factor KPI
+  const factorEl = $('branch-kpi-factor');
+  const factorBar = document.querySelector('#kpi-factor-bar .kpi-mini-bar-fill');
+  const factorLabel = $('kpi-factor-label');
+  if (factorEl) {
+    const branch = getBranch(state.activeBranchId);
+    const study = branch?.locationStudy;
+    if (study && study.scores && study.scores.factors) {
+      try {
+        const { combinedFactor } = calcCombinedMarketFactor(study.scores.factors, branch.overrides?.marketStudyToggles);
+        const f = combinedFactor;
+        const delta = ((f - 1) * 100);
+        const isPositive = delta >= 0;
+        factorEl.textContent = f.toFixed(3) + 'x';
+        factorEl.style.color = isPositive ? 'var(--green)' : 'var(--red)';
+        if (factorBar) {
+          const pct = Math.min(Math.abs(delta), 30) / 30 * 100;
+          setTimeout(() => { factorBar.style.width = pct + '%'; }, 50);
+          factorBar.style.background = isPositive ? 'var(--green)' : 'var(--red)';
+        }
+        if (factorLabel) factorLabel.textContent = (isPositive ? '+' : '') + delta.toFixed(1) + '% ajuste';
+      } catch(e) {
+        factorEl.textContent = '—';
+        factorEl.style.color = 'var(--text-3)';
+        if (factorLabel) factorLabel.textContent = 'Error';
+      }
+    } else {
+      factorEl.textContent = '—';
+      factorEl.style.color = 'var(--text-3)';
+      if (factorLabel) factorLabel.textContent = 'Sin estudio';
+      if (factorBar) factorBar.style.width = '0%';
+    }
+  }
 }
 
 function updateBranchAuditBadges(model){
