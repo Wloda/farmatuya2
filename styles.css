@@ -289,6 +289,21 @@ body:has(#app-header){padding-top:50px}
 .resultados-controls-row{
   display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap
 }
+.toolbar-dropdown-group{
+  display:flex;flex-direction:column;gap:0.15rem
+}
+.toolbar-dropdown-label{
+  font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;
+  color:var(--text-3);padding-left:0.25rem
+}
+.toolbar-dropdown{
+  appearance:auto;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-sm, 6px);padding:0.3rem 0.5rem;font-size:0.75rem;
+  font-family:var(--font);color:var(--text-1);cursor:pointer;min-width:130px;
+  transition:border-color 0.2s
+}
+.toolbar-dropdown:hover{border-color:var(--accent, #6B7A2E)}
+.toolbar-dropdown:focus{outline:none;border-color:var(--accent, #6B7A2E);box-shadow:0 0 0 2px rgba(107,122,46,0.15)}
 .resultados-title{
   margin:0;font-size:1rem;font-weight:800;color:var(--text-1);white-space:nowrap
 }

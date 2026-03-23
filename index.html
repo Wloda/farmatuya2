@@ -255,22 +255,28 @@
             <button id="branch-market-indicator" class="branch-market-badge" style="display:none" title="Clic para ver detalles">📍 Mercado: --</button>
           </div>
           <div class="resultados-controls-row">
-            <div class="neu-segmented small" id="branch-scenario-selector-res">
-              <button class="seg-btn" data-scenario="conservative">🔴 Cons.</button>
-              <button class="seg-btn" data-scenario="base">🟡 Base</button>
-              <button class="seg-btn" data-scenario="upside">🟢 Upside</button>
+            <div class="toolbar-dropdown-group">
+              <label class="toolbar-dropdown-label">Escenario</label>
+              <select class="toolbar-dropdown" id="branch-scenario-select">
+                <option value="conservative">🔴 Conservador</option>
+                <option value="base" selected>🟡 Base</option>
+                <option value="upside">🟢 Upside</option>
+              </select>
             </div>
-            <div class="neu-segmented small" id="branch-timeline-selector">
-              <button class="seg-btn active" data-preopen="0">📊 Desde Apertura</button>
-              <button class="seg-btn" data-preopen="2">💰 Desde Capital</button>
+            <div class="toolbar-dropdown-group">
+              <label class="toolbar-dropdown-label">Perspectiva</label>
+              <select class="toolbar-dropdown" id="branch-timeline-select">
+                <option value="0" selected>📊 Desde Apertura</option>
+                <option value="2">💰 Desde Capital</option>
+              </select>
             </div>
-            <div class="res-royalty-inline" id="res-royalty-panel" style="display:none">
-              <span class="res-royalty-label">Regalía:</span>
-              <div class="neu-segmented small" id="res-royalty-selector">
-                <button class="seg-btn active" data-royalty="variable_2_5">💳 2.5%</button>
-                <button class="seg-btn" data-royalty="condonacion_6m">🎁 Cond.</button>
-                <button class="seg-btn" data-royalty="pago_unico">💰 Único</button>
-              </div>
+            <div class="toolbar-dropdown-group" id="res-royalty-panel" style="display:none">
+              <label class="toolbar-dropdown-label">Regalía</label>
+              <select class="toolbar-dropdown" id="res-royalty-select">
+                <option value="variable_2_5" selected>💳 Variable 2.5%</option>
+                <option value="condonacion_6m">🎁 Condonación 6m</option>
+                <option value="pago_unico">💰 Pago Único</option>
+              </select>
             </div>
           </div>
           <p class="res-royalty-desc" id="res-royalty-desc" style="display:none"></p>
@@ -322,15 +328,19 @@
             <span class="res-section-title">Flujo de Caja</span>
             <span class="res-section-chevron">▾</span>
           </summary>
-          <div class="dash-grid res-section-body">
-            <div class="dash-card dash-8">
-              <h3 class="section-title" style="margin-bottom:0.5rem">Flujo de Caja Acumulado (ROI)</h3>
-              <div class="chart-box"><canvas id="chart-branch-cashflow"></canvas></div>
+          <div class="consol-main-row res-section-body">
+            <div class="consol-chart-col">
+              <div class="dash-card visible">
+                <h3 class="section-title" style="margin-bottom:0.5rem">Flujo de Caja Acumulado (ROI)</h3>
+                <div class="chart-box"><canvas id="chart-branch-cashflow"></canvas></div>
+              </div>
             </div>
-            <div class="dash-card dash-4">
-              <h3 class="section-title" style="margin-bottom:0.5rem">Estructura de Costos</h3>
-              <div class="chart-box" style="height:200px"><canvas id="chart-branch-costs-main"></canvas></div>
-              <div id="cost-donut-legend" class="donut-legend"></div>
+            <div class="consol-table-col">
+              <div class="dash-card visible">
+                <h3 class="section-title" style="margin-bottom:0.5rem">Estructura de Costos</h3>
+                <div class="chart-box" style="height:200px"><canvas id="chart-branch-costs-main"></canvas></div>
+                <div id="cost-donut-legend" class="donut-legend"></div>
+              </div>
             </div>
           </div>
         </details>

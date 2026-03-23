@@ -1206,6 +1206,17 @@ function updateNav() {
     html += `<button class="nav-btn ${state.activeTab === 'config' ? 'active' : ''}" data-branch-tab="config"><span class="nav-icon">⚙️</span><span class="nav-text">Configuración</span></button>`;
     html += `<button class="nav-btn ${state.activeTab === 'socioeconomico' ? 'active' : ''}" data-branch-tab="socioeconomico"><span class="nav-icon">🌍</span><span class="nav-text">Estudio de Mercado</span></button>`;
     html += `<div class="nav-divider"></div>`;
+    // Lateral sucursal navigation — switch between siblings without going back
+    // Note: getEmpresa() returns the active proyecto (backward compat), so branches are directly on it
+    const siblings = (empresa?.branches||[]).filter(s => s.id !== state.activeBranchId && s.status !== 'archived');
+    if (siblings.length > 0) {
+      html += `<div class="nav-section">Cambiar</div>`;
+      siblings.forEach(s => {
+        const emoji = MODELS[s.format]?.emoji || '🏪';
+        html += `<button class="nav-btn nav-lateral" data-lateral-branch="${s.id}"><span class="nav-icon">${emoji}</span><span class="nav-text">${s.name}</span></button>`;
+      });
+      html += `<div class="nav-divider"></div>`;
+    }
     html += `<div class="nav-spacer"></div>`;
     html += `<button class="btn-add" id="nav-export-pdf" style="background:var(--surface);color:var(--text-2);box-shadow:var(--shadow-neu-sm)"><span class="nav-icon">📄</span><span class="nav-text">Exportar PDF</span></button>`;
   } else {
@@ -1269,6 +1280,14 @@ function updateNav() {
     if (pdfBtn) pdfBtn.addEventListener('click', () => {
       const mainPdfBtn = $('btn-export-pdf');
       if (mainPdfBtn) mainPdfBtn.click();
+    });
+    // Lateral sucursal switch
+    nav.querySelectorAll('[data-lateral-branch]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.activeBranchId = btn.dataset.lateralBranch;
+        state.activeTab = 'resultados';
+        renderCurrentView();
+      });
     });
   } else {
     // Back to empresa
@@ -1656,7 +1675,7 @@ function renderBranchDetail(empresa){
   // Format selector
   document.querySelectorAll('#branch-format-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.format===branch.format);});
   // Scenario selector
-  document.querySelectorAll('#branch-scenario-selector-res .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.scenario===branch.scenarioId);});
+  const scenarioSel = $('branch-scenario-select'); if(scenarioSel) scenarioSel.value = branch.scenarioId || 'base';
   // Royalty
   const proj = empresa.proyectos?.find(p => p.id === branch.proyectoId);
   const isFranchise = proj?.isFranchise !== false;
@@ -1677,20 +1696,16 @@ function renderBranchDetail(empresa){
         pago_unico: '💰 Pago único de $125,000 — sin regalías futuras.'
       };
       const descEl = $('res-royalty-desc');
-      document.querySelectorAll('#res-royalty-selector .seg-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.royalty === currentRoyalty);
-        const clone = btn.cloneNode(true);
-        btn.parentNode.replaceChild(clone, btn);
-        clone.classList.toggle('active', clone.dataset.royalty === currentRoyalty);
-        clone.addEventListener('click', () => {
+      const royaltySel = $('res-royalty-select');
+      if(royaltySel) {
+        royaltySel.value = currentRoyalty;
+        royaltySel.onchange = () => {
           if (!state.activeBranchId) return;
-          document.querySelectorAll('#res-royalty-selector .seg-btn').forEach(b => b.classList.remove('active'));
-          clone.classList.add('active');
-          updateBranchOverrides(state.activeBranchId, { royaltyMode: clone.dataset.royalty });
-          if (descEl) descEl.textContent = royaltyDescs[clone.dataset.royalty] || '';
+          updateBranchOverrides(state.activeBranchId, { royaltyMode: royaltySel.value });
+          if (descEl) descEl.textContent = royaltyDescs[royaltySel.value] || '';
           renderBranchDetail(getEmpresa());
-        });
-      });
+        };
+      }
       if (descEl) descEl.textContent = royaltyDescs[currentRoyalty] || '';
     } else {
       resRoyaltyPanel.style.display = 'none';
@@ -1699,7 +1714,7 @@ function renderBranchDetail(empresa){
 
   // Timeline selector active state
   const currentPreOpen = String(branch.overrides?.preOpenMonths || 0);
-  document.querySelectorAll('#branch-timeline-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.preopen===currentPreOpen);});
+  const timelineSel = $('branch-timeline-select'); if(timelineSel) timelineSel.value = currentPreOpen;
 
   updateBranchKPIBar(r);
   renderMarketStudyPanel(branch);
@@ -1723,11 +1738,10 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   });
   // Scenario selector
-  document.querySelectorAll('#branch-scenario-selector-res .seg-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      if(!state.activeBranchId)return;
-      updateBranch(state.activeBranchId,{scenarioId:btn.dataset.scenario});
-    });
+  const scenarioSelect = $('branch-scenario-select');
+  if(scenarioSelect) scenarioSelect.addEventListener('change',()=>{
+    if(!state.activeBranchId)return;
+    updateBranch(state.activeBranchId,{scenarioId:scenarioSelect.value});
   });
   // Internal Branch Tabs
   document.querySelectorAll('#branch-tabs-header .tab-btn').forEach(btn=>{
@@ -1759,16 +1773,15 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   });
   // Timeline selector (Desde Apertura / Desde Capital)
-  document.querySelectorAll('#branch-timeline-selector .seg-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      if(!state.activeBranchId)return;
-      const branch = getBranch(state.activeBranchId);
-      if(!branch) return;
-      const preOpen = parseInt(btn.dataset.preopen) || 0;
-      const ov = { ...(branch.overrides || {}), preOpenMonths: preOpen };
-      updateBranch(state.activeBranchId, { overrides: ov });
-      renderBranchDetail(getEmpresa());
-    });
+  const timelineSelect = $('branch-timeline-select');
+  if(timelineSelect) timelineSelect.addEventListener('change',()=>{
+    if(!state.activeBranchId)return;
+    const branch = getBranch(state.activeBranchId);
+    if(!branch) return;
+    const preOpen = parseInt(timelineSelect.value) || 0;
+    const ov = { ...(branch.overrides || {}), preOpenMonths: preOpen };
+    updateBranch(state.activeBranchId, { overrides: ov });
+    renderBranchDetail(getEmpresa());
   });
   // Colonia autocomplete — geocoding suggestions
   setupGeocodingAutocomplete('branch-colonia-input', 'colonia-suggestions', 'colonia-status', (name, full) => {
