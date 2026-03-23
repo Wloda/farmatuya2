@@ -10,12 +10,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <!-- Google Maps loaded dynamically by engine/google-places.js -->
+  <!-- Leaflet kept as fallback if Google API key not configured -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=bw54">
+  <link rel="stylesheet" href="styles.css?v=bw55">
   <script>
     window.addEventListener('error',e=>document.title='ERR:'+e.message);
     window.addEventListener('unhandledrejection',e=>document.title='REJ:'+e.reason);
@@ -336,55 +338,88 @@
             <div class="kpi-mini-bar" id="kpi-factor-bar"><div class="kpi-mini-bar-fill"></div></div>
             <span class="kpi-mini-label" id="kpi-factor-label"></span>
           </div>
-          <!-- Fila 2: Cashflow chart + Donut costos -->
-          <div class="widget wg-8" data-widget-id="wg-branch-cashflow">
-            <h3 class="widget-title" style="margin-bottom:0.5rem">Flujo de Caja Acumulado (ROI)</h3>
-            <div class="chart-box"><canvas id="chart-branch-cashflow"></canvas></div>
-          </div>
-          <div class="widget wg-4" data-widget-id="wg-branch-cost-donut">
-            <h3 class="widget-title" style="margin-bottom:0.5rem">Estructura de Costos</h3>
-            <div class="chart-box" style="height:200px"><canvas id="chart-branch-costs-main"></canvas></div>
-            <div id="cost-donut-legend" class="donut-legend"></div>
-          </div>
-
-          <!-- Fila 3: Market Radar + Variables table -->
-          <div class="widget wg-6" id="market-radar-panel" data-widget-id="wg-branch-market-radar" style="display:none">
-            <h3 class="widget-title" style="margin-bottom:0.25rem">Perfil de Mercado</h3>
-            <div class="chart-box" style="height:200px"><canvas id="chart-market-radar-main"></canvas></div>
-          </div>
-          <div class="widget wg-8" id="market-study-panel" data-widget-id="wg-branch-market" style="display:none">
-            <h3 class="widget-title" style="margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
-              Variables del Mercado
-              <div style="display:flex;align-items:center;gap:0.5rem;flex:1;min-width:200px;max-width:400px">
-                <input type="text" id="market-inline-address" class="input-text" placeholder="Cambiar dirección..." style="flex:1;font-size:0.7rem;padding:0.3rem 0.5rem;border-radius:6px;min-width:0">
-                <button id="market-inline-refresh" class="btn-sm" title="Re-evaluar estudio" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:0.3rem 0.5rem;cursor:pointer;font-size:0.7rem;white-space:nowrap;box-shadow:var(--shadow-neu-sm);transition:all 0.2s">🔄</button>
-              </div>
-              <div style="display:flex;align-items:center;gap:0.5rem">
-                <label class="mvar-toggle"><input type="checkbox" id="market-master-switch"><span class="mvar-slider"></span></label>
-                <span id="market-combined-factor" style="font-size:0.85rem;color:var(--text-1);font-weight:500"></span>
-              </div>
-            </h3>
-            <p class="loc-subtitle">Factores que impactan las ventas en esta ubicación base.</p>
-            <div id="market-study-body" style="margin-top:1rem;max-height:350px;overflow-y:auto"></div>
-          </div>
-
-          <!-- Royalty panel moved to controls bar -->
-
-          <!-- Fila 4: Checklist + Alertas lado a lado -->
-          <div class="widget wg-8" data-widget-id="wg-branch-checklist">
-            <h3 class="widget-title" style="margin-bottom:0.5rem">Checklist de Cierre</h3>
-            <div id="branch-checklist" style="display:grid;grid-template-columns:1fr 1fr;gap:0.25rem 0.75rem"></div>
-          </div>
-          <div class="widget wg-4" data-widget-id="wg-branch-alerts" style="align-self:start">
-            <h3 class="widget-title" style="margin-bottom:0.5rem">Alertas y Sugerencias</h3>
-            <div id="branch-alerts" style="display:flex;flex-direction:column;gap:0.5rem"></div>
-          </div>
         </div>
 
+        <!-- ═══ COLLAPSIBLE SECTION: Flujo de Caja ═══ -->
+        <details class="res-section" open>
+          <summary class="res-section-header">
+            <span class="res-section-icon">💰</span>
+            <span class="res-section-title">Flujo de Caja</span>
+            <span class="res-section-chevron">▾</span>
+          </summary>
+          <div class="widget-grid res-section-body">
+            <div class="widget wg-8" data-widget-id="wg-branch-cashflow">
+              <h3 class="widget-title" style="margin-bottom:0.5rem">Flujo de Caja Acumulado (ROI)</h3>
+              <div class="chart-box"><canvas id="chart-branch-cashflow"></canvas></div>
+            </div>
+            <div class="widget wg-4" data-widget-id="wg-branch-cost-donut">
+              <h3 class="widget-title" style="margin-bottom:0.5rem">Estructura de Costos</h3>
+              <div class="chart-box" style="height:200px"><canvas id="chart-branch-costs-main"></canvas></div>
+              <div id="cost-donut-legend" class="donut-legend"></div>
+            </div>
+          </div>
+        </details>
+
+        <!-- ═══ COLLAPSIBLE SECTION: Perfil de Mercado ═══ -->
+        <details class="res-section" open>
+          <summary class="res-section-header">
+            <span class="res-section-icon">📍</span>
+            <span class="res-section-title">Perfil de Mercado</span>
+            <span class="res-section-chevron">▾</span>
+          </summary>
+          <div class="widget-grid res-section-body">
+            <div class="widget wg-4" id="market-radar-panel" data-widget-id="wg-branch-market-radar" style="display:none;align-self:start">
+              <h3 class="widget-title" style="margin-bottom:0.25rem">Perfil de Mercado</h3>
+              <div class="chart-box" style="height:200px"><canvas id="chart-market-radar-main"></canvas></div>
+            </div>
+            <div class="widget wg-8" id="market-study-panel" data-widget-id="wg-branch-market" style="display:none">
+              <h3 class="widget-title" style="margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+                Variables del Mercado
+                <div style="display:flex;align-items:center;gap:0.5rem;flex:1;min-width:200px;max-width:400px">
+                  <input type="text" id="market-inline-address" class="input-text" placeholder="Cambiar dirección..." style="flex:1;font-size:0.7rem;padding:0.3rem 0.5rem;border-radius:6px;min-width:0">
+                  <button id="market-inline-refresh" class="btn-sm" title="Re-evaluar estudio" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:0.3rem 0.5rem;cursor:pointer;font-size:0.7rem;white-space:nowrap;box-shadow:var(--shadow-neu-sm);transition:all 0.2s">🔄</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem">
+                  <label class="mvar-toggle"><input type="checkbox" id="market-master-switch"><span class="mvar-slider"></span></label>
+                  <span id="market-combined-factor" style="font-size:0.85rem;color:var(--text-1);font-weight:500"></span>
+                </div>
+              </h3>
+              <p class="loc-subtitle">Factores que impactan las ventas en esta ubicación base.</p>
+              <div id="market-mini-map" style="height:180px;border-radius:var(--r-md);overflow:hidden;margin-bottom:0.75rem;display:none;border:1px solid var(--border)"></div>
+              <div id="market-study-body" style="margin-top:0.5rem"></div>
+            </div>
+          </div>
+        </details>
+
+        <!-- Royalty panel moved to controls bar -->
+
+        <!-- ═══ COLLAPSIBLE SECTION: Checklist & Alertas ═══ -->
+        <details class="res-section">
+          <summary class="res-section-header">
+            <span class="res-section-icon">✅</span>
+            <span class="res-section-title">Checklist y Alertas</span>
+            <span class="res-section-chevron">▾</span>
+          </summary>
+          <div class="widget-grid res-section-body">
+            <div class="widget wg-8" data-widget-id="wg-branch-checklist">
+              <h3 class="widget-title" style="margin-bottom:0.5rem">Checklist de Cierre</h3>
+              <div id="branch-checklist" style="display:grid;grid-template-columns:1fr 1fr;gap:0.25rem 0.75rem"></div>
+            </div>
+            <div class="widget wg-4" data-widget-id="wg-branch-alerts" style="align-self:start">
+              <h3 class="widget-title" style="margin-bottom:0.5rem">Alertas y Sugerencias</h3>
+              <div id="branch-alerts" style="display:flex;flex-direction:column;gap:0.5rem"></div>
+            </div>
+          </div>
+        </details>
+
         <!-- Collapsible Sub-sections for Detailed Results -->
-        <div class="resultados-details" style="margin-top:0.75rem">
-          <h3 style="font-size:0.9375rem;font-weight:800;color:var(--text-1);margin-bottom:0.5rem;padding-bottom:0.375rem;border-bottom:1px solid var(--border)">Análisis Detallado</h3>
-          
+        <details class="res-section">
+          <summary class="res-section-header">
+            <span class="res-section-icon">📊</span>
+            <span class="res-section-title">Análisis Detallado</span>
+            <span class="res-section-chevron">▾</span>
+          </summary>
+          <div class="res-section-body">
           <div class="widget-grid" id="branch-an-grid">
             <!-- P&L Chart -->
             <div class="widget wg-8" data-widget-id="wg-branch-pnlchart">
@@ -394,7 +429,7 @@
               </div>
               <div class="chart-box"><canvas id="chart-branch-pnl"></canvas></div>
             </div>
-            
+
             <!-- Fixed Costs Donut -->
             <div class="widget wg-4" data-widget-id="wg-branch-donut">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
@@ -435,7 +470,8 @@
               <div class="table-scroll collapsible collapsed" id="branch-pnl-table-full"></div>
             </div>
           </div>
-        </div>
+          </div>
+        </details>
       </div>
 
       <!-- ═══ TAB 3: ESTUDIO SOCIOECONÓMICO ═══ -->
@@ -799,6 +835,6 @@
   </div>
 
   <footer id="app-footer"><p>BW² — Dashboard de Inversión · v8.0 · Multi-Empresa</p></footer>
-  <script type="module" src="app.js?v=bw12"></script>
+  <script type="module" src="app.js?v=bw13"></script>
 </body>
 </html>

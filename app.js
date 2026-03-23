@@ -6,8 +6,17 @@ import { runProjection, runSensitivity, generateHeatmap, calcStress, generateChe
 import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated, updateUserProfile, updateUserEmail, changePassword } from './auth.js';
 import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw4';
 import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw4';
-import { runLocationStudy, calcCombinedMarketFactor, geocodeAddress } from './engine/location-engine.js?v=bw5';
+import { runLocationStudy, calcCombinedMarketFactor, geocodeAddress } from './engine/location-engine.js?v=bw6';
 import { generateBranchPDF } from './pdf-export.js?v=bw4';
+import { setGoogleApiKey, loadGoogleMaps, attachPlacesAutocomplete, createGoogleMap, buildStudyMarkers, isGoogleMapsLoaded } from './engine/google-places.js';
+
+/* ═══ GOOGLE API CONFIGURATION ═══ */
+// Set your Google Cloud API key here (requires Maps JS, Places, Geocoding APIs)
+const GOOGLE_API_KEY = localStorage.getItem('bw2_google_api_key') || '';
+if (GOOGLE_API_KEY) {
+  setGoogleApiKey(GOOGLE_API_KEY);
+  console.log('[BW2] Google API key configured ✓');
+}
 
 /* ═══ GLOBALS & STATE ═══ */
 const STORE_KEY = 'bw2_store';
@@ -434,7 +443,11 @@ document.addEventListener('keydown', (e) => {
 
 let _suppressFullRender = false;
 let _suppressTimer = null;
-document.addEventListener('DOMContentLoaded',()=>{
+document.addEventListener('DOMContentLoaded',async ()=>{
+  // Load Google Maps if key is configured
+  if (GOOGLE_API_KEY) {
+    try { await loadGoogleMaps(); } catch(e) { console.warn('[BW2] Google Maps load failed, using Nominatim fallback:', e.message); }
+  }
   initNav(); 
   WidgetManager.init();
   renderCurrentView();
@@ -1437,11 +1450,34 @@ function switchBranchTab(tabName) {
   if (targetPanel) targetPanel.classList.add('active');
 }
 
-/* ─── GEOCODING AUTOCOMPLETE HELPER ─── */
+/* ─── GEOCODING AUTOCOMPLETE HELPER (Google Places + Nominatim fallback) ─── */
+let _googleAutocompletes = []; // Track attached autocompletes to avoid duplicates
 function setupGeocodingAutocomplete(inputId, suggestionsId, statusId, onSelectCallback) {
   const ci = $(inputId); const sugBox = $(suggestionsId); const statusEl = $(statusId);
-  let debounce = null;
   if (!ci) return;
+
+  // If Google Places is available, use it
+  if (isGoogleMapsLoaded()) {
+    // Check if already attached to avoid duplicates
+    if (_googleAutocompletes.includes(inputId)) return;
+    _googleAutocompletes.push(inputId);
+
+    attachPlacesAutocomplete(ci, {
+      types: ['geocode', 'establishment'],
+      onSelect: (place) => {
+        const name = place.colonia || place.name || place.displayName.split(',')[0];
+        ci.value = name;
+        if (sugBox) sugBox.classList.remove('open');
+        if (statusEl) statusEl.innerHTML = `<span class="validated">✅ ${name} <small style="opacity:0.6">(Google)</small></span>`;
+        if (onSelectCallback) onSelectCallback(name, place.formattedAddress, place.lat, place.lng);
+      }
+    });
+    if (statusEl) statusEl.innerHTML = '<span class="validated" style="opacity:0.5">🔍 Google Places activo</span>';
+    return;
+  }
+
+  // Fallback: Nominatim autocomplete
+  let debounce = null;
   ci.addEventListener('input', () => {
     clearTimeout(debounce); const q = ci.value.trim();
     if (q.length < 3) { if(sugBox){sugBox.classList.remove('open');sugBox.innerHTML='';} if(statusEl)statusEl.innerHTML=''; return; }
@@ -1797,7 +1833,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   });
 
-  // ═══ INLINE MARKET ADDRESS AUTOCOMPLETE + REFRESH ═══
+  // ═══ INLINE MARKET ADDRESS AUTOCOMPLETE + REFRESH (Google Places + fallback) ═══
   const marketRefreshBtn = $('market-inline-refresh');
   const marketAddrInput = $('market-inline-address');
   if (marketRefreshBtn && marketAddrInput) {
@@ -1805,63 +1841,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     const currentBranch = getBranch(state.activeBranchId);
     if (currentBranch?.colonia) marketAddrInput.value = currentBranch.colonia;
     else if (currentBranch?.locationStudy?.address) marketAddrInput.value = currentBranch.locationStudy.address;
-
-    // ── Autocomplete Dropdown ──
-    let acDropdown = document.createElement('div');
-    acDropdown.className = 'market-ac-dropdown';
-    acDropdown.style.cssText = 'position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--bg-card,#fff);border:1px solid var(--border,#ddd);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.15);max-height:240px;overflow-y:auto;display:none;font-size:0.75rem';
-    // Position relative parent
-    const acWrap = marketAddrInput.parentElement;
-    if (acWrap) { acWrap.style.position = 'relative'; acWrap.appendChild(acDropdown); }
-
-    let acTimer = null;
-    const acSearch = async (query) => {
-      if (query.length < 3) { acDropdown.style.display = 'none'; return; }
-      try {
-        const results = await geocodeAddress(query, true);
-        if (!results.length) { acDropdown.style.display = 'none'; return; }
-        acDropdown.innerHTML = results.map((r, i) => {
-          const parts = r.displayName.split(',');
-          const name = parts[0]?.trim() || query;
-          const detail = parts.slice(1, 3).map(s => s.trim()).join(', ');
-          const typeLabel = r.type ? `<span style="background:var(--accent-soft);color:var(--accent);padding:0.1rem 0.3rem;border-radius:4px;font-size:0.6rem;font-weight:700;margin-left:auto">${r.type}</span>` : '';
-          return `<div class="market-ac-item" data-idx="${i}" style="padding:0.5rem 0.65rem;cursor:pointer;display:flex;align-items:center;gap:0.5rem;border-bottom:1px solid var(--border,#eee);transition:background 0.15s">
-            <div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--text-1,#333);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div><div style="font-size:0.65rem;color:var(--text-3,#999);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${detail}</div></div>
-            ${typeLabel}</div>`;
-        }).join('');
-        acDropdown.style.display = 'block';
-
-        // Store results for click selection
-        acDropdown._results = results;
-        acDropdown.querySelectorAll('.market-ac-item').forEach(item => {
-          item.addEventListener('mouseenter', () => item.style.background = 'var(--accent-soft,#f0f0f0)');
-          item.addEventListener('mouseleave', () => item.style.background = '');
-          item.addEventListener('click', () => {
-            const idx = parseInt(item.dataset.idx);
-            const selected = results[idx];
-            if (selected) {
-              marketAddrInput.value = selected.displayName.split(',')[0]?.trim() || selected.displayName;
-              acDropdown.style.display = 'none';
-              doRefresh(selected.displayName.split(',').slice(0, 2).join(','));
-            }
-          });
-        });
-      } catch (e) {
-        acDropdown.innerHTML = `<div style="padding:0.5rem;color:var(--red,red);font-size:0.7rem">Error de conexión</div>`;
-        acDropdown.style.display = 'block';
-      }
-    };
-
-    marketAddrInput.addEventListener('input', () => {
-      clearTimeout(acTimer);
-      acTimer = setTimeout(() => acSearch(marketAddrInput.value.trim()), 400);
-    });
-    marketAddrInput.addEventListener('focus', () => {
-      if (marketAddrInput.value.trim().length >= 3) acSearch(marketAddrInput.value.trim());
-    });
-    document.addEventListener('click', (e) => {
-      if (!acDropdown.contains(e.target) && e.target !== marketAddrInput) acDropdown.style.display = 'none';
-    });
 
     // ── Run Full Study ──
     const doRefresh = async (overrideQuery) => {
@@ -1888,8 +1867,66 @@ document.addEventListener('DOMContentLoaded',()=>{
         marketRefreshBtn.textContent = '🔄';
       }
     };
+
+    // ── Google Places Autocomplete for inline market input ──
+    if (isGoogleMapsLoaded()) {
+      const acWrap = marketAddrInput.parentElement;
+      if (acWrap) acWrap.style.position = 'relative';
+      attachPlacesAutocomplete(marketAddrInput, {
+        types: ['geocode', 'establishment'],
+        onSelect: (place) => {
+          const name = place.colonia || place.name || place.displayName.split(',')[0];
+          marketAddrInput.value = name;
+          doRefresh(place.formattedAddress || name);
+        }
+      });
+    } else {
+      // Fallback: Nominatim autocomplete
+      let acDropdown = document.createElement('div');
+      acDropdown.className = 'market-ac-dropdown';
+      acDropdown.style.cssText = 'position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--bg-card,#fff);border:1px solid var(--border,#ddd);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.15);max-height:240px;overflow-y:auto;display:none;font-size:0.75rem';
+      const acWrap = marketAddrInput.parentElement;
+      if (acWrap) { acWrap.style.position = 'relative'; acWrap.appendChild(acDropdown); }
+
+      let acTimer = null;
+      const acSearch = async (query) => {
+        if (query.length < 3) { acDropdown.style.display = 'none'; return; }
+        try {
+          const results = await geocodeAddress(query, true);
+          if (!results.length) { acDropdown.style.display = 'none'; return; }
+          acDropdown.innerHTML = results.map((r, i) => {
+            const parts = r.displayName.split(',');
+            const name = parts[0]?.trim() || query;
+            const detail = parts.slice(1, 3).map(s => s.trim()).join(', ');
+            return `<div class="market-ac-item" data-idx="${i}" style="padding:0.5rem 0.65rem;cursor:pointer;display:flex;align-items:center;gap:0.5rem;border-bottom:1px solid var(--border,#eee);transition:background 0.15s">
+              <div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--text-1,#333);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div><div style="font-size:0.65rem;color:var(--text-3,#999);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${detail}</div></div></div>`;
+          }).join('');
+          acDropdown.style.display = 'block';
+          acDropdown.querySelectorAll('.market-ac-item').forEach(item => {
+            item.addEventListener('mouseenter', () => item.style.background = 'var(--accent-soft,#f0f0f0)');
+            item.addEventListener('mouseleave', () => item.style.background = '');
+            item.addEventListener('click', () => {
+              const idx = parseInt(item.dataset.idx);
+              const selected = results[idx];
+              if (selected) {
+                marketAddrInput.value = selected.displayName.split(',')[0]?.trim() || selected.displayName;
+                acDropdown.style.display = 'none';
+                doRefresh(selected.displayName.split(',').slice(0, 2).join(','));
+              }
+            });
+          });
+        } catch (e) {
+          acDropdown.innerHTML = `<div style="padding:0.5rem;color:var(--red,red);font-size:0.7rem">Error de conexión</div>`;
+          acDropdown.style.display = 'block';
+        }
+      };
+      marketAddrInput.addEventListener('input', () => { clearTimeout(acTimer); acTimer = setTimeout(() => acSearch(marketAddrInput.value.trim()), 400); });
+      marketAddrInput.addEventListener('focus', () => { if (marketAddrInput.value.trim().length >= 3) acSearch(marketAddrInput.value.trim()); });
+      document.addEventListener('click', (e) => { if (!acDropdown.contains(e.target) && e.target !== marketAddrInput) acDropdown.style.display = 'none'; });
+    }
+
     marketRefreshBtn.addEventListener('click', () => doRefresh());
-    marketAddrInput.addEventListener('keydown', e => { if (e.key === 'Enter') { acDropdown.style.display = 'none'; doRefresh(); } });
+    marketAddrInput.addEventListener('keydown', e => { if (e.key === 'Enter') doRefresh(); });
   }
 
   // (Royalty panel init moved to renderBranchDetail where branch is available)
@@ -2578,6 +2615,36 @@ function renderMarketStudyPanel(branch) {
   panel.style.display = 'block';
   if(radarPanel) radarPanel.style.display = 'block';
 
+  // Render mini-map in market panel (Google Maps if available)
+  const miniMapEl = $('market-mini-map');
+  if (miniMapEl && study.coordinates) {
+    miniMapEl.innerHTML = '';
+    miniMapEl.style.display = 'block';
+    if (isGoogleMapsLoaded()) {
+      try {
+        const markers = buildStudyMarkers(study);
+        createGoogleMap(miniMapEl, study.coordinates.lat, study.coordinates.lng, {
+          zoom: 14,
+          markers: markers.slice(0, 50), // Limit markers for performance
+          circles: [500, 1000],
+        });
+      } catch(e) { console.warn('[BW2] Mini-map render failed:', e); miniMapEl.style.display = 'none'; }
+    } else if (typeof L !== 'undefined') {
+      // Leaflet mini-map fallback
+      try {
+        const mm = L.map(miniMapEl, { zoomControl: false, attributionControl: false }).setView([study.coordinates.lat, study.coordinates.lng], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mm);
+        L.marker([study.coordinates.lat, study.coordinates.lng]).addTo(mm);
+        [500, 1000].forEach((r, i) => L.circle([study.coordinates.lat, study.coordinates.lng], { radius: r, color: '#6B7A2E', fillOpacity: 0.05, weight: 1 }).addTo(mm));
+        setTimeout(() => mm.invalidateSize(), 200);
+      } catch(e) { miniMapEl.style.display = 'none'; }
+    } else {
+      miniMapEl.style.display = 'none';
+    }
+  } else if (miniMapEl) {
+    miniMapEl.style.display = 'none';
+  }
+
   // Render radar chart for market factors
   dc('market-radar-main');const radarCanvas=$('chart-market-radar-main');
   if(radarCanvas && study.scores.factors){
@@ -3161,7 +3228,7 @@ function renderBranchLocation(branch) {
   }
 }
 
-function renderLocationResults(study) {
+async function renderLocationResults(study) {
   const resultsEl = $('loc-results');
   if (!resultsEl) return;
   resultsEl.style.display = 'block';
@@ -3321,50 +3388,82 @@ function renderLocationResults(study) {
     `).join('');
   }
 
-  // ── MAP (enhanced with radius rings + color markers) ──
+  // ── MAP (Google Maps primary, Leaflet fallback) ──
   if (study.coordinates) {
-    if (locMap) { locMap.remove(); locMap = null; }
-    try {
-      locMap = L.map('loc-map').setView([study.coordinates.lat, study.coordinates.lng], 14);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OSM', maxZoom: 18
-      }).addTo(locMap);
+    const mapContainer = $('loc-map');
+    if (mapContainer) {
+      // Clear previous map
+      if (locMap) { try { locMap.remove(); } catch(e){} locMap = null; }
+      mapContainer.innerHTML = '';
 
-      // Main marker
-      L.marker([study.coordinates.lat, study.coordinates.lng]).addTo(locMap)
-        .bindPopup(`<b>${study.colonia || study.address}</b><br>${study.municipio || ''}<br>Score: ${s.total}/100`).openPopup();
-
-      // Radius rings
-      [500, 1000, 2000].forEach((r, i) => {
-        L.circle([study.coordinates.lat, study.coordinates.lng], {
-          radius: r, color: ['#2563eb', '#3b82f6', '#93c5fd'][i],
-          fillOpacity: [0.04, 0.02, 0.01][i], weight: 1.5, dashArray: r > 500 ? '6 4' : null
-        }).addTo(locMap);
-      });
-
-      // Color-coded markers
-      const markerGroups = [
-        { data: c.farmacias || [], color: '#dc2626', emoji: '💊', prefix: 'Farmacia' },
-        { data: c.salud || [],     color: '#16a34a', emoji: '🏥', prefix: 'Salud' },
-        { data: c.escuelas || [],  color: '#7c3aed', emoji: '🎓', prefix: 'Escuela' },
-        { data: c.mercados || [],  color: '#ea580c', emoji: '🛒', prefix: 'Mercado' },
-        { data: c.transporte || [],color: '#0284c7', emoji: '🚌', prefix: 'Transporte' },
-        { data: c.bancos || [],    color: '#ca8a04', emoji: '🏦', prefix: 'Banco' },
-      ];
-      markerGroups.forEach(({ data, color, emoji, prefix }) => {
-        data.forEach(p => {
-          if (p.lat) L.circleMarker([p.lat, p.lng], {
-            radius: prefix === 'Farmacia' ? 7 : 5, color, fillColor: color, fillOpacity: 0.7, weight: 1
-          }).addTo(locMap).bindPopup(`${emoji} <b>${p.name}</b><br>${p.type || prefix}${p.chain ? ' · ' + p.chain : ''}${p.distance ? '<br>' + p.distance + 'm' : ''}`);
-        });
-      });
-
-      setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 100);
-      setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 400);
-      setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 1000);
-    } catch (e) { console.error('Map error:', e); }
+      if (isGoogleMapsLoaded()) {
+        // ── Google Maps ──
+        try {
+          const markers = buildStudyMarkers(study);
+          const gmap = await createGoogleMap(mapContainer, study.coordinates.lat, study.coordinates.lng, {
+            zoom: 14,
+            markers: markers,
+            circles: [500, 1000, 2000],
+          });
+          console.log('[BW2] Socioeconomic Google Map rendered ✓');
+        } catch (e) {
+          console.error('[BW2] Google Map error, falling back to Leaflet:', e);
+          _renderLeafletMap(study, c, s);
+        }
+      } else {
+        // ── Leaflet fallback ──
+        _renderLeafletMap(study, c, s);
+      }
+    }
   }
 
+  // Render demographic indicators, nearby detail, and sources
+  renderLocationExtras(study, c, s, sug);
+}
+
+/** Leaflet map fallback for when Google Maps is not available */
+function _renderLeafletMap(study, c, s) {
+  if (typeof L === 'undefined') return;
+  try {
+    locMap = L.map('loc-map').setView([study.coordinates.lat, study.coordinates.lng], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OSM', maxZoom: 18
+    }).addTo(locMap);
+
+    L.marker([study.coordinates.lat, study.coordinates.lng]).addTo(locMap)
+      .bindPopup(`<b>${study.colonia || study.address}</b><br>${study.municipio || ''}<br>Score: ${s.total}/100`).openPopup();
+
+    [500, 1000, 2000].forEach((r, i) => {
+      L.circle([study.coordinates.lat, study.coordinates.lng], {
+        radius: r, color: ['#2563eb', '#3b82f6', '#93c5fd'][i],
+        fillOpacity: [0.04, 0.02, 0.01][i], weight: 1.5, dashArray: r > 500 ? '6 4' : null
+      }).addTo(locMap);
+    });
+
+    const markerGroups = [
+      { data: c.farmacias || [], color: '#dc2626', emoji: '💊', prefix: 'Farmacia' },
+      { data: c.salud || [],     color: '#16a34a', emoji: '🏥', prefix: 'Salud' },
+      { data: c.escuelas || [],  color: '#7c3aed', emoji: '🎓', prefix: 'Escuela' },
+      { data: c.mercados || [],  color: '#ea580c', emoji: '🛒', prefix: 'Mercado' },
+      { data: c.transporte || [],color: '#0284c7', emoji: '🚌', prefix: 'Transporte' },
+      { data: c.bancos || [],    color: '#ca8a04', emoji: '🏦', prefix: 'Banco' },
+    ];
+    markerGroups.forEach(({ data, color, emoji, prefix }) => {
+      data.forEach(p => {
+        if (p.lat) L.circleMarker([p.lat, p.lng], {
+          radius: prefix === 'Farmacia' ? 7 : 5, color, fillColor: color, fillOpacity: 0.7, weight: 1
+        }).addTo(locMap).bindPopup(`${emoji} <b>${p.name}</b><br>${p.type || prefix}${p.chain ? ' · ' + p.chain : ''}${p.distance ? '<br>' + p.distance + 'm' : ''}`);
+      });
+    });
+
+    setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 100);
+    setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 400);
+    setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 1000);
+  } catch (e) { console.error('Leaflet map error:', e); }
+}
+
+/** Render demographic indicators, nearby detail table, and sources (called from renderLocationResults) */
+function renderLocationExtras(study, c, s, sug) {
   // ── DEMOGRAPHIC INDICATORS ──
   const indEl = $('loc-indicators');
   if (indEl) {

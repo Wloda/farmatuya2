@@ -307,6 +307,54 @@ body:has(#app-header){padding-top:50px}
 .kpi-mini-bar-fill{height:100%;background:var(--accent);border-radius:3px;width:0;transition:width 0.8s ease}
 .kpi-mini-label{font-size:0.575rem;color:var(--text-3);margin-top:0.125rem}
 
+/* ═══ COLLAPSIBLE RESULT SECTIONS ═══ */
+.res-section{
+  margin-top:0.5rem;
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  background:var(--bg-card);
+  overflow:hidden;
+  transition:box-shadow 0.3s;
+}
+.res-section[open]{
+  box-shadow:0 2px 8px rgba(0,0,0,0.04);
+}
+.res-section-header{
+  display:flex;align-items:center;gap:0.5rem;
+  padding:0.6rem 0.85rem;
+  cursor:pointer;
+  user-select:none;
+  font-size:0.8125rem;font-weight:700;
+  color:var(--text-1);
+  background:var(--surface);
+  border-bottom:1px solid transparent;
+  transition:background 0.2s, border-color 0.2s;
+  list-style:none;
+}
+.res-section-header::-webkit-details-marker{display:none}
+.res-section[open] .res-section-header{
+  border-bottom-color:var(--border);
+  background:var(--bg-card);
+}
+.res-section-header:hover{
+  background:var(--bg-hover,rgba(0,0,0,0.02));
+}
+.res-section-icon{font-size:0.9rem;flex-shrink:0}
+.res-section-title{flex:1;letter-spacing:-0.01em}
+.res-section-chevron{
+  font-size:0.65rem;color:var(--text-3);
+  transition:transform 0.25s var(--ease-smooth);
+}
+.res-section[open] .res-section-chevron{
+  transform:rotate(180deg);
+}
+.res-section:not([open]) .res-section-chevron{
+  transform:rotate(-90deg);
+}
+.res-section-body{
+  padding:0.5rem;
+}
+
 /* ═══ WIDGET GRID (ACRU Style) ═══ */
 .widget-grid{
   display:grid;
@@ -897,13 +945,13 @@ body:has(#app-header){padding-top:50px}
 .branch-kpi{text-align:center;min-width:0}
 .bk-label{display:block;font-size:0.5rem;color:var(--text-3);text-transform:uppercase;letter-spacing:0.02em;font-weight:600;line-height:1.2;margin-bottom:0.125rem}
 .bk-value{display:block;font-size:0.75rem;font-weight:700;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.branch-actions{display:flex;gap:0.5rem;flex-wrap:wrap}
+.branch-actions{display:flex;gap:0.375rem;flex-wrap:wrap}
 .btn-sm{
   border:none;
   background:var(--surface);
   color:var(--text-1);
-  font-family:var(--font);font-size:0.625rem;font-weight:600;
-  padding:0.3rem 0.6rem;border-radius:var(--r-sm);
+  font-family:var(--font);font-size:0.6875rem;font-weight:600;
+  padding:0.375rem 0.75rem;border-radius:var(--r-sm);
   cursor:pointer;
   transition:all 0.2s;flex:1;text-align:center;min-width:fit-content;
   display:flex;align-items:center;justify-content:center;gap:0.25rem;
@@ -3485,3 +3533,59 @@ input:focus,select:focus,textarea:focus{
     transition-duration:0.001ms !important;
   }
 }
+
+/* ═══ DEEP LAYOUT POLISH ═══ */
+
+/* Branch planning banner */
+.branch-status-banner>div{
+  font-size:0.8125rem;font-weight:600;
+  border-left:3px solid var(--yellow);
+}
+
+/* Market study — compact variable rows */
+#market-study-body .data-table td{padding:0.375rem 0.5rem;font-size:0.75rem}
+#market-study-body .data-table th{padding:0.375rem 0.5rem;font-size:0.6rem}
+
+/* Radar chart — keep compact */
+#market-radar-panel .chart-box{max-height:220px}
+#market-radar-panel{min-width:0}
+
+/* Portfolio help text — move to left */
+.portfolio-hint{
+  font-size:0.7rem;color:var(--text-3);font-weight:500;
+  text-align:left;margin-top:-0.25rem;
+}
+
+/* Branch card KPIs — tighter grid */
+.branch-kpis{margin-bottom:0.625rem}
+
+/* Home empty state — smaller */
+.empresa-card-new,
+[onclick*="addEmpresaFlow"]{
+  max-height:180px;
+}
+
+/* Widget sections — tighter padding */
+.res-section-body{padding:0.375rem}
+
+/* Collapsible sections default open */
+.res-section{border:none;margin-bottom:0.125rem}
+.res-section-header{
+  padding:0.5rem 0.625rem;font-size:0.75rem;
+}
+
+/* KPI cards row — full width distribution */
+#branch-resultados-grid .kpi-card{
+  min-height:auto;
+}
+
+/* Market variable toggle slider — clearer */
+.mvar-toggle{position:relative;display:inline-block;width:32px;height:18px}
+.mvar-toggle input{opacity:0;width:0;height:0}
+.mvar-slider{position:absolute;top:0;left:0;right:0;bottom:0;cursor:pointer;
+  background:var(--surface-alt);border-radius:9px;transition:0.3s}
+.mvar-slider::before{content:'';position:absolute;width:14px;height:14px;
+  left:2px;bottom:2px;background:#fff;border-radius:50%;transition:0.3s;
+  box-shadow:0 1px 3px rgba(0,0,0,0.15)}
+.mvar-toggle input:checked+.mvar-slider{background:var(--accent)}
+.mvar-toggle input:checked+.mvar-slider::before{transform:translateX(14px)}

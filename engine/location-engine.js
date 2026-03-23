@@ -1,16 +1,18 @@
 /**
- * FarmaTuya — Location Engine v2 (1000x Market Study)
- * ────────────────────────────────────────────────────
- * Real APIs: Nominatim (geocoding) + Overpass (POIs multi-radio)
- * Embedded: CONEVAL rezago social
+ * FarmaTuya — Location Engine v3 (Google + OSM Market Study)
+ * ────────────────────────────────────────────────────────────
+ * Primary: Google Places/Geocoding (when configured)
+ * Fallback: Nominatim (geocoding) + Overpass (POIs multi-radio)
+ * Census: INEGI DENUE + CONEVAL rezago social
  *
  * Multi-radius analysis: 500m, 1km, 2km
- * 11-factor scoring model
+ * 15-factor scoring model
  * Chain detection for pharmacy competition
  * Traffic generators: schools, churches, markets, transport
  * Residential density estimation
  */
 import { lookupRezago } from '../data/coneval-rezago.js';
+import { googleGeocode, isGoogleMapsLoaded, getGoogleApiKey } from './google-places.js';
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const OVERPASS_URLS = [
@@ -48,9 +50,28 @@ function detectChain(name) {
 }
 
 /* ══════════════════════════════════════════
-   GEOCODING via Nominatim
+   GEOCODING — Google Primary, Nominatim Fallback
    ══════════════════════════════════════════ */
 export async function geocodeAddress(query, returnMultiple = false) {
+  // Try Google first if API key is configured
+  if (getGoogleApiKey() && isGoogleMapsLoaded()) {
+    try {
+      const result = await googleGeocode(query, returnMultiple);
+      console.log('[LocationEngine] Geocoded via Google ✓');
+      return result;
+    } catch (e) {
+      console.warn('[LocationEngine] Google geocode failed, falling back to Nominatim:', e.message);
+    }
+  }
+
+  // Fallback: Nominatim
+  return _nominatimGeocode(query, returnMultiple);
+}
+
+/**
+ * Nominatim geocoding (fallback)
+ */
+async function _nominatimGeocode(query, returnMultiple = false) {
   // Smart query: if it looks like a specific POI (has name-like words), don't force ', México'
   const poiIndicators = /hospital|centro\s*comercial|plaza|mall|parque|aeropuerto|estadio|mercado|universidad|iglesia|catedral|museo|hotel|walmart|soriana|chedraui|costco|sam's|city\s*market|liverpool/i;
   const hasMexicoRef = /m[eé]xico|mx|cdmx|guadalajara|monterrey|puebla|tijuana|chihuahua|juárez|león|cancún|mérida|querétaro|oaxaca/i;
