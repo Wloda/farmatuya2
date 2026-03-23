@@ -2675,6 +2675,30 @@ function renderMarketStudyPanel(branch) {
 
   // Build variables table
   const allImpacts = [...activeImpacts, ...inactiveImpacts].sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+  
+  const marketFactorDesc = {
+    trafico: 'Volumen de personas y vehículos que pasan diariamente por la zona.',
+    competencia: 'Proximidad y cantidad de sucursales competidoras.',
+    compDensity: 'Nivel de concentración de competencia respecto a la población.',
+    compQuality: 'Fuerza de marca y tamaño de los competidores cercanos.',
+    distComp: 'Distancia directa hacia el competidor más próximo.',
+    salud: 'Proximidad a centros médicos, hospitales y clínicas.',
+    cofepris: 'Nivel de cumplimiento o restricciones sanitarias aplicables a la zona.',
+    bancos: 'Cercanía a sucursales bancarias (importantes generadores de flujo).',
+    restaurantes: 'Cercanía a negocios de comida (indicador de tráfico peatonal).',
+    residencial: 'Densidad de viviendas y población residente en la colonia.',
+    saturacion: 'Nivel de hiper-oferta (muchas farmacias vs la necesidad de la zona).',
+    rezago: 'Nivel de carencia de servicios; representa oportunidad de penetración comercial.',
+    confianza: 'Nivel de seguridad y estabilidad socioeconómica de la cuadra.',
+    commercial: 'Concentración de tiendas ancla y actividad comercial general.',
+    transport: 'Acceso a rutas de transporte público o vías principales vehiculares.',
+    nearest: 'Distancia clave a los puntos de interés más vitales.',
+    denue: 'Densidad de comercios formales registrados en los alrededores.',
+    publicHealth: 'Presencia de instituciones como IMSS o ISSSTE (atracción de pacientes).',
+    vetCorridor: 'Presencia de otras veterinarias o estéticas caninas.',
+    income: 'Nivel de ingreso estimado y perfil socioeconómico de la manzana.'
+  };
+
   body.innerHTML = `<table class="market-vars-table">
     <thead><tr><th></th><th>Variable</th><th class="num">Score</th><th class="num">Efecto</th><th>Activa</th></tr></thead>
     <tbody>${allImpacts.map(imp => {
@@ -2682,9 +2706,10 @@ function renderMarketStudyPanel(branch) {
       const pctStr = imp.pct >= 0 ? `+${imp.pct.toFixed(1)}%` : `${imp.pct.toFixed(1)}%`;
       const pctClass = imp.pct >= 0 ? 'positive' : 'negative';
       const scoreClass = imp.score >= 75 ? 'score-high' : imp.score >= 50 ? 'score-mid' : 'score-low';
+      const desc = marketFactorDesc[imp.key] || 'Factor calculado algorítmicamente.';
       return `<tr class="${enabled && masterEnabled ? '' : 'mvar-disabled'}">
         <td class="mvar-emoji">${imp.emoji}</td>
-        <td class="mvar-label">${imp.label}</td>
+        <td class="mvar-label">${imp.label} <span class="info-icon" data-tooltip="${desc}">i</span></td>
         <td class="num"><span class="mvar-score ${scoreClass}">${imp.score}</span></td>
         <td class="num"><span class="mvar-pct ${pctClass}">${pctStr}</span></td>
         <td><label class="mvar-toggle"><input type="checkbox" data-key="${imp.key}" ${enabled ? 'checked' : ''} ${masterEnabled ? '' : 'disabled'}><span class="mvar-slider"></span></label></td>
@@ -2891,41 +2916,10 @@ function renderBranchEditPanel(branch, model) {
     const invMin = ov.totalInitialInvestmentMin ?? model.totalInitialInvestment?.min ?? 0;
     const invMax = ov.totalInitialInvestmentMax ?? model.totalInitialInvestment?.max ?? 0;
     const invCurrent = ov.totalInitialInvestment ?? model.totalInitialInvestment?.default ?? invMax;
-    const isWorstCase = invCurrent === invMax;
-    const isMin = invCurrent === invMin;
-    const pct = invMax > invMin ? ((invCurrent - invMin) / (invMax - invMin)) * 100 : 100;
-    const statusLabel = isWorstCase ? 'Peor escenario' : isMin ? 'Escenario mínimo' : 'Personalizado';
-    const statusClass = isWorstCase ? 'inv-status-worst' : isMin ? 'inv-status-min' : 'inv-status-custom';
-    invEl.innerHTML = `
-      <div class="inv-block">
-        <div class="inv-grid">
-          <div class="inv-col-left">
-            <label class="inv-main-label">Inversión Total <span class="field-hint" data-tip="Monto total requerido para abrir esta sucursal (equipo, adecuación, inventario)">(?) </span></label>
-            <div class="inv-input-row">
-              <span class="inv-currency">$</span>
-              <input type="number" class="inv-main-input input-text" data-key="totalInitialInvestment" value="${parseFloat(invCurrent.toFixed(2))}" step="1" min="${invMin}" max="${invMax * 2}">
-            </div>
-            <div class="inv-range-bar-wrap">
-              <input type="range" class="inv-slider" id="inv-range-slider" min="${invMin}" max="${invMax}" step="1" value="${invCurrent}">
-              <div class="inv-range-labels">
-                <span>Mín ${fmt.m(invMin)}</span>
-                <span>Máx ${fmt.m(invMax)}</span>
-              </div>
-            </div>
-          </div>
-          <div class="inv-col-right">
-            <span class="inv-status ${statusClass}">${statusLabel}</span>
-            <div class="inv-ventas-field">
-              <label class="inv-main-label">Ajuste de Ventas <span class="field-hint" data-tip="Sube o baja este % para simular que vendes más o menos de lo proyectado">(?) </span></label>
-              <div class="edit-input-wrap">
-                <input type="number" class="input-text" data-key="scenarioFactor" value="${(ov.scenarioFactor ?? 1) * 100}" step="5" min="50" max="200">
-                <span class="edit-unit">%</span>
-              </div>
-              <div class="edit-default">${Math.abs(((ov.scenarioFactor ?? 1) * 100) - 100) < 1 ? '= default (100%)' : '✏️ Editado (orig: 100%)'}</div>
-            </div>
-          </div>
-        </div>
-      </div>`;
+    invEl.innerHTML = [
+      editField('Inversión Total', 'totalInitialInvestment', invCurrent, invMax, 1000, '$', invMin, invMax * 2, 'Monto total requerido para abrir (equipo, adecuación, inventario)'),
+      editField('Ajuste de Ventas', 'scenarioFactor', (ov.scenarioFactor ?? 1) * 100, 100, 5, '%', 50, 200, 'Sube o baja este % para simular que vendes más o menos de lo proyectado')
+    ].join('');
   }
 
   // ── Fixed Costs ──
@@ -3005,23 +2999,7 @@ function renderBranchEditPanel(branch, model) {
         renderBranchStress(r, m, ov);
         // Update enterprise header (Comprometido, Libre, Score)
         updateEnterpriseHeader(empresa);
-        // Sync the slider ↔ number input if one changed
-        const invSlider = $('inv-range-slider');
-        const invNumInput = document.querySelector('[data-key="totalInitialInvestment"]');
-        if (key === 'totalInitialInvestment' && invSlider && invNumInput) {
-          // If number input changed, sync slider (clamped to slider range)
-          const sliderMin = parseFloat(invSlider.min);
-          const sliderMax = parseFloat(invSlider.max);
-          invSlider.value = Math.max(sliderMin, Math.min(val, sliderMax));
-          // Update status label in real-time
-          const statusEl = document.querySelector('.inv-status');
-          if (statusEl) {
-            const isMax = Math.abs(val - sliderMax) < 2;
-            const isMin = Math.abs(val - sliderMin) < 2;
-            statusEl.textContent = isMax ? 'Peor escenario' : isMin ? 'Escenario mínimo' : 'Personalizado';
-            statusEl.className = 'inv-status ' + (isMax ? 'inv-status-worst' : isMin ? 'inv-status-min' : 'inv-status-custom');
-          }
-        }
+
       }, 300);
       // Allow full re-render after extended inactivity (rebuilds edit panel)
       _suppressTimer = setTimeout(() => {
@@ -3069,26 +3047,7 @@ function renderBranchEditPanel(branch, model) {
     };
   }
 
-  // ── Investment range slider sync ──
-  const invSlider = $('inv-range-slider');
-  const invNumInput = document.querySelector('[data-key="totalInitialInvestment"]');
-  if (invSlider && invNumInput) {
-    invSlider.addEventListener('input', () => {
-      const val = parseFloat(invSlider.value);
-      invNumInput.value = val;
-      // Update status label in real-time
-      const sliderMin = parseFloat(invSlider.min);
-      const sliderMax = parseFloat(invSlider.max);
-      const statusEl = document.querySelector('.inv-status');
-      if (statusEl) {
-        const isMax = Math.abs(val - sliderMax) < 2;
-        const isMin = Math.abs(val - sliderMin) < 2;
-        statusEl.textContent = isMax ? 'Peor escenario' : isMin ? 'Escenario mínimo' : 'Personalizado';
-        statusEl.className = 'inv-status ' + (isMax ? 'inv-status-worst' : isMin ? 'inv-status-min' : 'inv-status-custom');
-      }
-      invNumInput.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-  }
+
 }
 
 function editField(label, key, value, defaultVal, step, unit, min, max, hint) {
