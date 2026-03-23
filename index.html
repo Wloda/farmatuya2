@@ -165,7 +165,13 @@
     <!-- ═══ PORTFOLIO VIEW (Level 3: Proyecto) ═══ -->
     <section id="view-portfolio">
       <div id="portfolio-summary" class="bw2-global-summary" style="display:none;margin-bottom:0.75rem"></div>
-      <div class="view-header"><h2 id="portfolio-title">Sucursales de Proyecto</h2><p>Haz clic en 📊 <strong>Ver</strong> para explorar los detalles de cada sucursal</p></div>
+      <div class="view-header"><h2 id="portfolio-title">Sucursales de Proyecto</h2><p>Haz clic en 📊 <strong>Ver</strong> para explorar los detalles de cada sucursal</p>    <nav id="main-nav">
+      <button class="nav-btn active" data-view="consolidated">
+        📊 Totales
+      </button>
+      <div id="branch-nav-list"></div>
+      <button class="btn-add" id="btn-new-branch" title="Agregar Nueva Sucursal">+ Nueva Sucursal</button>
+    </nav></div>
       <div class="portfolio-grid" id="portfolio-grid"></div>
     </section>
 
