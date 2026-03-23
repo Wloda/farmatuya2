@@ -732,15 +732,15 @@ body:has(#app-header){padding-top:50px}
 /* ═══ CHECKLIST ═══ */
 .checklist-item{
   display:grid;grid-template-columns:auto 1fr auto;align-items:center;
-  gap:0.5rem;padding:0.35rem 0.5rem;border-radius:var(--r-xs);
+  gap:0.35rem;padding:0.25rem 0.4rem;border-radius:var(--r-xs);
   transition:background 0.2s;border-left:3px solid transparent;
 }
 .checklist-item:hover{background:rgba(0,0,0,0.015)}
 .checklist-item.pass{border-left-color:rgba(22,163,74,0.25)}
 .checklist-item.fail{border-left-color:rgba(220,38,38,0.2)}
 .check-icon{font-size:1rem;flex-shrink:0;display:flex;align-items:center}
-.check-label{flex:1;font-size:0.75rem;color:var(--text-1);font-weight:500;line-height:1.3}
-.check-detail{font-size:0.6875rem;color:var(--text-2);text-align:right;white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums}
+.check-label{flex:1;font-size:0.7rem;color:var(--text-1);font-weight:600;line-height:1.2;white-space:nowrap}
+.check-detail{font-size:0.625rem;color:var(--text-2);text-align:right;white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums}
 
 /* ═══ ALERTS ═══ */
 .alert-item{

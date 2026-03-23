@@ -342,14 +342,14 @@ export function generateChecklist(r) {
   const pm = r.paybackMetrics;
   const pbSimpleMid = pm.simple.min!=null ? (pm.simple.min+pm.simple.max)/2 : null;
   return [
-    {item:'Capital cubre inversión + reserva',pass:r.capitalRemaining>=r.recommendedReserve,detail:`Rest: $${Math.round(r.capitalRemaining).toLocaleString()} vs Res: $${Math.round(r.recommendedReserve).toLocaleString()}`},
+    {item:'Capital ≥ Inv.+reserva',pass:r.capitalRemaining>=r.recommendedReserve,detail:`$${Math.round(r.capitalRemaining).toLocaleString()} vs $${Math.round(r.recommendedReserve).toLocaleString()}`},
     {item:'VPN positivo',pass:r.npv>0,detail:`$${Math.round(r.npv).toLocaleString()}`},
-    {item:'PB Simple ≤ 24 m',pass:pbSimpleMid!=null&&pbSimpleMid<=24,detail:`${pbSimpleMid!=null?pbSimpleMid.toFixed(0):'∞'}m (rango ${pm.simple.min?.toFixed(0)||'?'}–${pm.simple.max?.toFixed(0)||'?'})`},
-    {item:'PB Rampa ≤ 48 m',pass:pm.rampa.month!=null&&pm.rampa.month<=48,detail:`${pm.rampa.month||'∞'}m${pm.rampa.extrapolated?' (est.)':''}`},
+    {item:'PB Simple ≤ 24m',pass:pbSimpleMid!=null&&pbSimpleMid<=24,detail:`${pbSimpleMid!=null?pbSimpleMid.toFixed(0):'∞'}m (${pm.simple.min?.toFixed(0)||'?'}–${pm.simple.max?.toFixed(0)||'?'})`},
+    {item:'PB Rampa ≤ 48m',pass:pm.rampa.month!=null&&pm.rampa.month<=48,detail:`${pm.rampa.month||'∞'}m`},
     {item:'ROI anual > 20%',pass:r.roi36/3>20,detail:`${(r.roi36/3).toFixed(1)}%`},
     {item:'Renta < 15% venta',pass:r.rentPctRevenue<0.15,detail:`${(r.rentPctRevenue*100).toFixed(1)}%`},
-    {item:'BE < 70% capacidad',pass:r.breakEvenPctCapacity<0.70,detail:`${Math.round(r.breakEvenPctCapacity*100)}%`},
-    {item:'BE Operativo ≤ 12 m',pass:pm.beOperativo.month!=null&&pm.beOperativo.month<=12,detail:`${pm.beOperativo.month||'∞'} m`},
+    {item:'BE < 70% cap.',pass:r.breakEvenPctCapacity<0.70,detail:`${Math.round(r.breakEvenPctCapacity*100)}%`},
+    {item:'BE Oper. ≤ 12m',pass:pm.beOperativo.month!=null&&pm.beOperativo.month<=12,detail:`${pm.beOperativo.month||'∞'} m`},
   ];
 }
 
