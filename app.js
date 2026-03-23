@@ -1322,6 +1322,7 @@ function updateNav() {
     const settingsBtn = nav.querySelector('[data-action="empresa-settings"]');
     if (settingsBtn && activeEmp) {
       settingsBtn.addEventListener('click', () => {
+        // Set the first project as active to access settings
         if(activeEmp.proyectos.length) {
           setActiveProyecto(activeEmp.id, activeEmp.proyectos[0].id);
         }
@@ -1335,8 +1336,27 @@ function updateNav() {
         showBW2Modal('crear-proyecto', activeEmp.id);
       });
     }
+  } else if (isBranch) {
+    // Back to project
+    const backBtn = nav.querySelector('#nav-back-project');
+    if (backBtn) backBtn.addEventListener('click', () => {
+      state.view = 'portfolio'; state.activeBranchId = null; renderCurrentView();
+    });
+    // Branch tab buttons
+    nav.querySelectorAll('[data-branch-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        switchBranchTab(btn.dataset.branchTab);
+        updateNav();
+      });
+    });
+    // PDF export
+    const pdfBtn = nav.querySelector('#nav-export-pdf');
+    if (pdfBtn) pdfBtn.addEventListener('click', () => {
+      const mainPdfBtn = $('btn-export-pdf');
+      if (mainPdfBtn) mainPdfBtn.click();
+    });
   } else {
-    // Project and Branch level buttons
+    // Back to empresa
     const backEmpBtn = nav.querySelector('#nav-back-empresa');
     if (backEmpBtn) backEmpBtn.addEventListener('click', () => {
       state.view = 'empresa-dashboard'; state.activeBranchId = null; renderCurrentView();
@@ -1347,12 +1367,6 @@ function updateNav() {
         state.view = btn.dataset.view;
         state.activeBranchId = null;
         renderCurrentView();
-      });
-    });
-    // Branch-level nav buttons
-    nav.querySelectorAll('[data-nav-branch-id]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        window._openBranch(btn.dataset.navBranchId);
       });
     });
     // Add branch
@@ -1800,6 +1814,26 @@ document.addEventListener('DOMContentLoaded',()=>{
       // Update active state on these tabs
       document.querySelectorAll('#branch-tabs-header .tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+    });
+  });
+  // P&L Tabs
+  document.querySelectorAll('#branch-pnl-tabs-header .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabId = btn.dataset.pnlTab;
+      document.querySelectorAll('#branch-pnl-tabs-header .tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.pnl-tab-content .pnl-panel').forEach(p => { p.style.display = 'none'; p.classList.remove('active'); });
+      btn.classList.add('active');
+      const panel = $(`pnl-tab-${tabId}`);
+      if(panel) { panel.style.display = 'block'; panel.classList.add('active'); }
+      // Update Export CSV target in button
+      const expBtn = $('btn-export-pnl-current');
+      if(expBtn) {
+         if(tabId === 'totales') {
+            expBtn.onclick = () => { const btnExpAnnual = $('branch-annual-table').querySelector('button'); if(btnExpAnnual) btnExpAnnual.click(); };
+         } else {
+            expBtn.onclick = () => { window._exportPnL(); };
+         }
+      }
     });
   });
   // Timeline selector (Desde Apertura / Desde Capital)
@@ -2364,9 +2398,19 @@ function renderBranchPnL(r,model,overrides){
     charts['branch-cv-bar']=new Chart(c4,{type:'bar',data:{labels:['COGS','ComVta','Merma','Pub','Regalía','Banc'],datasets:[{label:'% Venta',data:[vc.cogs*100,vc.comVenta*100,vc.merma*100,vc.pubDir*100,vc.regalia*100,vc.bancario*100],backgroundColor:['#f87171','#4d7cfe','#fbbf24','#d946ef','#818cf8','#6366f1']}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{ticks:{callback:v=>v+'%'}}}}});
   }
   const as=r.annualSummary;const ys=['year1','year2','year3','year4','year5'].filter(y=>as[y]);
-  $('branch-annual-table').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem"><span style="font-size:0.7rem;font-weight:700;color:var(--text-2);text-transform:uppercase">Resumen Anual</span><button class="btn-sm" onclick="exportCSV('resumen_anual.csv',['Año','Ingresos','Ut.Neta','Flujo'],[${ys.map((y,i)=>`['Año ${i+1}',${as[y].revenue},${as[y].netIncome},${as[y].cashFlow}]`).join(',')}])">📥 CSV</button></div><table class="data-table"><thead><tr><th>Año</th><th class="num">Ingresos</th><th class="num">Ut.Neta</th><th class="num">Flujo</th></tr></thead><tbody>${ys.map((y,i)=>`<tr><td>Año ${i+1}</td><td class="num">${fmt.m(as[y].revenue)}</td><td class="num ${as[y].netIncome>=0?'positive':'negative'}">${fmt.m(as[y].netIncome)}</td><td class="num ${as[y].cashFlow>=0?'positive':'negative'}">${fmt.m(as[y].cashFlow)}</td></tr>`).join('')}</tbody></table>`;
+  const btnExpAnnual = `<button class="btn-sm" style="display:none" onclick="exportCSV('resumen_anual.csv',['Año','Ingresos','Ut.Neta','Flujo'],[${ys.map((y,i)=>`['Año ${i+1}',${as[y].revenue},${as[y].netIncome},${as[y].cashFlow}]`).join(',')}])">📥 CSV</button>`;
+  $('branch-annual-table').innerHTML=`${btnExpAnnual}<table class="data-table"><thead><tr><th>Año</th><th class="num">Ingresos</th><th class="num">Ut.Neta</th><th class="num">Flujo</th></tr></thead><tbody>${ys.map((y,i)=>`<tr><td>Año ${i+1}</td><td class="num">${fmt.m(as[y].revenue)}</td><td class="num ${as[y].netIncome>=0?'positive':'negative'}">${fmt.m(as[y].netIncome)}</td><td class="num ${as[y].cashFlow>=0?'positive':'negative'}">${fmt.m(as[y].cashFlow)}</td></tr>`).join('')}</tbody></table>`;
+  
   const cols=['Mes','Venta','COGS','Ut.Br','CF','CV','EBITDA','Imp','Ut.Net','Acum'];
-  $('branch-pnl-table-full').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem"><span style="font-size:0.7rem;font-weight:700;color:var(--text-2);text-transform:uppercase">Estado de Resultados (60 meses)</span><button class="btn-sm" onclick="window._exportPnL()">📥 CSV</button></div><table class="data-table"><thead><tr>${cols.map(c=>`<th class="${c!=='Mes'?'num':''}">${c}</th>`).join('')}</tr></thead><tbody>${r.months.map(m=>`<tr><td>M${m.month}</td><td class="num">${fmt.m(m.revenue)}</td><td class="num">${fmt.m(m.cogs)}</td><td class="num">${fmt.m(m.grossProfit)}</td><td class="num">${fmt.m(m.totalFixedCosts)}</td><td class="num">${fmt.m(m.variableCosts)}</td><td class="num ${m.ebitda>=0?'positive':'negative'}">${fmt.m(m.ebitda)}</td><td class="num">${fmt.m(m.taxes)}</td><td class="num ${m.netIncome>=0?'positive':'negative'}">${fmt.m(m.netIncome)}</td><td class="num ${m.cumulativeCashFlow>=0?'positive':'negative'}">${fmt.m(m.cumulativeCashFlow)}</td></tr>`).join('')}</tbody></table>`;
+  for(let i=1; i<=5; i++) {
+    const el = $(`branch-pnl-y${i}`);
+    if(!el) continue;
+    const mStart = (i-1)*12 + 1;
+    const mEnd = i*12;
+    const yMonths = r.months.filter(m => m.month >= mStart && m.month <= mEnd);
+    if(yMonths.length === 0) { el.innerHTML = ''; continue; }
+    el.innerHTML=`<table class="data-table"><thead><tr>${cols.map(c=>`<th class="${c!=='Mes'?'num':''}">${c}</th>`).join('')}</tr></thead><tbody>${yMonths.map(m=>`<tr><td>M${m.month}</td><td class="num">${fmt.m(m.revenue)}</td><td class="num">${fmt.m(m.cogs)}</td><td class="num">${fmt.m(m.grossProfit)}</td><td class="num">${fmt.m(m.totalFixedCosts)}</td><td class="num">${fmt.m(m.variableCosts)}</td><td class="num ${m.ebitda>=0?'positive':'negative'}">${fmt.m(m.ebitda)}</td><td class="num">${fmt.m(m.taxes)}</td><td class="num ${m.netIncome>=0?'positive':'negative'}">${fmt.m(m.netIncome)}</td><td class="num ${m.cumulativeCashFlow>=0?'positive':'negative'}">${fmt.m(m.cumulativeCashFlow)}</td></tr>`).join('')}</tbody></table>`;
+  }
 }
 
 /* ── P&L CSV Export ── */

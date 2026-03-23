@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=bw58">
+  <link rel="stylesheet" href="styles.css?v=bw59">
   <script>
     window.addEventListener('error',e=>document.title='ERR:'+e.message);
     window.addEventListener('unhandledrejection',e=>document.title='REJ:'+e.reason);
@@ -442,35 +442,40 @@
               <div class="chart-box" style="height:180px"><canvas id="chart-branch-donut"></canvas></div>
             </div>
 
-            <!-- Annual P&L -->
-            <div class="widget wg-12" data-widget-id="wg-branch-annual">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Resumen Anual (Proyectado)</h3>
-              <div class="table-scroll" id="branch-annual-table"></div>
-            </div>
-
-            <!-- Escenarios Chart -->
-            <div class="widget wg-8" data-widget-id="wg-branch-scenchart">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Flujo por Escenario</h3>
-              <div class="chart-box"><canvas id="chart-scenarios-cf"></canvas></div>
-              <div class="table-scroll" id="scenarios-comparison-table" style="margin-top:1rem"></div>
-            </div>
-
-            <!-- Tornado de Sensibilidad -->
-            <div class="widget wg-4" data-widget-id="wg-branch-tornado">
+            <!-- P&L Tabbed Tables -->
+            <div class="widget wg-12" data-widget-id="wg-branch-pnl-tabs">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-                <h3 class="widget-title" style="margin:0">Tornado de Sensibilidad (EBITDA)</h3>
-                <button class="btn-sm" onclick="screenshotChart('chart-branch-tornado')">📸</button>
+                <div class="tabs-header pnl-tabs" id="branch-pnl-tabs-header" style="margin-bottom:0;padding-bottom:0;border:none">
+                  <button class="tab-btn active" data-pnl-tab="totales">Totales</button>
+                  <button class="tab-btn" data-pnl-tab="y1">Año 1</button>
+                  <button class="tab-btn" data-pnl-tab="y2">Año 2</button>
+                  <button class="tab-btn" data-pnl-tab="y3">Año 3</button>
+                  <button class="tab-btn" data-pnl-tab="y4">Año 4</button>
+                  <button class="tab-btn" data-pnl-tab="y5">Año 5</button>
+                </div>
+                <button class="btn-sm" id="btn-export-pnl-current">📥 CSV</button>
               </div>
-              <div class="chart-box" style="height:220px"><canvas id="chart-branch-tornado"></canvas></div>
-            </div>
-
-            <!-- Full P&L Table -->
-            <div class="widget wg-12" data-widget-id="wg-branch-fulltable">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-                <h3 class="widget-title" style="margin:0">P&L Detallado Mensual</h3>
-                <button class="expand-btn" id="branch-toggle-pnl" style="font-weight:600;background:none;border:none;color:var(--text-2);cursor:pointer;display:flex;align-items:center;gap:0.5rem">Ver Desglose <span style="font-size:0.7rem">▼</span></button>
+              
+              <div class="pnl-tab-content">
+                <div id="pnl-tab-totales" class="pnl-panel active" style="display:block">
+                  <div class="table-scroll" id="branch-annual-table"></div>
+                </div>
+                <div id="pnl-tab-y1" class="pnl-panel" style="display:none">
+                  <div class="table-scroll" id="branch-pnl-y1"></div>
+                </div>
+                <div id="pnl-tab-y2" class="pnl-panel" style="display:none">
+                  <div class="table-scroll" id="branch-pnl-y2"></div>
+                </div>
+                <div id="pnl-tab-y3" class="pnl-panel" style="display:none">
+                  <div class="table-scroll" id="branch-pnl-y3"></div>
+                </div>
+                <div id="pnl-tab-y4" class="pnl-panel" style="display:none">
+                  <div class="table-scroll" id="branch-pnl-y4"></div>
+                </div>
+                <div id="pnl-tab-y5" class="pnl-panel" style="display:none">
+                  <div class="table-scroll" id="branch-pnl-y5"></div>
+                </div>
               </div>
-              <div class="table-scroll collapsible collapsed" id="branch-pnl-table-full"></div>
             </div>
           </div>
           </div>
@@ -829,6 +834,6 @@
   </div>
 
   <footer id="app-footer"><p>BW² — Dashboard de Inversión · v8.0 · Multi-Empresa</p></footer>
-  <script type="module" src="app.js?v=bw16"></script>
+  <script type="module" src="app.js?v=bw17"></script>
 </body>
 </html>
