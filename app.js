@@ -32,14 +32,7 @@ const WidgetManager = {
   },
 
   hookButtons() {
-    document.querySelectorAll('.btn-edit-layout').forEach(btn => {
-      btn.onclick = () => this.toggleEditMode(btn.dataset.target, true);
-    });
-    document.querySelectorAll('.btn-save-layout').forEach(btn => {
-      btn.onclick = () => this.toggleEditMode(btn.dataset.target, false);
-    });
-    
-    // Remove restore widget logic
+    // Handled by Apple-style widget system (IIFE at bottom of file)
   },
 
   getGrids(target) {
@@ -54,88 +47,11 @@ const WidgetManager = {
   },
 
   toggleEditMode(target, active) {
-    const grids = this.getGrids(target);
-    const firstGrid = $(grids[0]);
-    if (!firstGrid) return;
-
-    this.isEditing = active;
-    const tabEl = firstGrid.closest('.branch-tab-panel') || firstGrid.closest('section');
-    const toolbar = $(`toolbar-${target}`);
-    
-    if (active) {
-      tabEl.classList.add('dashboard-edit-mode');
-      if(toolbar) toolbar.style.display = 'flex';
-      
-      // Inject overlays into widgets
-      this.getAllWidgets(target).forEach(w => {
-        if (!w.querySelector('.widget-edit-overlay')) {
-          w.insertAdjacentHTML('beforeend', `
-            <div class="widget-edit-overlay">
-              <div style="display:flex;gap:0.5rem">
-                <button class="widget-control-btn btn-shrink" title="Achicar">←</button>
-                <button class="widget-control-btn btn-expand" title="Agrandar">→</button>
-              </div>
-            </div>
-          `);
-          
-          const btnShrink = w.querySelector('.btn-shrink');
-          const btnExpand = w.querySelector('.btn-expand');
-          if (btnShrink) btnShrink.onclick = (e) => { e.stopPropagation(); this.resizeWidget(w, target, -1); };
-          if (btnExpand) btnExpand.onclick = (e) => { e.stopPropagation(); this.resizeWidget(w, target, 1); };
-        }
-      });
-
-      // Init Sortable natively for all grids under this target
-      if (window.Sortable) {
-        grids.forEach(gId => {
-          const el = $(gId);
-          if (el && !this.sortables[gId]) {
-            this.sortables[gId] = new Sortable(el, {
-              group: target,
-              animation: 150,
-              ghostClass: 'widget-ghost',
-              dragClass: 'widget-drag',
-              onEnd: () => this.saveLayout(target)
-            });
-          }
-        });
-      }
-      // Nothing else needed here
-      
-    } else {
-      tabEl.classList.remove('dashboard-edit-mode');
-      if(toolbar) toolbar.style.display = 'none';
-      this.saveLayout(target);
-      
-      const btn = document.querySelector(`.btn-save-layout[data-target="${target}"]`);
-      if (btn) {
-        const orig = btn.textContent;
-        btn.textContent = '✅ Guardado';
-        setTimeout(() => btn.textContent = orig, 1500);
-      }
-      
-      // Trigger a resize on charts just in case sizes changed
-      setTimeout(()=> window.dispatchEvent(new Event('resize')), 200);
-    }
+    // Handled by Apple-style widget system (IIFE at bottom of file)
   },
 
   resizeWidget(widgetEl, target, direction) {
-    const sizes = ['wg-3', 'wg-4', 'wg-6', 'wg-8', 'wg-12'];
-    let current = sizes.find(s => widgetEl.classList.contains(s)) || 'wg-4';
-    let currIdx = sizes.indexOf(current);
-    if(currIdx === -1) currIdx = 1;
-    
-    let nextIdx = currIdx + direction;
-    if (nextIdx < 0) nextIdx = 0;
-    if (nextIdx >= sizes.length) nextIdx = sizes.length - 1;
-    
-    if (nextIdx !== currIdx) {
-      widgetEl.classList.remove(...sizes);
-      widgetEl.classList.add(sizes[nextIdx]);
-      this.saveLayout(target);
-      const canvas = widgetEl.querySelector('canvas');
-      if(canvas) setTimeout(()=> window.dispatchEvent(new Event('resize')), 100);
-    }
+    // Handled by Apple-style context menu
   },
 
   saveLayout(target) {
@@ -2261,8 +2177,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     // Restore saved layouts
     ['branch-resultados-grid'].forEach(id=>restoreLayout(id));
   });
-})();
-
 })();
 
 function updateBranchKPIBar(r){
