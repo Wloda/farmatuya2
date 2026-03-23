@@ -170,10 +170,9 @@
 
     <!-- ═══ BRANCH DETAIL VIEW ═══ -->
     <section id="view-branch" style="display:none">
-      <div class="view-header">
-        <button class="btn-back" id="btn-back-portfolio">← Proyecto</button>
-        <div><h2 id="branch-detail-title">Sucursal</h2><p id="branch-detail-subtitle">—</p></div>
-        <button class="btn-export-pdf" id="btn-export-pdf" title="Generar reporte PDF de inversión" style="display:none">📄 Exportar PDF</button>
+      <!-- ═══ COMPACT CONTEXT LINE ═══ -->
+      <div class="branch-context-line" id="branch-context-line">
+        <!-- JS fills: Sucursal 1 · 🏪 Súper · 🟡 Base · 📍 -1.3% -->
       </div>
 
       <!-- Branch tabs are now in the sidebar, no horizontal tab nav needed -->
@@ -248,38 +247,28 @@
 
       <!-- ═══ TAB 2: RESULTADOS (default active) ═══ -->
       <div id="btab-resultados" class="branch-tab-panel active">
-        <!-- ═══ UNIFIED CONTROLS BAR ═══ -->
-        <div class="resultados-controls-bar">
-          <div class="resultados-controls-row">
-            <h2 class="resultados-title">Métricas de Resultados</h2>
-            <button id="branch-market-indicator" class="branch-market-badge" style="display:none" title="Clic para ver detalles">📍 Mercado: --</button>
+        <!-- ═══ THIN FILTER BAR (subordinated to KPIs) ═══ -->
+        <div class="filter-bar">
+          <div class="filter-bar-group">
+            <select class="filter-select" id="branch-scenario-select">
+              <option value="conservative">🔴 Conservador</option>
+              <option value="base" selected>🟡 Base</option>
+              <option value="upside">🟢 Upside</option>
+            </select>
           </div>
-          <div class="resultados-controls-row">
-            <div class="toolbar-dropdown-group">
-              <label class="toolbar-dropdown-label">Escenario</label>
-              <select class="toolbar-dropdown" id="branch-scenario-select">
-                <option value="conservative">🔴 Conservador</option>
-                <option value="base" selected>🟡 Base</option>
-                <option value="upside">🟢 Upside</option>
-              </select>
-            </div>
-            <div class="toolbar-dropdown-group">
-              <label class="toolbar-dropdown-label">Perspectiva</label>
-              <select class="toolbar-dropdown" id="branch-timeline-select">
-                <option value="0" selected>📊 Desde Apertura</option>
-                <option value="2">💰 Desde Capital</option>
-              </select>
-            </div>
-            <div class="toolbar-dropdown-group" id="res-royalty-panel" style="display:none">
-              <label class="toolbar-dropdown-label">Regalía</label>
-              <select class="toolbar-dropdown" id="res-royalty-select">
-                <option value="variable_2_5" selected>💳 Variable 2.5%</option>
-                <option value="condonacion_6m">🎁 Condonación 6m</option>
-                <option value="pago_unico">💰 Pago Único</option>
-              </select>
-            </div>
+          <div class="filter-bar-group">
+            <select class="filter-select" id="branch-timeline-select">
+              <option value="0" selected>📊 Desde Apertura</option>
+              <option value="2">💰 Desde Capital</option>
+            </select>
           </div>
-          <p class="res-royalty-desc" id="res-royalty-desc" style="display:none"></p>
+          <div class="filter-bar-group" id="res-royalty-panel" style="display:none">
+            <select class="filter-select" id="res-royalty-select">
+              <option value="variable_2_5" selected>💳 Variable 2.5%</option>
+              <option value="condonacion_6m">🎁 Condonación 6m</option>
+              <option value="pago_unico">💰 Pago Único</option>
+            </select>
+          </div>
         </div>
         <div class="edit-layout-toolbar" id="toolbar-branch-resultados" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:1rem">

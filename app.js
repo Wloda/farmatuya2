@@ -454,15 +454,12 @@ function renderCurrentView() {
 }
 
 function updateEnterpriseHeader(empresa){
-  const consol = runConsolidation(empresa);
   const emp = getActiveEmpresa();
   const empName = emp ? emp.name : 'Sin Empresa';
   const projName = empresa.name || 'Proyecto';
+  // Header is navigation-only — no financial data
   const el=$('enterprise-header-info');
-  const scoreColor = consol.avgScore >= 80 ? 'green' : consol.avgScore >= 60 ? 'yellow' : 'red';
-  if(el) el.innerHTML=`<span class="ent-stat project-badge">📁 ${projName}</span>
-    <span class="ent-stat ${consol.capitalFree<0?'danger':''}">Libre: ${fmt.m(consol.capitalFree)}</span>
-    <span class="ent-stat"><span class="sem-dot ${scoreColor}"></span> Score: ${consol.avgScore}</span>`;
+  if(el) el.innerHTML='';
   // Update brand
   const brandName=$('header-brand-name');
   const brandSub=$('header-brand-subtitle');
@@ -1198,25 +1195,12 @@ function updateNav() {
     html += `<div class="nav-spacer"></div>`;
     html += `<button class="btn-add" id="btn-add-proyecto-nav"><span class="nav-icon">+</span> <span class="nav-text">Nuevo Proyecto</span></button>`;
   } else if (isBranch && branch) {
-    // Level 4: Inside a Branch
-    html += `<button class="nav-back" id="nav-back-project"><span class="nav-icon">←</span><span class="nav-text">Proyecto</span></button>`;
-    html += `<div class="nav-divider"></div>`;
+    // Level 4: Inside a Branch — sidebar = tabs only (navigation handled by breadcrumb)
     html += `<div class="nav-section">Sucursal</div>`;
-    html += `<button class="nav-btn ${state.activeTab === 'resultados' ? 'active' : ''}" data-branch-tab="resultados"><span class="nav-icon">📊</span><span class="nav-text">Resultados</span></button>`;
+    html += `<button class="nav-btn ${state.activeTab === 'resultados' ? 'active' : ''}" data-branch-tab="resultados"><span class="nav-icon">📈</span><span class="nav-text">Resultados</span></button>`;
     html += `<button class="nav-btn ${state.activeTab === 'config' ? 'active' : ''}" data-branch-tab="config"><span class="nav-icon">⚙️</span><span class="nav-text">Configuración</span></button>`;
-    html += `<button class="nav-btn ${state.activeTab === 'socioeconomico' ? 'active' : ''}" data-branch-tab="socioeconomico"><span class="nav-icon">🌍</span><span class="nav-text">Estudio de Mercado</span></button>`;
+    html += `<button class="nav-btn ${state.activeTab === 'socioeconomico' ? 'active' : ''}" data-branch-tab="socioeconomico"><span class="nav-icon">🗺</span><span class="nav-text">Estudio de Mercado</span></button>`;
     html += `<div class="nav-divider"></div>`;
-    // Lateral sucursal navigation — switch between siblings without going back
-    // Note: getEmpresa() returns the active proyecto (backward compat), so branches are directly on it
-    const siblings = (empresa?.branches||[]).filter(s => s.id !== state.activeBranchId && s.status !== 'archived');
-    if (siblings.length > 0) {
-      html += `<div class="nav-section">Cambiar</div>`;
-      siblings.forEach(s => {
-        const emoji = MODELS[s.format]?.emoji || '🏪';
-        html += `<button class="nav-btn nav-lateral" data-lateral-branch="${s.id}"><span class="nav-icon">${emoji}</span><span class="nav-text">${s.name}</span></button>`;
-      });
-      html += `<div class="nav-divider"></div>`;
-    }
     html += `<div class="nav-spacer"></div>`;
     html += `<button class="btn-add" id="nav-export-pdf" style="background:var(--surface);color:var(--text-2);box-shadow:var(--shadow-neu-sm)"><span class="nav-icon">📄</span><span class="nav-text">Exportar PDF</span></button>`;
   } else {
@@ -1263,11 +1247,6 @@ function updateNav() {
       });
     }
   } else if (isBranch) {
-    // Back to project
-    const backBtn = nav.querySelector('#nav-back-project');
-    if (backBtn) backBtn.addEventListener('click', () => {
-      state.view = 'portfolio'; state.activeBranchId = null; renderCurrentView();
-    });
     // Branch tab buttons
     nav.querySelectorAll('[data-branch-tab]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1280,14 +1259,6 @@ function updateNav() {
     if (pdfBtn) pdfBtn.addEventListener('click', () => {
       const mainPdfBtn = $('btn-export-pdf');
       if (mainPdfBtn) mainPdfBtn.click();
-    });
-    // Lateral sucursal switch
-    nav.querySelectorAll('[data-lateral-branch]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        state.activeBranchId = btn.dataset.lateralBranch;
-        state.activeTab = 'resultados';
-        renderCurrentView();
-      });
     });
   } else {
     // Back to empresa
@@ -1356,6 +1327,14 @@ function updateBreadcrumb() {
   bc.innerHTML = crumbs.map((c, i) => {
     const isLast = i === crumbs.length - 1;
     const sep = i > 0 ? '<span class="breadcrumb-sep">›</span>' : '';
+    if (isLast && isBranch && branch && empresa?.branches) {
+      // Lateral sucursal dropdown in breadcrumb
+      const options = empresa.branches
+        .filter(s => s.status !== 'archived')
+        .map(s => `<option value="${s.id}" ${s.id===state.activeBranchId?'selected':''}>${esc(s.name)}</option>`)
+        .join('');
+      return `${sep}<select class="breadcrumb-select" id="bc-branch-select">${options}</select>`;
+    }
     if (isLast) {
       return `${sep}<span class="breadcrumb-item current">${esc(c.label)}</span>`;
     }
@@ -1374,6 +1353,15 @@ function updateBreadcrumb() {
       renderCurrentView();
     });
   });
+  // Wire lateral sucursal dropdown
+  const bcSelect = $('bc-branch-select');
+  if (bcSelect) {
+    bcSelect.addEventListener('change', () => {
+      state.activeBranchId = bcSelect.value;
+      state.activeTab = 'resultados';
+      renderCurrentView();
+    });
+  }
 }
 
 /* ── Switch branch tab from sidebar ── */
@@ -1632,21 +1620,14 @@ function renderBranchDetail(empresa){
   const r=runProjection(branch.format,overrides);
   const model=MODELS[branch.format];
 
-  // Update branch header
-  $('branch-detail-title').textContent=branch.name;
-  $('branch-detail-subtitle').textContent=`${model.emoji} ${model.label} · ${sc.emoji} ${sc.label}`;
-
-  // Planning banner for non-active branches
-  const resBanner = document.querySelector('#btab-resultados .branch-status-banner');
-  if(resBanner) resBanner.remove();
-  if(branch.status !== 'active'){
-    const bannerDiv = document.createElement('div');
-    bannerDiv.className = 'branch-status-banner';
-    const statusEmoji = branch.status==='planned'?'📋':'📦';
-    const statusText = branch.status==='planned'?'Planeada — los resultados son proyecciones estimadas':'Archivada — resultados históricos';
-    bannerDiv.innerHTML = `<div style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.25rem 0.75rem;background:var(--yellow-soft);border-radius:var(--r-sm);margin-bottom:0.5rem;font-size:0.6875rem;font-weight:600;color:var(--text-2)">${statusEmoji} ${statusText}</div>`;
-    const resPanel = $('btab-resultados');
-    if(resPanel) resPanel.insertBefore(bannerDiv, resPanel.firstChild);
+  // Compact context line
+  const ctxLine = $('branch-context-line');
+  if (ctxLine) {
+    const factorVal = r.marketFactor != null ? r.marketFactor.toFixed(3) : null;
+    const factorPct = factorVal ? ((factorVal - 1) * 100).toFixed(1) : null;
+    const factorBit = factorPct ? ` · <span style="color:${parseFloat(factorPct)>=0?'var(--green)':'var(--red)'}">📍 ${factorPct>0?'+':''}${factorPct}%</span>` : '';
+    const statusBit = branch.status !== 'active' ? ` · <span class="ctx-status">${branch.status==='planned'?'📋 Planeada':'📦 Archivada'}</span>` : '';
+    ctxLine.innerHTML = `<span class="ctx-name">${esc(branch.name)}</span> · <span class="ctx-model">${model.emoji} ${model.label}</span> · <span class="ctx-scenario">${sc.emoji} ${sc.label}</span>${factorBit}${statusBit}`;
   }
 
   // Colonia display (read-only)

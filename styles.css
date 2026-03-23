@@ -280,6 +280,45 @@ body:has(#app-header){padding-top:50px}
 }
 
 /* ═══ RESULTADOS CONTROLS BAR ═══ */
+/* ── Level 101: Branch Context Line ── */
+.branch-context-line{
+  padding:0.5rem 0;margin-bottom:0.25rem;
+  font-size:0.8rem;font-weight:500;color:var(--text-2);
+  display:flex;align-items:center;gap:0.3rem;flex-wrap:wrap;
+  letter-spacing:0.01em
+}
+.branch-context-line .ctx-name{font-weight:700;color:var(--text-1);font-size:0.9rem}
+.branch-context-line .ctx-model{color:var(--text-2)}
+.branch-context-line .ctx-scenario{color:var(--text-3)}
+.branch-context-line .ctx-status{
+  font-size:0.7rem;padding:0.15rem 0.5rem;background:var(--yellow-soft);
+  border-radius:var(--r-sm);font-weight:600;color:var(--text-2)
+}
+
+/* ── Level 101: Thin Filter Bar (subordinated to KPIs) ── */
+.filter-bar{
+  display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;
+  padding:0.25rem 0;margin-bottom:0.5rem
+}
+.filter-bar-group{display:flex;align-items:center}
+.filter-select{
+  appearance:auto;background:transparent;border:none;
+  padding:0.2rem 0.25rem;font-size:0.7rem;
+  font-family:var(--font);color:var(--text-3);cursor:pointer;
+  font-weight:500;transition:color 0.2s
+}
+.filter-select:hover{color:var(--text-1)}
+.filter-select:focus{outline:none;color:var(--text-1)}
+
+/* ── Level 101: Breadcrumb Sucursal Dropdown ── */
+.breadcrumb-select{
+  appearance:auto;background:transparent;border:none;
+  font-size:0.8rem;font-weight:700;color:var(--text-1);
+  font-family:var(--font);cursor:pointer;padding:0.15rem 0.25rem
+}
+.breadcrumb-select:focus{outline:none}
+
+/* ── Legacy controls bar (kept for compat) ── */
 .resultados-controls-bar{
   background:var(--surface);border-radius:var(--r-md);padding:0.5rem 0.75rem;
   margin-bottom:0.625rem;box-shadow:var(--shadow-neu-sm);
