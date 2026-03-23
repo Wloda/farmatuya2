@@ -50,12 +50,18 @@ function detectChain(name) {
 /* ══════════════════════════════════════════
    GEOCODING via Nominatim
    ══════════════════════════════════════════ */
-export async function geocodeAddress(query) {
+export async function geocodeAddress(query, returnMultiple = false) {
+  // Smart query: if it looks like a specific POI (has name-like words), don't force ', México'
+  const poiIndicators = /hospital|centro\s*comercial|plaza|mall|parque|aeropuerto|estadio|mercado|universidad|iglesia|catedral|museo|hotel|walmart|soriana|chedraui|costco|sam's|city\s*market|liverpool/i;
+  const hasMexicoRef = /m[eé]xico|mx|cdmx|guadalajara|monterrey|puebla|tijuana|chihuahua|juárez|león|cancún|mérida|querétaro|oaxaca/i;
+  const searchQuery = poiIndicators.test(query) || hasMexicoRef.test(query) ? query : query + ', México';
+
   const params = new URLSearchParams({
-    q: query + ', México',
+    q: searchQuery,
     format: 'json',
     addressdetails: '1',
-    limit: '1',
+    limit: returnMultiple ? '8' : '1',
+    countrycodes: 'mx',
     'accept-language': 'es'
   });
 
@@ -67,20 +73,26 @@ export async function geocodeAddress(query) {
   const data = await resp.json();
   if (!data.length) throw new Error('No se encontró la dirección');
 
-  const r = data[0];
-  const addr = r.address || {};
-  return {
-    lat: parseFloat(r.lat),
-    lng: parseFloat(r.lon),
-    displayName: r.display_name,
-    municipio: addr.municipality || addr.county || addr.city || addr.town || null,
-    estado: addr.state || null,
-    colonia: addr.suburb || addr.neighbourhood || null,
-    cp: addr.postcode || null,
-    source: 'Nominatim/OSM',
-    confidence: r.importance > 0.5 ? 'alta' : r.importance > 0.3 ? 'media' : 'baja',
-    importance: r.importance
+  const parseResult = (r) => {
+    const addr = r.address || {};
+    return {
+      lat: parseFloat(r.lat),
+      lng: parseFloat(r.lon),
+      displayName: r.display_name,
+      municipio: addr.municipality || addr.county || addr.city || addr.town || null,
+      estado: addr.state || null,
+      colonia: addr.suburb || addr.neighbourhood || null,
+      cp: addr.postcode || null,
+      source: 'Nominatim/OSM',
+      confidence: r.importance > 0.5 ? 'alta' : r.importance > 0.3 ? 'media' : 'baja',
+      importance: r.importance,
+      type: r.type || null,
+      category: r.class || null
+    };
   };
+
+  if (returnMultiple) return data.map(parseResult);
+  return parseResult(data[0]);
 }
 
 /* ══════════════════════════════════════════

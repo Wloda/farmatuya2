@@ -35,23 +35,37 @@ function saveUsers(users) {
   localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
 }
 
+// Session can be in localStorage (remember=true) or sessionStorage (remember=false)
 function getSession() {
-  try { return JSON.parse(localStorage.getItem(AUTH_SESSION_KEY)) || null; }
-  catch(e) { return null; }
+  try {
+    // Check localStorage first (persistent), then sessionStorage (temporary)
+    const persistent = localStorage.getItem(AUTH_SESSION_KEY);
+    if (persistent) return JSON.parse(persistent);
+    const temporary = sessionStorage.getItem(AUTH_SESSION_KEY);
+    if (temporary) return JSON.parse(temporary);
+    return null;
+  } catch(e) { return null; }
 }
 
-function saveSession(session) {
-  localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
+function saveSession(session, remember = true) {
+  if (remember) {
+    localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
+    sessionStorage.removeItem(AUTH_SESSION_KEY);
+  } else {
+    sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
+    localStorage.removeItem(AUTH_SESSION_KEY);
+  }
 }
 
 function clearSession() {
   localStorage.removeItem(AUTH_SESSION_KEY);
+  sessionStorage.removeItem(AUTH_SESSION_KEY);
 }
 
 /* ── Public API ── */
 
 /**
- * Register a new user
+ * Register a new user (auto-login with remember=true)
  * @returns {Object} { success, error?, user? }
  */
 async function registerUser(email, password, firstName, lastName) {
@@ -85,10 +99,10 @@ async function registerUser(email, password, firstName, lastName) {
   users.push(user);
   saveUsers(users);
 
-  // Auto-login
+  // Auto-login (always remember on registration)
   const token = generateToken();
   const expiry = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000;
-  saveSession({ token, userId: user.id, expiry });
+  saveSession({ token, userId: user.id, expiry }, true);
 
   // Migrate existing profile data to this user
   const oldProfile = localStorage.getItem('bw2_user_profile');
@@ -105,9 +119,12 @@ async function registerUser(email, password, firstName, lastName) {
 
 /**
  * Login with email + password
+ * @param {string} email
+ * @param {string} password
+ * @param {boolean} remember - if true, persist session (survives browser close)
  * @returns {Object} { success, error?, user? }
  */
-async function loginUser(email, password) {
+async function loginUser(email, password, remember = true) {
   email = (email || '').trim().toLowerCase();
   if (!email || !password) return { success: false, error: 'Ingresa tu correo y contraseña' };
 
@@ -122,7 +139,7 @@ async function loginUser(email, password) {
 
   const token = generateToken();
   const expiry = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000;
-  saveSession({ token, userId: user.id, expiry });
+  saveSession({ token, userId: user.id, expiry }, remember);
 
   return { success: true, user: sanitizeUser(user) };
 }
