@@ -3,7 +3,7 @@
  */
 import { MODELS, SCENARIOS, LOCATIONS, BENCHMARKS } from './data/model-registry.js?v=bw4';
 import { runProjection, runSensitivity, generateHeatmap, calcStress, generateChecklist, evaluateAlerts } from './engine/financial-model.js?v=bw4';
-import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated, updateUserProfile, changePassword } from './auth.js';
+import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated, updateUserProfile, updateUserEmail, changePassword } from './auth.js';
 import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw4';
 import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw4';
 import { runLocationStudy, calcCombinedMarketFactor } from './engine/location-engine.js?v=bw5';
@@ -3770,9 +3770,23 @@ function openProfilePopup() {
   $('btn-cancel-profile').onclick = closeModal;
   modal.onclick = (e) => { if (e.target === modal) closeModal(); };
 
-  $('btn-save-profile').onclick = () => {
+  $('btn-save-profile').onclick = async () => {
     const firstName = (nombreInput?.value || '').trim();
     const lastName = (apellidoInput?.value || '').trim();
+    const newEmail = (emailInput?.value || '').trim();
+    const emailErr = $('profile-email-error');
+    
+    // Validate and update email if changed
+    const authUser = getCurrentUser();
+    if (newEmail && authUser && newEmail.toLowerCase() !== authUser.email) {
+      const emailResult = await updateUserEmail(newEmail);
+      if (!emailResult.success) {
+        if (emailErr) { emailErr.textContent = emailResult.error; emailErr.style.display = ''; }
+        return; // Don't save if email update fails
+      }
+      if (emailErr) emailErr.style.display = 'none';
+    }
+    
     saveProfile({ firstName, lastName, photo: pendingPhoto });
     // Sync to auth user
     updateUserProfile({ firstName, lastName, photo: pendingPhoto });

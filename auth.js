@@ -182,6 +182,30 @@ function updateUserProfile(data) {
 }
 
 /**
+ * Update user email
+ */
+async function updateUserEmail(newEmail) {
+  newEmail = (newEmail || '').trim().toLowerCase();
+  if (!newEmail) return { success: false, error: 'Ingresa un correo electrónico' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) return { success: false, error: 'Correo electrónico inválido' };
+
+  const session = getSession();
+  if (!session) return { success: false, error: 'No hay sesión activa' };
+
+  const users = getUsers();
+  const user = users.find(u => u.id === session.userId);
+  if (!user) return { success: false, error: 'Usuario no encontrado' };
+
+  // Check if new email is already taken by another user
+  const existing = users.find(u => u.email === newEmail && u.id !== session.userId);
+  if (existing) return { success: false, error: 'Ya existe otra cuenta con ese correo' };
+
+  user.email = newEmail;
+  saveUsers(users);
+  return { success: true };
+}
+
+/**
  * Change password
  */
 async function changePassword(currentPwd, newPwd) {
@@ -222,5 +246,6 @@ export {
   getCurrentUser,
   isAuthenticated,
   updateUserProfile,
+  updateUserEmail,
   changePassword
 };
