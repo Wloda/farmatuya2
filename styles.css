@@ -817,6 +817,9 @@ body:has(#app-header){padding-top:50px}
   display:none;
 }
 #main-nav:hover .nav-btn small{opacity:0.6;display:block}
+
+.nav-btn .nav-text { opacity:0; transition:opacity 0.2s var(--ease-smooth); }
+#main-nav:hover .nav-btn .nav-text { opacity: 1; }
 .nav-btn:hover{box-shadow:var(--shadow-neu-sm);color:var(--text-1);padding-left:1.5rem}
 .nav-btn:hover::before{opacity:0.4; transform:scaleY(0.6)}
 .nav-btn:hover small{opacity:1;color:var(--text-2)}
@@ -2386,11 +2389,14 @@ body:has(#app-header){padding-top:50px}
   padding:0.5rem 0.75rem 0.25rem;
   font-size:0.6rem;font-weight:700;
   text-transform:uppercase;letter-spacing:0.08em;
-  color:var(--text-3);opacity:0.7;
+  color:var(--text-3);
   margin-top:0.5rem;
   user-select:none;
+  opacity:0;
+  transition: opacity 0.2s var(--ease-smooth);
 }
 .nav-section:first-child{margin-top:0}
+#main-nav:hover .nav-section { opacity: 0.7; }
 
 /* Nav section separator line */
 .nav-divider{
@@ -2409,7 +2415,11 @@ body:has(#app-header){padding-top:50px}
   width:100%;text-align:left;
   transition:all 0.2s;
   white-space:nowrap;
+  overflow:hidden;
 }
+.nav-back .nav-text { opacity:0; transition:opacity 0.2s var(--ease-smooth); }
+#main-nav:hover .nav-back .nav-text { opacity:1; }
+
 .nav-back:hover{
   color:var(--text-1);background:rgba(0,0,0,0.03);
 }

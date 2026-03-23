@@ -1256,10 +1256,10 @@ function updateNav() {
     // Level 1: Home — minimal sidebar for consistency
     nav.style.display = 'flex';
     html += `<div class="nav-section">Panel de Control</div>`;
-    html += `<button class="nav-btn active"><span class="nav-icon">🏢</span>Empresas</button>`;
+    html += `<button class="nav-btn active"><span class="nav-icon">🏢</span><span class="nav-text">Empresas</span></button>`;
     html += `<div class="nav-divider"></div>`;
     html += `<div class="nav-spacer"></div>`;
-    html += `<button class="nav-btn" id="nav-open-profile"><span class="nav-icon">👤</span>Mi Perfil</button>`;
+    html += `<button class="nav-btn" id="nav-open-profile"><span class="nav-icon">👤</span><span class="nav-text">Mi Perfil</span></button>`;
     nav.innerHTML = html;
     const profBtn = nav.querySelector('#nav-open-profile');
     if(profBtn) profBtn.addEventListener('click', () => {
@@ -1273,39 +1273,39 @@ function updateNav() {
 
   if (isEmpresaDash) {
     // Level 2: Empresa Dashboard
-    html += `<button class="nav-back" id="nav-back-home"><span class="nav-back-icon">🏠</span> Home</button>`;
+    html += `<button class="nav-back" id="nav-back-home"><span class="nav-icon">🏠</span><span class="nav-text">Home</span></button>`;
     html += `<div class="nav-divider"></div>`;
     html += `<div class="nav-section">Empresa</div>`;
-    html += `<button class="nav-btn active"><span class="nav-icon">📁</span>Proyectos</button>`;
+    html += `<button class="nav-btn active"><span class="nav-icon">📁</span><span class="nav-text">Proyectos</span></button>`;
     html += `<div class="nav-divider"></div>`;
     html += `<div class="nav-section">Configuración</div>`;
-    html += `<button class="nav-btn" data-action="empresa-settings"><span class="nav-icon">⚙️</span>Sociedad y Socios</button>`;
+    html += `<button class="nav-btn" data-action="empresa-settings"><span class="nav-icon">⚙️</span><span class="nav-text">Sociedad y Socios</span></button>`;
     html += `<div class="nav-spacer"></div>`;
-    html += `<button class="btn-add" id="btn-add-proyecto-nav">+ Nuevo Proyecto</button>`;
+    html += `<button class="btn-add" id="btn-add-proyecto-nav"><span class="nav-icon">+</span> <span class="nav-text">Nuevo Proyecto</span></button>`;
   } else if (isBranch && branch) {
     // Level 4: Inside a Branch
-    html += `<button class="nav-back" id="nav-back-project"><span class="nav-back-icon">←</span> Proyecto</button>`;
+    html += `<button class="nav-back" id="nav-back-project"><span class="nav-icon">←</span><span class="nav-text">Proyecto</span></button>`;
     html += `<div class="nav-divider"></div>`;
     html += `<div class="nav-section">Sucursal</div>`;
-    html += `<button class="nav-btn ${state.activeTab === 'resultados' ? 'active' : ''}" data-branch-tab="resultados"><span class="nav-icon">📊</span>Resultados</button>`;
-    html += `<button class="nav-btn ${state.activeTab === 'config' ? 'active' : ''}" data-branch-tab="config"><span class="nav-icon">⚙️</span>Configuración</button>`;
-    html += `<button class="nav-btn ${state.activeTab === 'socioeconomico' ? 'active' : ''}" data-branch-tab="socioeconomico"><span class="nav-icon">🌍</span>Estudio de Mercado</button>`;
+    html += `<button class="nav-btn ${state.activeTab === 'resultados' ? 'active' : ''}" data-branch-tab="resultados"><span class="nav-icon">📊</span><span class="nav-text">Resultados</span></button>`;
+    html += `<button class="nav-btn ${state.activeTab === 'config' ? 'active' : ''}" data-branch-tab="config"><span class="nav-icon">⚙️</span><span class="nav-text">Configuración</span></button>`;
+    html += `<button class="nav-btn ${state.activeTab === 'socioeconomico' ? 'active' : ''}" data-branch-tab="socioeconomico"><span class="nav-icon">🌍</span><span class="nav-text">Estudio de Mercado</span></button>`;
     html += `<div class="nav-divider"></div>`;
     html += `<div class="nav-spacer"></div>`;
-    html += `<button class="btn-add" id="nav-export-pdf" style="background:var(--surface);color:var(--text-2);box-shadow:var(--shadow-neu-sm)"><span class="nav-icon">📄</span> Exportar PDF</button>`;
+    html += `<button class="btn-add" id="nav-export-pdf" style="background:var(--surface);color:var(--text-2);box-shadow:var(--shadow-neu-sm)"><span class="nav-icon">📄</span><span class="nav-text">Exportar PDF</span></button>`;
   } else {
     // Level 3: Inside a Project
-    html += `<button class="nav-back" id="nav-back-empresa"><span class="nav-back-icon">←</span> Empresa</button>`;
+    html += `<button class="nav-back" id="nav-back-empresa"><span class="nav-icon">←</span><span class="nav-text">Empresa</span></button>`;
     html += `<div class="nav-divider"></div>`;
     html += `<div class="nav-section">Proyecto</div>`;
-    html += `<button class="nav-btn ${state.view === 'portfolio' ? 'active' : ''}" data-view="portfolio"><span class="nav-icon">📁</span>Sucursales</button>`;
-    html += `<button class="nav-btn ${state.view === 'consolidated' ? 'active' : ''}" data-view="consolidated"><span class="nav-icon">📊</span>Consolidado</button>`;
-    html += `<button class="nav-btn ${state.view === 'comparador' ? 'active' : ''}" data-view="comparador"><span class="nav-icon">⚖️</span>Comparar</button>`;
+    html += `<button class="nav-btn ${state.view === 'portfolio' ? 'active' : ''}" data-view="portfolio"><span class="nav-icon">📁</span><span class="nav-text">Sucursales</span></button>`;
+    html += `<button class="nav-btn ${state.view === 'consolidated' ? 'active' : ''}" data-view="consolidated"><span class="nav-icon">📊</span><span class="nav-text">Consolidado</span></button>`;
+    html += `<button class="nav-btn ${state.view === 'comparador' ? 'active' : ''}" data-view="comparador"><span class="nav-icon">⚖️</span><span class="nav-text">Comparar</span></button>`;
     html += `<div class="nav-divider"></div>`;
     html += `<div class="nav-section">Configuración</div>`;
-    html += `<button class="nav-btn ${state.view === 'empresa' ? 'active' : ''}" data-view="empresa"><span class="nav-icon">⚙️</span>Sociedad y Socios</button>`;
+    html += `<button class="nav-btn ${state.view === 'empresa' ? 'active' : ''}" data-view="empresa"><span class="nav-icon">⚙️</span><span class="nav-text">Sociedad y Socios</span></button>`;
     html += `<div class="nav-spacer"></div>`;
-    html += `<button class="btn-add" id="btn-add-branch">+ Nueva Sucursal</button>`;
+    html += `<button class="btn-add" id="btn-add-branch"><span class="nav-icon">+</span> <span class="nav-text">Nueva Sucursal</span></button>`;
   }
 
   nav.innerHTML = html;
