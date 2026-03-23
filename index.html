@@ -16,8 +16,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=bw54">
+  <link rel="stylesheet" href="styles.css?v=bw55">
   <script>
     window.addEventListener('error',e=>document.title='ERR:'+e.message);
     window.addEventListener('unhandledrejection',e=>document.title='REJ:'+e.reason);
@@ -234,7 +233,8 @@
           <div class="edit-section">
             <h4 class="edit-section-title" data-toggle="edit-sales">Ventas <span class="toggle-arrow">▼</span></h4>
             <div class="edit-grid" id="edit-sales"></div>
-  <div class="edit-section" id="branch-royalty-group" style="display:none">
+          </div>
+          <div class="edit-section" id="branch-royalty-group" style="display:none">
             <h4 class="edit-section-title">Modo Regalía (Súper)</h4>
             <div class="neu-segmented small" id="branch-royalty-selector">
               <button class="seg-btn active" data-royalty="variable_2_5">Variable 2.5%</button>
@@ -272,7 +272,6 @@
                 <button class="seg-btn" data-royalty="pago_unico">💰 Único</button>
               </div>
             </div>
-            <button class="btn-sm btn-edit-layout" data-target="branch-resultados" style="background:var(--surface);border:none;border-radius:var(--r-sm);color:var(--text-2);font-weight:600;padding:0.35rem 0.6rem;cursor:pointer;display:flex;align-items:center;gap:0.3rem;box-shadow:var(--shadow-neu-sm);transition:all 0.2s;font-size:0.7rem"><span style="font-size:0.8rem">✨</span> Editar Layout</button>
           </div>
           <p class="res-royalty-desc" id="res-royalty-desc" style="display:none"></p>
         </div>
@@ -286,57 +285,33 @@
           </div>
         </div>
 
-        <div class="widget-grid" id="branch-resultados-grid">
-          <!-- Fila 1: 4 KPIs con formas variadas y personalidad única -->
-          <div class="widget wg-3 kpi-card kpi-card--bar" data-widget-id="wg-branch-eq">
-            <div class="kpi-card-header">
-              <span class="kpi-card-icon">📊</span>
-              <span class="kpi-card-label">Pto. Equilibrio</span>
-            </div>
-            <h3 class="kpi-card-value" id="branch-kpi-equilibrio">-</h3>
-            <div class="kpi-mini-bar" id="kpi-be-bar"><div class="kpi-mini-bar-fill"></div></div>
-            <span class="kpi-mini-label" id="kpi-be-pct"></span>
+        <div class="kpi-strip" id="branch-kpi-strip">
+          <div class="kpi-strip-item" title="Ventas mínimas para cubrir costos (punto de equilibrio)">
+            <span class="kpi-strip-label">Pto. Equilibrio</span>
+            <span class="kpi-strip-value" id="branch-kpi-equilibrio">-</span>
+            <span class="kpi-strip-detail" id="kpi-be-pct"></span>
           </div>
-
-          <div class="widget wg-3 kpi-card kpi-card--spark" data-widget-id="wg-branch-profit">
-            <div class="kpi-card-header">
-              <span class="kpi-card-icon">💰</span>
-              <span class="kpi-card-label">Ganancia / Mes</span>
-            </div>
-            <h3 class="kpi-card-value" id="branch-kpi-profit">-</h3>
-            <div class="kpi-sparkline" id="kpi-profit-sparkline"></div>
+          <div class="kpi-strip-divider"></div>
+          <div class="kpi-strip-item" title="EBITDA promedio mensual estabilizado">
+            <span class="kpi-strip-label">Ganancia / Mes</span>
+            <span class="kpi-strip-value" id="branch-kpi-profit">-</span>
           </div>
-
-          <div class="widget wg-3 kpi-card kpi-card--ring" data-widget-id="wg-branch-payback">
-            <div class="kpi-card-header">
-              <span class="kpi-card-icon">⏱</span>
-              <span class="kpi-card-label">Recuperación</span>
-            </div>
-            <div class="kpi-ring-layout">
-              <div class="kpi-ring-svg" id="kpi-payback-ring"></div>
-              <div class="kpi-ring-text">
-                <h3 class="kpi-card-value" id="branch-kpi-payback">-</h3>
-                <span class="kpi-ring-sub" id="kpi-payback-sub"></span>
-              </div>
-            </div>
+          <div class="kpi-strip-divider"></div>
+          <div class="kpi-strip-item" title="Meses estimados para recuperar la inversión total">
+            <span class="kpi-strip-label">Recuperación</span>
+            <span class="kpi-strip-value" id="branch-kpi-payback">-</span>
+            <span class="kpi-strip-detail" id="kpi-payback-sub"></span>
           </div>
-
-          <div class="widget wg-3 kpi-card kpi-card--gauge" data-widget-id="wg-branch-roi-gauge">
-            <div class="kpi-card-header">
-              <span class="kpi-card-icon">🎯</span>
-              <span class="kpi-card-label">ROI Anual</span>
-            </div>
-            <div class="kpi-gauge-wrap" id="kpi-roi-gauge"></div>
+          <div class="kpi-strip-divider"></div>
+          <div class="kpi-strip-item" title="Retorno sobre inversión en los primeros 12 meses">
+            <span class="kpi-strip-label">ROI 12m</span>
+            <span class="kpi-strip-value" id="kpi-roi-value">-</span>
           </div>
-
-          <div class="widget wg-3 kpi-card kpi-card--bar" data-widget-id="wg-branch-factor">
-            <div class="kpi-card-header">
-              <span class="kpi-card-icon">📍</span>
-              <span class="kpi-card-label">Factor Mercado</span>
-            </div>
-            <h3 class="kpi-card-value" id="branch-kpi-factor" style="color:var(--text-2)">—</h3>
-            <div class="kpi-mini-bar" id="kpi-factor-bar"><div class="kpi-mini-bar-fill"></div></div>
-            <span class="kpi-mini-label" id="kpi-factor-label"></span>
+          <div class="kpi-strip-divider"></div>
+          <div class="kpi-strip-item" title="Factor de ajuste basado en el estudio de ubicación">
+            <span class="kpi-strip-label">Factor Mercado</span>
+            <span class="kpi-strip-value" id="branch-kpi-factor" style="color:var(--text-2)">—</span>
+            <span class="kpi-strip-detail" id="kpi-factor-label"></span>
           </div>
         </div>
 
@@ -347,13 +322,13 @@
             <span class="res-section-title">Flujo de Caja</span>
             <span class="res-section-chevron">▾</span>
           </summary>
-          <div class="widget-grid res-section-body">
-            <div class="widget wg-8" data-widget-id="wg-branch-cashflow">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Flujo de Caja Acumulado (ROI)</h3>
+          <div class="dash-grid res-section-body">
+            <div class="dash-card dash-8">
+              <h3 class="section-title" style="margin-bottom:0.5rem">Flujo de Caja Acumulado (ROI)</h3>
               <div class="chart-box"><canvas id="chart-branch-cashflow"></canvas></div>
             </div>
-            <div class="widget wg-4" data-widget-id="wg-branch-cost-donut">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Estructura de Costos</h3>
+            <div class="dash-card dash-4">
+              <h3 class="section-title" style="margin-bottom:0.5rem">Estructura de Costos</h3>
               <div class="chart-box" style="height:200px"><canvas id="chart-branch-costs-main"></canvas></div>
               <div id="cost-donut-legend" class="donut-legend"></div>
             </div>
@@ -367,13 +342,13 @@
             <span class="res-section-title">Perfil de Mercado</span>
             <span class="res-section-chevron">▾</span>
           </summary>
-          <div class="widget-grid res-section-body">
-            <div class="widget wg-6" id="market-radar-panel" data-widget-id="wg-branch-market-radar" style="display:none">
-              <h3 class="widget-title" style="margin-bottom:0.25rem">Perfil de Mercado</h3>
+          <div class="dash-grid res-section-body">
+            <div class="dash-card dash-4" id="market-radar-panel" style="display:none">
+              <h3 class="section-title" style="margin-bottom:0.25rem">Perfil de Mercado</h3>
               <div class="chart-box" style="height:200px"><canvas id="chart-market-radar-main"></canvas></div>
             </div>
-            <div class="widget wg-8" id="market-study-panel" data-widget-id="wg-branch-market" style="display:none">
-              <h3 class="widget-title" style="margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+            <div class="dash-card dash-8" id="market-study-panel" style="display:none">
+              <h3 class="section-title" style="margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
                 Variables del Mercado
                 <div style="display:flex;align-items:center;gap:0.5rem;flex:1;min-width:200px;max-width:400px">
                   <input type="text" id="market-inline-address" class="input-text" placeholder="Cambiar dirección..." style="flex:1;font-size:0.7rem;padding:0.3rem 0.5rem;border-radius:6px;min-width:0">
@@ -385,8 +360,8 @@
                 </div>
               </h3>
               <p class="loc-subtitle">Factores que impactan las ventas en esta ubicación base.</p>
-              <div id="market-mini-map" style="height:180px;border-radius:var(--r-md);overflow:hidden;margin-bottom:0.75rem;display:none;border:1px solid var(--border)"></div>
-              <div id="market-study-body" style="margin-top:1rem;max-height:350px;overflow-y:auto"></div>
+              <div id="market-mini-map" style="height:120px;border-radius:var(--r-md);overflow:hidden;margin-bottom:0.5rem;display:none;border:1px solid var(--border)"></div>
+              <div id="market-study-body" style="margin-top:0.5rem;max-height:280px;overflow-y:auto"></div>
             </div>
           </div>
         </details>
@@ -400,13 +375,13 @@
             <span class="res-section-title">Checklist y Alertas</span>
             <span class="res-section-chevron">▾</span>
           </summary>
-          <div class="widget-grid res-section-body">
-            <div class="widget wg-8" data-widget-id="wg-branch-checklist">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Checklist de Cierre</h3>
+          <div class="dash-grid res-section-body">
+            <div class="dash-card dash-8">
+              <h3 class="section-title" style="margin-bottom:0.5rem">Checklist de Cierre</h3>
               <div id="branch-checklist" style="display:grid;grid-template-columns:1fr 1fr;gap:0.25rem 0.75rem"></div>
             </div>
-            <div class="widget wg-4" data-widget-id="wg-branch-alerts" style="align-self:start">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Alertas y Sugerencias</h3>
+            <div class="dash-card dash-4" style="align-self:start">
+              <h3 class="section-title" style="margin-bottom:0.5rem">Alertas y Sugerencias</h3>
               <div id="branch-alerts" style="display:flex;flex-direction:column;gap:0.5rem"></div>
             </div>
           </div>
@@ -420,51 +395,51 @@
             <span class="res-section-chevron">▾</span>
           </summary>
           <div class="res-section-body">
-          <div class="widget-grid" id="branch-an-grid">
+          <div class="dash-grid" id="branch-an-grid">
             <!-- P&L Chart -->
-            <div class="widget wg-8" data-widget-id="wg-branch-pnlchart">
+            <div class="dash-card dash-8">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-                <h3 class="widget-title" style="margin:0">Ingresos vs EBITDA</h3>
+                <h3 class="section-title" style="margin:0">Ingresos vs EBITDA</h3>
                 <button class="btn-sm" onclick="screenshotChart('chart-branch-pnl')">📸</button>
               </div>
               <div class="chart-box"><canvas id="chart-branch-pnl"></canvas></div>
             </div>
 
             <!-- Fixed Costs Donut -->
-            <div class="widget wg-4" data-widget-id="wg-branch-donut">
+            <div class="dash-card dash-4">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-                <h3 class="widget-title" style="margin:0">Costos fijos</h3>
+                <h3 class="section-title" style="margin:0">Costos fijos</h3>
                 <button class="btn-sm" onclick="screenshotChart('chart-branch-donut')">📸</button>
               </div>
               <div class="chart-box" style="height:180px"><canvas id="chart-branch-donut"></canvas></div>
             </div>
 
             <!-- Annual P&L -->
-            <div class="widget wg-12" data-widget-id="wg-branch-annual">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Resumen Anual (Proyectado)</h3>
+            <div class="dash-card dash-12">
+              <h3 class="section-title" style="margin-bottom:0.5rem">Resumen Anual (Proyectado)</h3>
               <div class="table-scroll" id="branch-annual-table"></div>
             </div>
 
             <!-- Escenarios Chart -->
-            <div class="widget wg-8" data-widget-id="wg-branch-scenchart">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Flujo por Escenario</h3>
+            <div class="dash-card dash-8">
+              <h3 class="section-title" style="margin-bottom:0.5rem">Flujo por Escenario</h3>
               <div class="chart-box"><canvas id="chart-scenarios-cf"></canvas></div>
               <div class="table-scroll" id="scenarios-comparison-table" style="margin-top:1rem"></div>
             </div>
 
             <!-- Tornado de Sensibilidad -->
-            <div class="widget wg-4" data-widget-id="wg-branch-tornado">
+            <div class="dash-card dash-4">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-                <h3 class="widget-title" style="margin:0">Tornado de Sensibilidad (EBITDA)</h3>
+                <h3 class="section-title" style="margin:0">Tornado de Sensibilidad (EBITDA)</h3>
                 <button class="btn-sm" onclick="screenshotChart('chart-branch-tornado')">📸</button>
               </div>
               <div class="chart-box" style="height:220px"><canvas id="chart-branch-tornado"></canvas></div>
             </div>
 
             <!-- Full P&L Table -->
-            <div class="widget wg-12" data-widget-id="wg-branch-fulltable">
+            <div class="dash-card dash-12">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-                <h3 class="widget-title" style="margin:0">P&L Detallado Mensual</h3>
+                <h3 class="section-title" style="margin:0">P&L Detallado Mensual</h3>
                 <button class="expand-btn" id="branch-toggle-pnl" style="font-weight:600;background:none;border:none;color:var(--text-2);cursor:pointer;display:flex;align-items:center;gap:0.5rem">Ver Desglose <span style="font-size:0.7rem">▼</span></button>
               </div>
               <div class="table-scroll collapsible collapsed" id="branch-pnl-table-full"></div>
@@ -530,7 +505,6 @@
           </div>
           <label class="iva-toggle" title="Multiplicar los montos por 1.16 para ver con IVA incluido"><input type="checkbox" id="toggle-iva"><span class="iva-slider"></span><span class="iva-label" id="iva-label">Sin IVA</span></label>
         </div>
-        <button class="btn-sm btn-edit-layout" data-target="consolidated" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text-2);font-weight:600;padding:0.4rem 0.75rem;cursor:pointer;display:flex;align-items:center;gap:0.4rem;box-shadow:var(--shadow-sm);transition:all 0.2s"><span style="font-size:0.9rem">🛠️</span> Editar Layout</button>
       </div>
       
       <div class="edit-layout-toolbar" id="toolbar-consolidated" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
@@ -543,38 +517,38 @@
         </div>
       </div>
 
-      <div class="widget-grid" id="consol-widget-grid">
+      <div class="dash-grid" id="consol-widget-grid">
         <!-- Fila 1: KPIs -->
-        <div class="widget wg-3" data-widget-id="wg-consol-inv">
-          <span class="widget-subtitle">Inversión Total</span>
-          <h3 class="widget-title" id="consol-kpi-inv" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
+        <div class="dash-card dash-3">
+          <span class="section-subtitle">Inversión Total</span>
+          <h3 class="section-title" id="consol-kpi-inv" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
         </div>
-        <div class="widget wg-3" data-widget-id="wg-consol-free">
-          <span class="widget-subtitle">Capital Libre</span>
-          <h3 class="widget-title" id="consol-kpi-free" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
+        <div class="dash-card dash-3">
+          <span class="section-subtitle">Capital Libre</span>
+          <h3 class="section-title" id="consol-kpi-free" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
         </div>
-        <div class="widget wg-3" data-widget-id="wg-consol-profit">
-          <span class="widget-subtitle">EBITDA Mensual</span>
-          <h3 class="widget-title" id="consol-kpi-profit" style="font-size:1.25rem;color:var(--accent);margin-top:0.25rem">-</h3>
+        <div class="dash-card dash-3">
+          <span class="section-subtitle">EBITDA Mensual</span>
+          <h3 class="section-title" id="consol-kpi-profit" style="font-size:1.25rem;color:var(--accent);margin-top:0.25rem">-</h3>
         </div>
-        <div class="widget wg-3" data-widget-id="wg-consol-score">
-          <span class="widget-subtitle">Score del Portafolio</span>
-          <h3 class="widget-title" id="consol-kpi-score" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
+        <div class="dash-card dash-3">
+          <span class="section-subtitle">Score del Portafolio</span>
+          <h3 class="section-title" id="consol-kpi-score" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
         </div>
 
         <!-- Fila 2: Chart & Partners -->
-        <div class="widget wg-8" data-widget-id="wg-consol-cashflow">
-          <h3 class="widget-title" style="margin-bottom:1rem">Flujo de Caja Consolidado (60 meses)</h3>
+        <div class="dash-card dash-8">
+          <h3 class="section-title" style="margin-bottom:1rem">Flujo de Caja Consolidado (60 meses)</h3>
           <div class="chart-box"><canvas id="chart-consol-cashflow"></canvas></div>
         </div>
-        <div class="widget wg-4" data-widget-id="wg-consol-partners">
-          <h3 class="widget-title" style="margin-bottom:1rem">Retorno por Socio</h3>
+        <div class="dash-card dash-4">
+          <h3 class="section-title" style="margin-bottom:1rem">Retorno por Socio</h3>
           <div id="consol-partners" style="display:flex;flex-direction:column;gap:1rem;max-height:400px;overflow-y:auto"></div>
         </div>
 
         <!-- Fila 3: Branches Data Table -->
-        <div class="widget wg-12" data-widget-id="wg-consol-table">
-           <h3 class="widget-title" style="margin-bottom:1rem">Detalle por Sucursal</h3>
+        <div class="dash-card dash-12">
+           <h3 class="section-title" style="margin-bottom:1rem">Detalle por Sucursal</h3>
            <div class="table-responsive" id="consol-branch-table"></div>
         </div>
       </div>
@@ -835,6 +809,6 @@
   </div>
 
   <footer id="app-footer"><p>BW² — Dashboard de Inversión · v8.0 · Multi-Empresa</p></footer>
-  <script type="module" src="app.js?v=bw12"></script>
+  <script type="module" src="app.js?v=bw13"></script>
 </body>
 </html>

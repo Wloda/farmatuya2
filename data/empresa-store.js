@@ -47,7 +47,7 @@ function uid(prefix) {
 }
 
 /* ── Branch Factory ── */
-export function createBranch(format, name = '', colonia = '') {
+export function createBranch(format, name = '', colonia = '', proyectoId = null) {
   return {
     id: uid('br'),
     name: name || 'Nueva Sucursal',
@@ -60,7 +60,8 @@ export function createBranch(format, name = '', colonia = '') {
     scenarioId: 'base',
     overrides: buildDefaultOverrides(format),
     locationStudy: null,
-    notes: ''
+    notes: '',
+    proyectoId: proyectoId
   };
 }
 
@@ -392,7 +393,7 @@ export function removePartner(partnerId) {
 export function addBranch(format, name, colonia) {
   const proj = getActiveProyecto();
   if (!proj) return null;
-  const b = createBranch(format, name, colonia);
+  const b = createBranch(format, name, colonia, proj.id);
   proj.branches.push(b);
   _save();
   return b;
