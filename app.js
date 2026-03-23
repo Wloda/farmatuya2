@@ -6,7 +6,7 @@ import { runProjection, runSensitivity, generateHeatmap, calcStress, generateChe
 import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated, updateUserProfile, updateUserEmail, changePassword } from './auth.js';
 import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw4';
 import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw4';
-import { runLocationStudy, calcCombinedMarketFactor } from './engine/location-engine.js?v=bw5';
+import { runLocationStudy, calcCombinedMarketFactor, geocodeAddress } from './engine/location-engine.js?v=bw5';
 import { generateBranchPDF } from './pdf-export.js?v=bw4';
 
 /* ═══ GLOBALS & STATE ═══ */
@@ -1784,7 +1784,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   });
 
-  // ═══ INLINE MARKET ADDRESS REFRESH ═══
+  // ═══ INLINE MARKET ADDRESS AUTOCOMPLETE + REFRESH ═══
   const marketRefreshBtn = $('market-inline-refresh');
   const marketAddrInput = $('market-inline-address');
   if (marketRefreshBtn && marketAddrInput) {
@@ -1793,25 +1793,90 @@ document.addEventListener('DOMContentLoaded',()=>{
     if (currentBranch?.colonia) marketAddrInput.value = currentBranch.colonia;
     else if (currentBranch?.locationStudy?.address) marketAddrInput.value = currentBranch.locationStudy.address;
 
-    const doRefresh = async () => {
-      const query = marketAddrInput.value.trim();
+    // ── Autocomplete Dropdown ──
+    let acDropdown = document.createElement('div');
+    acDropdown.className = 'market-ac-dropdown';
+    acDropdown.style.cssText = 'position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--bg-card,#fff);border:1px solid var(--border,#ddd);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.15);max-height:240px;overflow-y:auto;display:none;font-size:0.75rem';
+    // Position relative parent
+    const acWrap = marketAddrInput.parentElement;
+    if (acWrap) { acWrap.style.position = 'relative'; acWrap.appendChild(acDropdown); }
+
+    let acTimer = null;
+    const acSearch = async (query) => {
+      if (query.length < 3) { acDropdown.style.display = 'none'; return; }
+      try {
+        const results = await geocodeAddress(query, true);
+        if (!results.length) { acDropdown.style.display = 'none'; return; }
+        acDropdown.innerHTML = results.map((r, i) => {
+          const parts = r.displayName.split(',');
+          const name = parts[0]?.trim() || query;
+          const detail = parts.slice(1, 3).map(s => s.trim()).join(', ');
+          const typeLabel = r.type ? `<span style="background:var(--accent-soft);color:var(--accent);padding:0.1rem 0.3rem;border-radius:4px;font-size:0.6rem;font-weight:700;margin-left:auto">${r.type}</span>` : '';
+          return `<div class="market-ac-item" data-idx="${i}" style="padding:0.5rem 0.65rem;cursor:pointer;display:flex;align-items:center;gap:0.5rem;border-bottom:1px solid var(--border,#eee);transition:background 0.15s">
+            <div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--text-1,#333);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div><div style="font-size:0.65rem;color:var(--text-3,#999);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${detail}</div></div>
+            ${typeLabel}</div>`;
+        }).join('');
+        acDropdown.style.display = 'block';
+
+        // Store results for click selection
+        acDropdown._results = results;
+        acDropdown.querySelectorAll('.market-ac-item').forEach(item => {
+          item.addEventListener('mouseenter', () => item.style.background = 'var(--accent-soft,#f0f0f0)');
+          item.addEventListener('mouseleave', () => item.style.background = '');
+          item.addEventListener('click', () => {
+            const idx = parseInt(item.dataset.idx);
+            const selected = results[idx];
+            if (selected) {
+              marketAddrInput.value = selected.displayName.split(',')[0]?.trim() || selected.displayName;
+              acDropdown.style.display = 'none';
+              doRefresh(selected.displayName.split(',').slice(0, 2).join(','));
+            }
+          });
+        });
+      } catch (e) {
+        acDropdown.innerHTML = `<div style="padding:0.5rem;color:var(--red,red);font-size:0.7rem">Error de conexión</div>`;
+        acDropdown.style.display = 'block';
+      }
+    };
+
+    marketAddrInput.addEventListener('input', () => {
+      clearTimeout(acTimer);
+      acTimer = setTimeout(() => acSearch(marketAddrInput.value.trim()), 400);
+    });
+    marketAddrInput.addEventListener('focus', () => {
+      if (marketAddrInput.value.trim().length >= 3) acSearch(marketAddrInput.value.trim());
+    });
+    document.addEventListener('click', (e) => {
+      if (!acDropdown.contains(e.target) && e.target !== marketAddrInput) acDropdown.style.display = 'none';
+    });
+
+    // ── Run Full Study ──
+    const doRefresh = async (overrideQuery) => {
+      const query = overrideQuery || marketAddrInput.value.trim();
       if (!query || !state.activeBranchId) return;
       marketRefreshBtn.disabled = true;
       marketRefreshBtn.textContent = '⏳';
+      if (typeof showToast === 'function') showToast('🔍 Analizando ubicación...', 'info');
       try {
         const study = await runLocationStudy(query);
+        if (study.errors?.length && !study.coordinates) {
+          if (typeof showToast === 'function') showToast('❌ No se pudo encontrar la ubicación', 'error');
+          return;
+        }
         updateBranchLocation(state.activeBranchId, study);
         updateBranch(state.activeBranchId, { colonia: query });
         renderBranchDetail(getEmpresa());
+        if (typeof showToast === 'function') showToast(`✅ Estudio actualizado: Score ${study.scores?.total || '?'}/100`, 'success');
       } catch (e) {
         console.error('[BW2] inline market refresh error', e);
+        if (typeof showToast === 'function') showToast('❌ Error: ' + e.message, 'error');
       } finally {
         marketRefreshBtn.disabled = false;
         marketRefreshBtn.textContent = '🔄';
       }
     };
-    marketRefreshBtn.addEventListener('click', doRefresh);
-    marketAddrInput.addEventListener('keydown', e => { if (e.key === 'Enter') doRefresh(); });
+    marketRefreshBtn.addEventListener('click', () => doRefresh());
+    marketAddrInput.addEventListener('keydown', e => { if (e.key === 'Enter') { acDropdown.style.display = 'none'; doRefresh(); } });
   }
 
   // (Royalty panel init moved to renderBranchDetail where branch is available)
@@ -2466,7 +2531,7 @@ function renderMarketStudyPanel(branch) {
       return meta[k] || k;
     });
     const factorScores = factorKeys.map(k => factors[k]?.score || 0);
-    charts['market-radar-main']=new Chart(radarCanvas,{type:'radar',data:{labels:factorLabels,datasets:[{label:'Score',data:factorScores,backgroundColor:'rgba(107,122,46,0.15)',borderColor:'rgba(107,122,46,0.7)',borderWidth:2,pointBackgroundColor:factorScores.map(s=>s>=75?'#34d399':s>=50?'#fbbf24':'#f87171'),pointRadius:3,pointHoverRadius:5}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{beginAtZero:true,max:100,ticks:{stepSize:25,font:{size:8},backdropColor:'transparent'},grid:{color:'rgba(0,0,0,0.06)'},pointLabels:{font:{size:8,weight:'600'},color:'var(--text-2)'}}},plugins:{legend:{display:false}}}});
+    charts['market-radar-main']=new Chart(radarCanvas,{type:'radar',data:{labels:factorLabels,datasets:[{label:'Score',data:factorScores,backgroundColor:'rgba(107,122,46,0.15)',borderColor:'rgba(107,122,46,0.7)',borderWidth:2,pointBackgroundColor:factorScores.map(s=>s>=75?'#34d399':s>=50?'#fbbf24':'#f87171'),pointRadius:3,pointHoverRadius:5}]},options:{responsive:true,maintainAspectRatio:false,layout:{padding:0},scales:{r:{beginAtZero:true,max:100,ticks:{stepSize:25,font:{size:8},backdropColor:'transparent'},grid:{color:'rgba(0,0,0,0.06)'},pointLabels:{font:{size:9,weight:'600'},color:'var(--text-2)'}}},plugins:{legend:{display:false}}}});
   }
 
   const toggles = branch.overrides?.marketStudyToggles || {};
