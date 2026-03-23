@@ -200,7 +200,7 @@ function exportCSV(filename, headers, rows) {
   URL.revokeObjectURL(url);
   showToast(`📁 ${filename} exportado`, 'success');
 }
-
+window.exportCSV = exportCSV;
 /* ── KPI Tooltip Definitions ── */
 const KPI_TIPS = {
   'EBITDA/mes': 'Ganancias antes de intereses, impuestos, depreciación y amortización. Mide la rentabilidad operativa mensual.',
@@ -2020,6 +2020,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     removeCtxMenu();
     const curCols = getColSpan(w);
     const curSize = getSizeName(curCols);
+    const curRows = getRowSpan(w);
     const isHidden = w.dataset.widgetHidden === 'true';
 
     const menu = document.createElement('div');
@@ -2030,6 +2031,8 @@ document.addEventListener('DOMContentLoaded',()=>{
 
     let html = `<div style="padding:0.3rem 0.65rem 0.2rem;font-size:0.65rem;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em">${titleText}</div><div class="widget-ctx-sep"></div>`;
 
+    // Width sizes
+    html += `<div style="padding:0.2rem 0.65rem;font-size:0.55rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.05em">Ancho</div>`;
     const allowedSizes = getAllowedSizes(w);
     allowedSizes.forEach(s=>{
       const active = s.name === curSize ? 'active' : '';
@@ -2037,6 +2040,22 @@ document.addEventListener('DOMContentLoaded',()=>{
         <span class="ctx-icon">${s.icon}</span>${s.label}
         <span class="ctx-check">${s.name===curSize?'✓':''}</span></div>`;
     });
+
+    // Height sizes
+    html += `<div class="widget-ctx-sep"></div>`;
+    html += `<div style="padding:0.2rem 0.65rem;font-size:0.55rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.05em">Alto</div>`;
+    const heightOpts = [
+      {rows:1, label:'Auto', icon:'↕️'},
+      {rows:2, label:'2× Alto', icon:'⬆️'},
+      {rows:3, label:'3× Alto', icon:'⏫'}
+    ];
+    heightOpts.forEach(h=>{
+      const active = h.rows === curRows ? 'active' : '';
+      html += `<div class="widget-ctx-item ${active}" data-action="height" data-rows="${h.rows}">
+        <span class="ctx-icon">${h.icon}</span>${h.label}
+        <span class="ctx-check">${h.rows===curRows?'✓':''}</span></div>`;
+    });
+
     html += `<div class="widget-ctx-sep"></div>`;
     html += `<div class="widget-ctx-item" data-action="${isHidden?'show':'hide'}">
       <span class="ctx-icon">${isHidden?'👁️':'🙈'}</span>${isHidden?'Mostrar Widget':'Ocultar Widget'}</div>`;
@@ -2062,6 +2081,9 @@ document.addEventListener('DOMContentLoaded',()=>{
           setColSpan(w, parseInt(item.dataset.size));
           updateSizeLabel(w);
           animate();
+        } else if(action==='height'){
+          setRowSpan(w, parseInt(item.dataset.rows));
+          animate();
         } else if(action==='hide'){
           toggleHidden(w, true);
           animate();
@@ -2080,6 +2102,28 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   }
   document.addEventListener('click', removeCtxMenu);
+
+  /* ── Click to cycle size (in edit mode only) ── */
+  document.addEventListener('click', e=>{
+    const widget = e.target.closest('.widget[data-widget-id]');
+    if(!widget) return;
+    const panel = widget.closest('.branch-tab-panel,section');
+    if(!panel || !panel.classList.contains('dashboard-edit-mode')) return;
+    // Don't cycle if clicking buttons/controls
+    if(e.target.closest('.widget-hide-btn,.widget-ctx-menu,button,input,select')) return;
+    const grid = widget.closest('.widget-grid');
+    if(!grid) return;
+    const allowed = getAllowedSizes(widget);
+    if(allowed.length < 2) return;
+    const curCols = getColSpan(widget);
+    const curIdx = allowed.findIndex(s=>s.cols===curCols);
+    const nextIdx = (curIdx + 1) % allowed.length;
+    const animate = flipAnimate(grid);
+    setColSpan(widget, allowed[nextIdx].cols);
+    updateSizeLabel(widget);
+    animate();
+    saveLayout(grid.id);
+  });
 
   /* ── Hide / Show Widgets ── */
   function toggleHidden(w, hide){
