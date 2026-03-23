@@ -488,103 +488,104 @@
         </div>
       </div>
 
-      <div class="dash-grid" id="consol-widget-grid">
-        <!-- Fila 1: KPIs -->
-        <div class="dash-card dash-3">
-          <span class="section-subtitle">Inversión Total</span>
-          <h3 class="section-title" id="consol-kpi-inv" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
-        </div>
-        <div class="dash-card dash-3">
-          <span class="section-subtitle">Capital Libre</span>
-          <h3 class="section-title" id="consol-kpi-free" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
-        </div>
-        <div class="dash-card dash-3">
-          <span class="section-subtitle">EBITDA Mensual</span>
-          <h3 class="section-title" id="consol-kpi-profit" style="font-size:1.25rem;color:var(--accent);margin-top:0.25rem">-</h3>
-        </div>
-        <div class="dash-card dash-3">
-          <span class="section-subtitle">Score del Portafolio</span>
-          <h3 class="section-title" id="consol-kpi-score" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
-        </div>
+      <!-- KPI Strip (compact, like Resultados) -->
+      <div class="kpi-strip" id="consol-kpi-strip"></div>
 
-        <!-- Fila 2: Chart & Partners -->
-        <div class="dash-card dash-8">
-          <h3 class="section-title" style="margin-bottom:1rem">Flujo de Caja Consolidado (60 meses)</h3>
-          <div class="chart-box"><canvas id="chart-consol-cashflow"></canvas></div>
+      <!-- Row 2: Chart (7col) + Branch Table (5col) — independent heights -->
+      <div class="consol-main-row">
+        <div class="consol-chart-col">
+          <div class="dash-card visible">
+            <h3 class="section-title" style="margin-bottom:0.5rem">Flujo de Caja Consolidado (60 meses)</h3>
+            <div class="chart-box"><canvas id="chart-consol-cashflow"></canvas></div>
+          </div>
         </div>
-        <div class="dash-card dash-4">
-          <h3 class="section-title" style="margin-bottom:1rem">Retorno por Socio</h3>
-          <div id="consol-partners" style="display:flex;flex-direction:column;gap:1rem;max-height:400px;overflow-y:auto"></div>
-        </div>
-
-        <!-- Fila 3: Branches Data Table -->
-        <div class="dash-card dash-12">
-           <h3 class="section-title" style="margin-bottom:1rem">Detalle por Sucursal</h3>
-           <div class="table-responsive" id="consol-branch-table"></div>
+        <div class="consol-table-col">
+          <div class="dash-card visible">
+            <h3 class="section-title" style="margin-bottom:0.5rem">Detalle por Sucursal</h3>
+            <div class="table-responsive" id="consol-branch-table"></div>
+          </div>
         </div>
       </div>
 
-      <!-- Opening Process Timeline -->
-      <div class="neu-card timeline-card">
-        <h3 class="card-title">🗓️ Proceso de Apertura — ¿Cuánto tarda abrir la siguiente?</h3>
-        <p class="timeline-subtitle">Tiempo total estimado: <strong>6 a 8 semanas</strong> desde la firma del contrato de arrendamiento</p>
-        <div class="timeline">
-          <div class="timeline-step" data-step="1">
-            <div class="step-marker">1</div>
-            <div class="step-content">
-              <div class="step-title">Pago Cuota de Marca</div>
-              <div class="step-desc">Pago durante la FIF para respetar la promoción correspondiente</div>
-              <div class="step-note">* Reembolsable si no se concreta la firma</div>
+      <!-- Row 3: Partners (compact horizontal table) -->
+      <div class="dash-card visible" style="margin-top:0.75rem">
+        <h3 class="section-title" style="margin-bottom:0.5rem">Retorno por Socio</h3>
+        <div class="table-responsive" id="consol-partners"></div>
+      </div>
+
+      <!-- Timeline: collapsible, closed by default -->
+      <details class="res-section" style="margin-top:0.75rem">
+        <summary class="res-section-header">
+          <span class="res-section-icon">🗓️</span>
+          <span class="res-section-title">Proceso de Apertura — ¿Cuánto tarda abrir la siguiente?</span>
+          <span class="res-section-chevron">▾</span>
+        </summary>
+        <div class="res-section-body" style="padding:1rem">
+          <p class="timeline-subtitle" style="margin-bottom:1rem">Tiempo total estimado: <strong>6 a 8 semanas</strong> desde la firma del contrato de arrendamiento</p>
+          <div class="timeline">
+            <div class="timeline-step" data-step="1">
+              <div class="step-marker">1</div>
+              <div class="step-content">
+                <div class="step-title">Pago Cuota de Marca</div>
+                <div class="step-desc">Pago durante la FIF para respetar la promoción correspondiente</div>
+                <div class="step-note">* Reembolsable si no se concreta la firma</div>
+              </div>
             </div>
-          </div>
-          <div class="timeline-step" data-step="2">
-            <div class="step-marker">2</div>
-            <div class="step-content">
-              <div class="step-title">Firma de Contrato de Franquicia</div>
-              <div class="step-desc">Durante la FIF o máximo 30 días naturales después</div>
-              <div class="step-time">⏱️ 0–30 días</div>
+            <div class="timeline-step" data-step="2">
+              <div class="step-marker">2</div>
+              <div class="step-content">
+                <div class="step-title">Firma de Contrato de Franquicia</div>
+                <div class="step-desc">Durante la FIF o máximo 30 días naturales después</div>
+                <div class="step-time">⏱️ 0–30 días</div>
+              </div>
             </div>
-          </div>
-          <div class="timeline-step" data-step="3">
-            <div class="step-marker">3</div>
-            <div class="step-content">
-              <div class="step-title">Búsqueda y Decisión de Local</div>
-              <div class="step-desc">Arranque de búsqueda a partir de la firma del contrato de franquicia</div>
-              <div class="step-time">⏱️ 15–90 días</div>
+            <div class="timeline-step" data-step="3">
+              <div class="step-marker">3</div>
+              <div class="step-content">
+                <div class="step-title">Búsqueda y Decisión de Local</div>
+                <div class="step-desc">Arranque de búsqueda a partir de la firma del contrato de franquicia</div>
+                <div class="step-time">⏱️ 15–90 días</div>
+              </div>
             </div>
-          </div>
-          <div class="timeline-step" data-step="4">
-            <div class="step-marker">4</div>
-            <div class="step-content">
-              <div class="step-title">Pago de Servicios y Equipamiento</div>
-              <div class="step-desc">Se paga al aprobarse el layout y plano del local</div>
-              <div class="step-time">⏱️ Al aprobar plano</div>
+            <div class="timeline-step" data-step="4">
+              <div class="step-marker">4</div>
+              <div class="step-content">
+                <div class="step-title">Pago de Servicios y Equipamiento</div>
+                <div class="step-desc">Se paga al aprobarse el layout y plano del local</div>
+                <div class="step-time">⏱️ Al aprobar plano</div>
+              </div>
             </div>
-          </div>
-          <div class="timeline-step" data-step="5">
-            <div class="step-marker">5</div>
-            <div class="step-content">
-              <div class="step-title">Pago de Inventario Inicial</div>
-              <div class="step-desc">Pagos escalonados: al abrir, a los 21 días, y a los 51 días</div>
-              <div class="step-note">* Conforme a proveedor</div>
+            <div class="timeline-step" data-step="5">
+              <div class="step-marker">5</div>
+              <div class="step-content">
+                <div class="step-title">Pago de Inventario Inicial</div>
+                <div class="step-desc">Pagos escalonados: al abrir, a los 21 días, y a los 51 días</div>
+                <div class="step-note">* Conforme a proveedor</div>
+              </div>
             </div>
-          </div>
-          <div class="timeline-step final" data-step="✓">
-            <div class="step-marker final">✓</div>
-            <div class="step-content">
-              <div class="step-title">¡Apertura!</div>
-              <div class="step-desc">6 a 8 semanas desde la firma del contrato de arrendamiento</div>
+            <div class="timeline-step final" data-step="✓">
+              <div class="step-marker final">✓</div>
+              <div class="step-content">
+                <div class="step-title">¡Apertura!</div>
+                <div class="step-desc">6 a 8 semanas desde la firma del contrato de arrendamiento</div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </details>
     </section>
 
     <!-- ═══ COMPARADOR VIEW ═══ -->
     <section id="view-comparador" style="display:none">
       <div class="view-header"><h2>Comparador de Sucursales</h2><p>Métricas lado a lado</p></div>
-      <div class="neu-card"><h3 class="card-title">Métricas Comparativas</h3><div class="table-scroll" id="comparador-table"></div></div>
-      <div class="neu-card"><h3 class="card-title">Flujo Acumulado Comparado</h3><div class="chart-box"><canvas id="chart-comparador-cf"></canvas></div></div>
+      <div class="comparar-grid">
+        <div class="comparar-table-col">
+          <div class="dash-card visible"><h3 class="section-title" style="margin-bottom:0.5rem">Métricas Comparativas</h3><div class="table-scroll" id="comparador-table"></div></div>
+        </div>
+        <div class="comparar-chart-col">
+          <div class="dash-card visible"><h3 class="section-title" style="margin-bottom:0.5rem">Flujo Acumulado Comparado</h3><div class="chart-box"><canvas id="chart-comparador-cf"></canvas></div></div>
+        </div>
+      </div>
     </section>
 
     <!-- ═══ EMPRESA SETTINGS VIEW ═══ -->

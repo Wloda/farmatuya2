@@ -2974,26 +2974,26 @@ function renderConsolidated(empresa){
     tog.addEventListener('change', () => renderConsolidated(getEmpresa()));
   }
 
-  // Enterprise KPIs
-  const invEl = $('consol-kpi-inv');
-  const freeEl = $('consol-kpi-free');
-  const profitEl = $('consol-kpi-profit');
-  const scoreEl = $('consol-kpi-score');
-
-  if(invEl) {
-    invEl.textContent = fm(consol.totalInvestment);
-  }
-  if(freeEl) {
-    freeEl.textContent = fm(consol.capitalFree);
-    freeEl.style.color = consol.capitalFree>0?'var(--green)':'var(--red)';
-  }
-  if(profitEl) {
-    profitEl.textContent = fm(consol.avgMonthlyEBITDA);
-    profitEl.style.color = consol.avgMonthlyEBITDA>0?'var(--green)':'var(--red)';
-  }
-  if(scoreEl) {
-    scoreEl.textContent = consol.avgScore+'/100';
-    scoreEl.style.color = consol.avgScore>=60?'var(--green)':consol.avgScore>=40?'var(--text-1)':'var(--red)';
+  // Enterprise KPI Strip (compact, matching Resultados style)
+  const kpiStrip = $('consol-kpi-strip');
+  if(kpiStrip) {
+    const freeColor = consol.capitalFree > 0 ? 'var(--sem-positive)' : 'var(--sem-negative)';
+    const profitColor = consol.avgMonthlyEBITDA > 0 ? 'var(--sem-positive)' : 'var(--sem-negative)';
+    const scoreColor = consol.avgScore >= 60 ? 'var(--sem-positive)' : consol.avgScore >= 40 ? 'var(--text-1)' : 'var(--sem-negative)';
+    const kpis = [
+      { label: 'INVERSIÓN TOTAL', value: fm(consol.totalInvestment), detail: consol.branchCount+' sucursales' },
+      { label: 'CAPITAL LIBRE', value: fm(consol.capitalFree), color: freeColor, detail: consol.capitalFree < 0 ? '⚠ sobrepasado' : 'disponible' },
+      { label: 'EBITDA MENSUAL', value: fm(consol.avgMonthlyEBITDA), color: profitColor, detail: 'agregado' },
+      { label: 'SCORE', value: consol.avgScore+'/100', color: scoreColor, detail: 'portafolio' }
+    ];
+    kpiStrip.innerHTML = kpis.map((k, i) =>
+      (i > 0 ? '<div class="kpi-strip-divider"></div>' : '') +
+      `<div class="kpi-strip-item">
+        <span class="kpi-strip-label">${k.label}</span>
+        <span class="kpi-strip-value" style="${k.color ? 'color:' + k.color : ''}">${k.value}</span>
+        <span class="kpi-strip-detail">${k.detail}</span>
+      </div>`
+    ).join('');
   }
 
   // Consolidated cashflow chart
@@ -3001,8 +3001,8 @@ function renderConsolidated(empresa){
     charts['consol-cashflow']=new Chart(ctx,{type:'line',data:{labels:consol.months.map(m=>'M'+m.month),datasets:[{label:'Acumulado Empresa',data:consol.months.map(m=>m.cumulativeCashFlow*f),borderColor:'#4d7cfe',backgroundColor:'rgba(77,124,254,0.1)',fill:true,tension:0.3,pointRadius:0,borderWidth:2.5},{label:'Mensual',data:consol.months.map(m=>m.netIncome*f),type:'bar',backgroundColor:consol.months.map(m=>m.netIncome>=0?'rgba(52,211,153,0.35)':'rgba(248,113,113,0.3)'),borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt.m(c.parsed.y)}`}}},scales:{y:{ticks:{callback:v=>fmk(v/f)}}}}});
   }
 
-  // Partner cards
-  $('consol-partners').innerHTML=`<div class="partner-grid">${consol.perPartner.map(pp=>`<div class="partner-card"><div class="partner-name">👤 ${pp.name}</div>${[['Capital',fm(pp.capital)],['Participación',fmt.pi(pp.equity)],['Comprometido',fm(pp.capitalCommitted)],['Ret./mes',`<span style="color:${pp.monthlyReturn>=0?'var(--green)':'var(--red)'}">${fm(pp.monthlyReturn)}</span>`],['Ret. 5A',fm(pp.totalReturn60)],['ROI 5A',pp.roi60.toFixed(1)+'%']].map(([l,v])=>`<div class="partner-stat"><span class="partner-stat-label">${l}</span><span class="partner-stat-value">${v}</span></div>`).join('')}</div>`).join('')}</div>`;
+  // Partner table (compact horizontal)
+  $('consol-partners').innerHTML=`<table class="data-table partner-table"><thead><tr><th>Socio</th><th class="num">Capital</th><th class="num">Part.</th><th class="num">Comprometido</th><th class="num">Ret./mes</th><th class="num">Ret. 5A</th><th class="num">ROI 5A</th></tr></thead><tbody>${consol.perPartner.map(pp=>`<tr><td><strong>👤 ${pp.name}</strong></td><td class="num">${fm(pp.capital)}</td><td class="num">${fmt.pi(pp.equity)}</td><td class="num">${fm(pp.capitalCommitted)}</td><td class="num" style="color:${pp.monthlyReturn>=0?'var(--sem-positive)':'var(--sem-negative)'}">${fm(pp.monthlyReturn)}</td><td class="num">${fm(pp.totalReturn60)}</td><td class="num">${pp.roi60.toFixed(1)}%</td></tr>`).join('')}</tbody></table>`;
 
   // Branch breakdown table
   $('consol-branch-table').innerHTML=`<table class="data-table"><thead><tr><th>Sucursal</th><th>Formato</th><th>Colonia</th><th class="num">Inversión</th><th class="num">EBITDA</th><th class="num">PB Simple</th><th class="num">Score</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody>${consol.branchResults.map(({branch:b,result:r})=>{
@@ -3374,7 +3374,7 @@ function openProfilePopup() {
   if (apellidoInput) apellidoInput.value = profile.lastName || '';
   
   // Populate email from auth user
-  const authUser = getCurrentUser();
+  const authUser = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
   if (emailInput && authUser) emailInput.value = authUser.email || '';
   
   // Reset password change section
@@ -3477,9 +3477,9 @@ function openProfilePopup() {
     const emailErr = $('profile-email-error');
     
     // Validate and update email if changed
-    const authUser = getCurrentUser();
+    const authUser = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
     if (newEmail && authUser && newEmail.toLowerCase() !== authUser.email) {
-      const emailResult = await updateUserEmail(newEmail);
+      const emailResult = typeof updateUserEmail === 'function' ? await updateUserEmail(newEmail) : {success:false, error:'Auth not loaded'};
       if (!emailResult.success) {
         if (emailErr) { emailErr.textContent = emailResult.error; emailErr.style.display = ''; }
         return; // Don't save if email update fails
@@ -3515,7 +3515,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (appFooter) appFooter.style.display = '';
     updateHeaderAvatar();
     // Sync auth user → old profile format
-    const user = getCurrentUser();
+    const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
     if (user) {
       saveProfile({ firstName: user.firstName, lastName: user.lastName, photo: user.photo });
     }
