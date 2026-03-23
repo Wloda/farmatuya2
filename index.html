@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=bw56">
+  <link rel="stylesheet" href="styles.css?v=bw58">
   <script>
     window.addEventListener('error',e=>document.title='ERR:'+e.message);
     window.addEventListener('unhandledrejection',e=>document.title='REJ:'+e.reason);
@@ -162,16 +162,15 @@
       <div id="empresa-dash-proyectos" class="empresa-proyectos-grid"></div>
     </section>
 
+    <!-- ═══ CONTEXTUAL SIDEBAR NAV ═══ -->
+    <nav id="main-nav">
+      <!-- JS populates this contextually based on current view level -->
+    </nav>
+
     <!-- ═══ PORTFOLIO VIEW (Level 3: Proyecto) ═══ -->
     <section id="view-portfolio">
       <div id="portfolio-summary" class="bw2-global-summary" style="display:none;margin-bottom:0.75rem"></div>
-      <div class="view-header"><h2 id="portfolio-title">Sucursales de Proyecto</h2><p>Haz clic en 📊 <strong>Ver</strong> para explorar los detalles de cada sucursal</p>    <nav id="main-nav">
-      <button class="nav-btn active" data-view="consolidated">
-        📊 Totales
-      </button>
-      <div id="branch-nav-list"></div>
-      <button class="btn-add" id="btn-new-branch" title="Agregar Nueva Sucursal">+ Nueva Sucursal</button>
-    </nav></div>
+      <div class="view-header"><h2 id="portfolio-title">Sucursales de Proyecto</h2><p>Haz clic en 📊 <strong>Ver</strong> para explorar los detalles de cada sucursal</p></div>
       <div class="portfolio-grid" id="portfolio-grid"></div>
     </section>
 
@@ -183,7 +182,12 @@
         <button class="btn-export-pdf" id="btn-export-pdf" title="Generar reporte PDF de inversión" style="display:none">📄 Exportar PDF</button>
       </div>
 
-      <!-- Branch tabs are now in the sidebar, no horizontal tab nav needed -->
+      <!-- ═══ BRANCH TABS NAV ═══ -->
+      <div class="tabs-header" id="branch-tabs-header">
+        <button class="tab-btn active" data-branch-tab="resultados">📊 Resultados</button>
+        <button class="tab-btn" data-branch-tab="config">⚙️ Configuración</button>
+        <button class="tab-btn" data-branch-tab="socioeconomico">🌍 Estudio de Mercado</button>
+      </div>
 
       <!-- ═══ TAB 1: CONFIGURACIÓN ═══ -->
       <div id="btab-config" class="branch-tab-panel">
@@ -825,6 +829,6 @@
   </div>
 
   <footer id="app-footer"><p>BW² — Dashboard de Inversión · v8.0 · Multi-Empresa</p></footer>
-  <script type="module" src="app.js?v=bw15"></script>
+  <script type="module" src="app.js?v=bw16"></script>
 </body>
 </html>

@@ -1322,7 +1322,6 @@ function updateNav() {
     const settingsBtn = nav.querySelector('[data-action="empresa-settings"]');
     if (settingsBtn && activeEmp) {
       settingsBtn.addEventListener('click', () => {
-        // Set the first project as active to access settings
         if(activeEmp.proyectos.length) {
           setActiveProyecto(activeEmp.id, activeEmp.proyectos[0].id);
         }
@@ -1336,27 +1335,8 @@ function updateNav() {
         showBW2Modal('crear-proyecto', activeEmp.id);
       });
     }
-  } else if (isBranch) {
-    // Back to project
-    const backBtn = nav.querySelector('#nav-back-project');
-    if (backBtn) backBtn.addEventListener('click', () => {
-      state.view = 'portfolio'; state.activeBranchId = null; renderCurrentView();
-    });
-    // Branch tab buttons
-    nav.querySelectorAll('[data-branch-tab]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        switchBranchTab(btn.dataset.branchTab);
-        updateNav();
-      });
-    });
-    // PDF export
-    const pdfBtn = nav.querySelector('#nav-export-pdf');
-    if (pdfBtn) pdfBtn.addEventListener('click', () => {
-      const mainPdfBtn = $('btn-export-pdf');
-      if (mainPdfBtn) mainPdfBtn.click();
-    });
   } else {
-    // Back to empresa
+    // Project and Branch level buttons
     const backEmpBtn = nav.querySelector('#nav-back-empresa');
     if (backEmpBtn) backEmpBtn.addEventListener('click', () => {
       state.view = 'empresa-dashboard'; state.activeBranchId = null; renderCurrentView();
@@ -1367,6 +1347,12 @@ function updateNav() {
         state.view = btn.dataset.view;
         state.activeBranchId = null;
         renderCurrentView();
+      });
+    });
+    // Branch-level nav buttons
+    nav.querySelectorAll('[data-nav-branch-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        window._openBranch(btn.dataset.navBranchId);
       });
     });
     // Add branch
@@ -1448,6 +1434,11 @@ function switchBranchTab(tabName) {
   document.querySelectorAll('.branch-tab-panel').forEach(p => p.classList.remove('active'));
   const targetPanel = $(`btab-${tabName}`);
   if (targetPanel) targetPanel.classList.add('active');
+  // Sync the UI tabs
+  document.querySelectorAll('#branch-tabs-header .tab-btn').forEach(b => {
+    if (b.dataset.branchTab === tabName) b.classList.add('active');
+    else b.classList.remove('active');
+  });
 }
 
 /* ─── GEOCODING AUTOCOMPLETE HELPER (Google Places + Nominatim fallback) ─── */
@@ -1800,6 +1791,15 @@ document.addEventListener('DOMContentLoaded',()=>{
     btn.addEventListener('click',()=>{
       if(!state.activeBranchId)return;
       updateBranch(state.activeBranchId,{scenarioId:btn.dataset.scenario});
+    });
+  });
+  // Internal Branch Tabs
+  document.querySelectorAll('#branch-tabs-header .tab-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      switchBranchTab(btn.dataset.branchTab);
+      // Update active state on these tabs
+      document.querySelectorAll('#branch-tabs-header .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
     });
   });
   // Timeline selector (Desde Apertura / Desde Capital)
