@@ -15,7 +15,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=bw52">
+  <link rel="stylesheet" href="styles.css?v=bw53">
   <script>
     window.addEventListener('error',e=>document.title='ERR:'+e.message);
     window.addEventListener('unhandledrejection',e=>document.title='REJ:'+e.reason);
@@ -24,7 +24,97 @@
   </script>
 </head>
 <body>
-  <!-- Auth removed -->
+  <!-- ═══ AUTH SCREEN ═══ -->
+  <div id="auth-screen" class="auth-screen" style="display:none">
+    <div class="auth-bg">
+      <div class="auth-blob auth-blob-1"></div>
+      <div class="auth-blob auth-blob-2"></div>
+      <div class="auth-blob auth-blob-3"></div>
+    </div>
+    <div class="auth-card" id="auth-card">
+      <!-- Login View -->
+      <div class="auth-view" id="auth-login-view">
+        <div class="auth-logo">
+          <svg viewBox="0 0 80 40" width="80" height="40">
+            <text x="2" y="32" font-family="Inter,sans-serif" font-weight="900" font-size="32" fill="#1A1A1A">BW</text>
+            <text x="60" y="20" font-family="Inter,sans-serif" font-weight="700" font-size="14" fill="#6B7A2E">²</text>
+          </svg>
+          <p class="auth-tagline">Dashboard de Inversión</p>
+        </div>
+        <h2 class="auth-title">Iniciar Sesión</h2>
+        <form id="auth-login-form" autocomplete="on">
+          <div class="auth-field">
+            <label for="login-email">Correo electrónico</label>
+            <input type="email" id="login-email" placeholder="tu@correo.com" autocomplete="email" required>
+          </div>
+          <div class="auth-field">
+            <label for="login-password">Contraseña</label>
+            <div class="auth-password-wrap">
+              <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" required>
+              <button type="button" class="auth-toggle-pwd" data-target="login-password" tabindex="-1">👁</button>
+            </div>
+          </div>
+          <div id="login-error" class="auth-error" style="display:none"></div>
+          <button type="submit" class="auth-btn" id="btn-login">
+            <span class="auth-btn-text">Entrar</span>
+            <span class="auth-btn-loader" style="display:none"></span>
+          </button>
+        </form>
+        <p class="auth-switch">¿No tienes cuenta? <a href="#" id="goto-register">Crear cuenta</a></p>
+      </div>
+
+      <!-- Register View -->
+      <div class="auth-view" id="auth-register-view" style="display:none">
+        <div class="auth-logo">
+          <svg viewBox="0 0 80 40" width="80" height="40">
+            <text x="2" y="32" font-family="Inter,sans-serif" font-weight="900" font-size="32" fill="#1A1A1A">BW</text>
+            <text x="60" y="20" font-family="Inter,sans-serif" font-weight="700" font-size="14" fill="#6B7A2E">²</text>
+          </svg>
+        </div>
+        <h2 class="auth-title">Crear Cuenta</h2>
+        <form id="auth-register-form" autocomplete="on">
+          <div class="auth-row">
+            <div class="auth-field">
+              <label for="reg-firstName">Nombre</label>
+              <input type="text" id="reg-firstName" placeholder="Juan" autocomplete="given-name" required>
+            </div>
+            <div class="auth-field">
+              <label for="reg-lastName">Apellido</label>
+              <input type="text" id="reg-lastName" placeholder="Pérez" autocomplete="family-name">
+            </div>
+          </div>
+          <div class="auth-field">
+            <label for="reg-email">Correo electrónico</label>
+            <input type="email" id="reg-email" placeholder="tu@correo.com" autocomplete="email" required>
+          </div>
+          <div class="auth-field">
+            <label for="reg-password">Contraseña</label>
+            <div class="auth-password-wrap">
+              <input type="password" id="reg-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" required minlength="6">
+              <button type="button" class="auth-toggle-pwd" data-target="reg-password" tabindex="-1">👁</button>
+            </div>
+            <div class="auth-pwd-strength" id="pwd-strength">
+              <div class="auth-pwd-bar"><div class="auth-pwd-bar-fill" id="pwd-strength-fill"></div></div>
+              <span class="auth-pwd-label" id="pwd-strength-label"></span>
+            </div>
+          </div>
+          <div class="auth-field">
+            <label for="reg-password2">Confirmar contraseña</label>
+            <div class="auth-password-wrap">
+              <input type="password" id="reg-password2" placeholder="Repite tu contraseña" autocomplete="new-password" required>
+              <button type="button" class="auth-toggle-pwd" data-target="reg-password2" tabindex="-1">👁</button>
+            </div>
+          </div>
+          <div id="register-error" class="auth-error" style="display:none"></div>
+          <button type="submit" class="auth-btn" id="btn-register">
+            <span class="auth-btn-text">Crear Cuenta</span>
+            <span class="auth-btn-loader" style="display:none"></span>
+          </button>
+        </form>
+        <p class="auth-switch">¿Ya tienes cuenta? <a href="#" id="goto-login">Iniciar sesión</a></p>
+      </div>
+    </div>
+  </div>
 
   <!-- ═══ ENTERPRISE HEADER ═══ -->
   <header id="app-header">
@@ -107,21 +197,6 @@
                 <button class="seg-btn" data-format="coolpet_farmavet">🏥 FarmaVet</button>
               </div>
             </div>
-            <div class="config-item">
-              <label>Escenario</label>
-              <div class="neu-segmented small" id="branch-scenario-selector">
-                <button class="seg-btn" data-scenario="conservative">🔴 Cons.</button>
-                <button class="seg-btn" data-scenario="base">🟡 Base</button>
-                <button class="seg-btn" data-scenario="upside">🟢 Upside</button>
-              </div>
-            </div>
-            <div class="config-item">
-              <label>Inicio Cash Flow</label>
-              <div class="neu-segmented small" id="branch-timeline-selector">
-                <button class="seg-btn active" data-preopen="0">📊 Desde Apertura</button>
-                <button class="seg-btn" data-preopen="2">💰 Desde Capital</button>
-              </div>
-            </div>
             <div class="config-item colonia-config">
               <label>Ubicación</label>
               <div id="colonia-display" class="colonia-display">—</div>
@@ -178,6 +253,10 @@
               <button class="seg-btn" data-scenario="conservative">🔴 Cons.</button>
               <button class="seg-btn" data-scenario="base">🟡 Base</button>
               <button class="seg-btn" data-scenario="upside">🟢 Upside</button>
+            </div>
+            <div class="neu-segmented small" id="branch-timeline-selector">
+              <button class="seg-btn active" data-preopen="0">📊 Desde Apertura</button>
+              <button class="seg-btn" data-preopen="2">💰 Desde Capital</button>
             </div>
             <div class="res-royalty-inline" id="res-royalty-panel" style="display:none">
               <span class="res-royalty-label">Regalía:</span>
@@ -682,15 +761,39 @@
           <label for="profile-apellido">Apellido</label>
           <input type="text" class="input-text" id="profile-apellido" placeholder="Tu apellido">
         </div>
+        <!-- Email (read-only) -->
+        <div class="bw2-form-group">
+          <label for="profile-email">Correo electrónico</label>
+          <input type="email" class="input-text" id="profile-email" readonly style="opacity:0.7;cursor:not-allowed">
+        </div>
+        <!-- Change Password -->
+        <details class="profile-pwd-section" id="profile-pwd-section">
+          <summary style="cursor:pointer;font-size:0.78rem;font-weight:700;color:var(--text-2);margin:0.5rem 0">🔑 Cambiar contraseña</summary>
+          <div style="margin-top:0.5rem">
+            <div class="bw2-form-group">
+              <label for="profile-current-pwd">Contraseña actual</label>
+              <input type="password" class="input-text" id="profile-current-pwd" placeholder="••••••••">
+            </div>
+            <div class="bw2-form-group">
+              <label for="profile-new-pwd">Nueva contraseña</label>
+              <input type="password" class="input-text" id="profile-new-pwd" placeholder="Mínimo 6 caracteres">
+            </div>
+            <button class="btn-secondary" id="btn-change-pwd" style="width:100%;margin-top:0.25rem">Cambiar contraseña</button>
+            <div id="pwd-change-msg" style="display:none;font-size:0.75rem;margin-top:0.35rem;font-weight:600"></div>
+          </div>
+        </details>
       </div>
-      <div class="bw2-modal-footer">
-        <button class="btn-secondary" id="btn-cancel-profile">Cancelar</button>
-        <button class="btn-primary" id="btn-save-profile">Guardar</button>
+      <div class="bw2-modal-footer" style="flex-direction:column;gap:0.5rem">
+        <div style="display:flex;gap:0.5rem;width:100%">
+          <button class="btn-secondary" id="btn-cancel-profile" style="flex:1">Cancelar</button>
+          <button class="btn-primary" id="btn-save-profile" style="flex:1">Guardar</button>
+        </div>
+        <button class="btn-secondary" id="btn-logout" style="width:100%;color:#dc2626;border-color:rgba(220,38,38,0.2)">🚪 Cerrar Sesión</button>
       </div>
     </div>
   </div>
 
   <footer id="app-footer"><p>BW² — Dashboard de Inversión · v8.0 · Multi-Empresa</p></footer>
-  <script type="module" src="app.js?v=bw10"></script>
+  <script type="module" src="app.js?v=bw11"></script>
 </body>
 </html>

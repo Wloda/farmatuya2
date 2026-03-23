@@ -3,6 +3,7 @@
  */
 import { MODELS, SCENARIOS, LOCATIONS, BENCHMARKS } from './data/model-registry.js?v=bw4';
 import { runProjection, runSensitivity, generateHeatmap, calcStress, generateChecklist, evaluateAlerts } from './engine/financial-model.js?v=bw4';
+import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated, updateUserProfile, changePassword } from './auth.js';
 import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw4';
 import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw4';
 import { runLocationStudy, calcCombinedMarketFactor } from './engine/location-engine.js?v=bw5';
@@ -1759,7 +1760,7 @@ function renderBranchDetail(empresa){
   // Format selector
   document.querySelectorAll('#branch-format-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.format===branch.format);});
   // Scenario selector
-  document.querySelectorAll('#branch-scenario-selector .seg-btn, #branch-scenario-selector-res .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.scenario===branch.scenarioId);});
+  document.querySelectorAll('#branch-scenario-selector-res .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.scenario===branch.scenarioId);});
   // Royalty
   const proj = empresa.proyectos?.find(p => p.id === branch.proyectoId);
   const isFranchise = proj?.isFranchise !== false;
@@ -1826,7 +1827,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   });
   // Scenario selector
-  document.querySelectorAll('#branch-scenario-selector .seg-btn, #branch-scenario-selector-res .seg-btn').forEach(btn=>{
+  document.querySelectorAll('#branch-scenario-selector-res .seg-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
       if(!state.activeBranchId)return;
       updateBranch(state.activeBranchId,{scenarioId:btn.dataset.scenario});
@@ -1935,58 +1936,186 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
   });
 });
-
-/* ═══ WIDGET EDIT MODE SYSTEM ═══ */
-(function initWidgetEditMode(){
-  const COL_SIZES = [2,3,4,6,8,12];
+/* ═══ APPLE-STYLE WIDGET SYSTEM ═══ */
+(function initAppleWidgetSystem(){
+  /* ── Size Definitions (Apple naming) ── */
+  const SIZES = [
+    {name:'S', label:'Small',  cols:3,  icon:'▪️'},
+    {name:'M', label:'Medium', cols:6,  icon:'◻️'},
+    {name:'L', label:'Large',  cols:8,  icon:'⬜'},
+    {name:'XL',label:'Full',   cols:12, icon:'📐'}
+  ];
+  const COL_MAP = {2:'S',3:'S',4:'S',6:'M',8:'L',12:'XL'};
+  const ALL_COLS = [2,3,4,6,8,12];
   const ROW_SIZES = [1,2,3];
 
-  function getColSpan(w){ for(const s of [...COL_SIZES].reverse()) if(w.classList.contains('wg-'+s)) return s; return 6; }
+  function getColSpan(w){ for(const s of [...ALL_COLS].reverse()) if(w.classList.contains('wg-'+s)) return s; return 6; }
   function getRowSpan(w){ for(const s of [...ROW_SIZES].reverse()) if(w.classList.contains('wg-h'+s)) return s; return 1; }
-  function setColSpan(w,s){ COL_SIZES.forEach(c=>w.classList.remove('wg-'+c)); w.classList.add('wg-'+s); }
+  function setColSpan(w,s){ ALL_COLS.forEach(c=>w.classList.remove('wg-'+c)); w.classList.add('wg-'+s); }
   function setRowSpan(w,s){ ROW_SIZES.forEach(r=>w.classList.remove('wg-h'+r)); if(s>1) w.classList.add('wg-h'+s); }
-  function nextSize(arr,cur,dir){ const i=arr.indexOf(cur); const ni=i+dir; return ni>=0&&ni<arr.length?arr[ni]:cur; }
+  function getSizeName(cols){ return COL_MAP[cols]||'M'; }
 
-  function addOverlays(grid){
-    grid.querySelectorAll('.widget[data-widget-id]').forEach(w=>{
-      if(w.querySelector('.widget-edit-overlay')) return;
-      const cs=getColSpan(w), rs=getRowSpan(w);
-
-      const ov=document.createElement('div');
-      ov.className='widget-edit-overlay';
-      ov.innerHTML=`
-        <button class="widget-control-btn" data-action="col-down" title="← Más angosto">←</button>
-        <button class="widget-control-btn" data-action="col-up" title="→ Más ancho">→</button>
-        <button class="widget-control-btn" data-action="row-down" title="↑ Menos alto">↑</button>
-        <button class="widget-control-btn" data-action="row-up" title="↓ Más alto">↓</button>
-      `;
-      w.appendChild(ov);
-
-      // Size badge
-      const badge=document.createElement('span');
-      badge.className='widget-resize-badge';
-      badge.textContent=cs+'×'+rs;
-      w.appendChild(badge);
-
-      // Click handlers
-      ov.querySelectorAll('.widget-control-btn').forEach(btn=>{
-        btn.addEventListener('click',e=>{
-          e.stopPropagation();
-          const action=btn.dataset.action;
-          let c=getColSpan(w), r=getRowSpan(w);
-          if(action==='col-up') c=nextSize(COL_SIZES,c,1);
-          else if(action==='col-down') c=nextSize(COL_SIZES,c,-1);
-          else if(action==='row-up') r=nextSize(ROW_SIZES,r,1);
-          else if(action==='row-down') r=nextSize(ROW_SIZES,r,-1);
-          setColSpan(w,c); setRowSpan(w,r);
-          badge.textContent=c+'×'+r;
+  /* ── FLIP Animation for smooth reflow ── */
+  function flipAnimate(grid){
+    const widgets = Array.from(grid.querySelectorAll('.widget[data-widget-id]'));
+    const firstPos = new Map();
+    widgets.forEach(w=>{
+      const r = w.getBoundingClientRect();
+      firstPos.set(w,{x:r.left,y:r.top});
+    });
+    return function play(){
+      requestAnimationFrame(()=>{
+        widgets.forEach(w=>{
+          const first = firstPos.get(w);
+          if(!first) return;
+          const last = w.getBoundingClientRect();
+          const dx = first.x - last.left;
+          const dy = first.y - last.top;
+          if(Math.abs(dx)<2 && Math.abs(dy)<2) return;
+          w.style.transform = `translate(${dx}px,${dy}px)`;
+          w.style.transition = 'none';
+          requestAnimationFrame(()=>{
+            w.classList.add('widget-flipping');
+            w.style.transform = '';
+            w.style.transition = '';
+            const cleanup = ()=>{ w.classList.remove('widget-flipping'); };
+            w.addEventListener('transitionend',cleanup,{once:true});
+            setTimeout(cleanup,500);
+          });
         });
       });
+    };
+  }
+
+  /* ── Context Menu (Apple-style right-click) ── */
+  let ctxMenu = null;
+  function removeCtxMenu(){ if(ctxMenu){ctxMenu.remove();ctxMenu=null;} }
+
+  function showContextMenu(e, w, grid){
+    e.preventDefault(); e.stopPropagation();
+    removeCtxMenu();
+    const curCols = getColSpan(w);
+    const curSize = getSizeName(curCols);
+    const isHidden = w.dataset.widgetHidden === 'true';
+
+    const menu = document.createElement('div');
+    menu.className = 'widget-ctx-menu';
+
+    const title = w.querySelector('.widget-title,.kpi-card-label');
+    const titleText = title ? title.textContent.trim() : 'Widget';
+
+    let html = `<div style="padding:0.3rem 0.65rem 0.2rem;font-size:0.65rem;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em">${titleText}</div><div class="widget-ctx-sep"></div>`;
+
+    SIZES.forEach(s=>{
+      const active = s.name === curSize ? 'active' : '';
+      html += `<div class="widget-ctx-item ${active}" data-action="resize" data-size="${s.cols}">
+        <span class="ctx-icon">${s.icon}</span>${s.label}
+        <span class="ctx-check">${s.name===curSize?'✓':''}</span></div>`;
+    });
+    html += `<div class="widget-ctx-sep"></div>`;
+    html += `<div class="widget-ctx-item" data-action="${isHidden?'show':'hide'}">
+      <span class="ctx-icon">${isHidden?'👁️':'🙈'}</span>${isHidden?'Mostrar Widget':'Ocultar Widget'}</div>`;
+    html += `<div class="widget-ctx-sep"></div>`;
+    html += `<div class="widget-ctx-item" data-action="reset">
+      <span class="ctx-icon">↺</span>Restablecer</div>`;
+
+    menu.innerHTML = html;
+    document.body.appendChild(menu);
+
+    const mw = menu.offsetWidth, mh = menu.offsetHeight;
+    let x = e.clientX, y = e.clientY;
+    if(x + mw > window.innerWidth) x = window.innerWidth - mw - 8;
+    if(y + mh > window.innerHeight) y = window.innerHeight - mh - 8;
+    menu.style.left = x + 'px';menu.style.top = y + 'px';
+    ctxMenu = menu;
+
+    menu.querySelectorAll('.widget-ctx-item').forEach(item=>{
+      item.addEventListener('click',()=>{
+        const action = item.dataset.action;
+        const animate = flipAnimate(grid);
+        if(action==='resize'){
+          setColSpan(w, parseInt(item.dataset.size));
+          updateSizeLabel(w);
+          animate();
+        } else if(action==='hide'){
+          toggleHidden(w, true);
+          animate();
+        } else if(action==='show'){
+          toggleHidden(w, false);
+          animate();
+        } else if(action==='reset'){
+          setColSpan(w, parseInt(w.dataset.defaultSize||6));
+          setRowSpan(w, 1);
+          updateSizeLabel(w);
+          animate();
+        }
+        removeCtxMenu();
+        saveLayout(grid.id);
+      });
+    });
+  }
+  document.addEventListener('click', removeCtxMenu);
+
+  /* ── Hide / Show Widgets ── */
+  function toggleHidden(w, hide){
+    if(hide){
+      w.dataset.widgetHidden = 'true';
+      const panel = w.closest('.branch-tab-panel,.dashboard-edit-mode');
+      const isEditing = panel && panel.classList.contains('dashboard-edit-mode');
+      if(isEditing){
+        if(!w.querySelector('.widget-hidden-overlay')){
+          const ov = document.createElement('div');
+          ov.className='widget-hidden-overlay';
+          ov.innerHTML='<span>👁️ Oculto</span>';
+          w.appendChild(ov);
+        }
+      } else {
+        w.style.display = 'none';
+      }
+    } else {
+      delete w.dataset.widgetHidden;
+      w.style.display = '';
+      w.querySelector('.widget-hidden-overlay')?.remove();
+    }
+  }
+
+  /* ── Size Label ── */
+  function updateSizeLabel(w){
+    const label = w.querySelector('.widget-size-label');
+    if(label) label.textContent = getSizeName(getColSpan(w));
+  }
+
+  /* ── Edit Mode Controls ── */
+  function addEditControls(grid){
+    grid.querySelectorAll('.widget[data-widget-id]').forEach(w=>{
+      if(w.querySelector('.widget-hide-btn')) return;
+      if(!w.dataset.defaultSize) w.dataset.defaultSize = getColSpan(w);
+
+      // Red × button (macOS close style)
+      const hideBtn = document.createElement('button');
+      hideBtn.className = 'widget-hide-btn';
+      hideBtn.innerHTML = '×';
+      hideBtn.title = 'Ocultar widget';
+      hideBtn.addEventListener('click',e=>{
+        e.stopPropagation();
+        const animate = flipAnimate(grid);
+        toggleHidden(w, true);
+        animate();
+        saveLayout(grid.id);
+      });
+      w.appendChild(hideBtn);
+
+      // Size label badge
+      const sizeLabel = document.createElement('span');
+      sizeLabel.className = 'widget-size-label';
+      sizeLabel.textContent = getSizeName(getColSpan(w));
+      w.appendChild(sizeLabel);
 
       // Drag-and-drop
       w.setAttribute('draggable','true');
       w.addEventListener('dragstart',e=>{
         e.dataTransfer.setData('text/plain',w.dataset.widgetId);
+        e.dataTransfer.effectAllowed = 'move';
         w.classList.add('widget-dragging');
         setTimeout(()=>w.style.opacity='0.4',0);
       });
@@ -1994,83 +2123,115 @@ document.addEventListener('DOMContentLoaded',()=>{
         w.classList.remove('widget-dragging');
         w.style.opacity='';
       });
-      w.addEventListener('dragover',e=>{e.preventDefault();w.classList.add('widget-drag-over');});
+      w.addEventListener('dragover',e=>{
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        w.classList.add('widget-drag-over');
+      });
       w.addEventListener('dragleave',()=>w.classList.remove('widget-drag-over'));
       w.addEventListener('drop',e=>{
         e.preventDefault();
         w.classList.remove('widget-drag-over');
-        const srcId=e.dataTransfer.getData('text/plain');
-        const src=grid.querySelector(`[data-widget-id="${srcId}"]`);
-        if(src&&src!==w){
-          const rect=w.getBoundingClientRect();
-          const midY=rect.top+rect.height/2;
-          if(e.clientY<midY) grid.insertBefore(src,w);
-          else grid.insertBefore(src,w.nextSibling);
+        const srcId = e.dataTransfer.getData('text/plain');
+        const src = grid.querySelector(`[data-widget-id="${srcId}"]`);
+        if(src && src!==w){
+          const animate = flipAnimate(grid);
+          const rect = w.getBoundingClientRect();
+          const midY = rect.top + rect.height/2;
+          if(e.clientY < midY) grid.insertBefore(src, w);
+          else grid.insertBefore(src, w.nextSibling);
+          animate();
         }
       });
     });
   }
 
-  function removeOverlays(grid){
+  function removeEditControls(grid){
+    grid.querySelectorAll('.widget-hide-btn').forEach(b=>b.remove());
+    grid.querySelectorAll('.widget-size-label').forEach(l=>l.remove());
     grid.querySelectorAll('.widget-edit-overlay').forEach(o=>o.remove());
-    grid.querySelectorAll('.widget-resize-badge').forEach(b=>b.remove());
-    grid.querySelectorAll('.widget[draggable]').forEach(w=>{w.removeAttribute('draggable');w.style.opacity='';});
+    grid.querySelectorAll('.widget[draggable]').forEach(w=>{
+      w.removeAttribute('draggable'); w.style.opacity='';
+    });
   }
 
+  /* ── Save / Restore Layout ── */
   function saveLayout(gridId){
-    const grid=document.getElementById(gridId);
+    const grid = document.getElementById(gridId);
     if(!grid) return;
-    const layout=[];
+    const layout = [];
     grid.querySelectorAll('.widget[data-widget-id]').forEach((w,i)=>{
-      layout.push({id:w.dataset.widgetId,col:getColSpan(w),row:getRowSpan(w),order:i});
+      layout.push({
+        id: w.dataset.widgetId,
+        col: getColSpan(w),
+        row: getRowSpan(w),
+        order: i,
+        hidden: w.dataset.widgetHidden==='true'
+      });
     });
-    try{localStorage.setItem('bw2_layout_'+gridId,JSON.stringify(layout));}catch(e){}
+    try{ localStorage.setItem('bw2_layout_'+gridId, JSON.stringify(layout)); }catch(e){}
   }
 
   function restoreLayout(gridId){
-    const grid=document.getElementById(gridId);
+    const grid = document.getElementById(gridId);
     if(!grid) return;
     let layout;
-    try{layout=JSON.parse(localStorage.getItem('bw2_layout_'+gridId));}catch(e){return;}
+    try{ layout = JSON.parse(localStorage.getItem('bw2_layout_'+gridId)); }catch(e){ return; }
     if(!layout||!Array.isArray(layout)) return;
-    const widgets=Array.from(grid.querySelectorAll('.widget[data-widget-id]'));
-    const map=Object.fromEntries(widgets.map(w=>[w.dataset.widgetId,w]));
-    // Apply sizes
+    const widgets = Array.from(grid.querySelectorAll('.widget[data-widget-id]'));
+    const map = Object.fromEntries(widgets.map(w=>[w.dataset.widgetId,w]));
     layout.forEach(item=>{
-      const w=map[item.id];
-      if(w){setColSpan(w,item.col);setRowSpan(w,item.row);}
+      const w = map[item.id];
+      if(!w) return;
+      setColSpan(w, item.col);
+      setRowSpan(w, item.row);
+      if(item.hidden) toggleHidden(w, true);
     });
-    // Apply order
     layout.sort((a,b)=>a.order-b.order).forEach(item=>{
-      const w=map[item.id];
+      const w = map[item.id];
       if(w) grid.appendChild(w);
     });
   }
 
+  /* ── Toggle Edit Mode ── */
   document.addEventListener('DOMContentLoaded',()=>{
-    // Toggle edit mode on all grids
+    // Edit mode toggle
     document.addEventListener('click',e=>{
-      const editBtn=e.target.closest('.btn-edit-layout');
+      const editBtn = e.target.closest('.btn-edit-layout');
       if(!editBtn) return;
-      const targetId=editBtn.dataset.target;
-      const gridId=targetId+'-grid';
-      const grid=document.getElementById(gridId);
-      const toolbar=document.getElementById('toolbar-'+targetId);
+      const targetId = editBtn.dataset.target;
+      const gridId = targetId+'-grid';
+      const grid = document.getElementById(gridId);
+      const toolbar = document.getElementById('toolbar-'+targetId);
       if(!grid) return;
 
-      const panel=grid.closest('.branch-tab-panel')||document.body;
-      const isEditing=panel.classList.contains('dashboard-edit-mode');
+      const panel = grid.closest('.branch-tab-panel')||document.body;
+      const isEditing = panel.classList.contains('dashboard-edit-mode');
 
       if(!isEditing){
         panel.classList.add('dashboard-edit-mode');
         if(toolbar) toolbar.style.display='flex';
-        addOverlays(grid);
+        addEditControls(grid);
+        // Show hidden widgets as blurred in edit mode
+        grid.querySelectorAll('.widget[data-widget-hidden="true"]').forEach(w=>{
+          w.style.display='';
+          if(!w.querySelector('.widget-hidden-overlay')){
+            const ov = document.createElement('div');
+            ov.className='widget-hidden-overlay';
+            ov.innerHTML='<span>👁️ Oculto — clic derecho para mostrar</span>';
+            w.appendChild(ov);
+          }
+        });
         editBtn.innerHTML='<span style="font-size:0.8rem">💾</span> Guardar';
         editBtn.style.background='var(--accent)';editBtn.style.color='#fff';
       } else {
         panel.classList.remove('dashboard-edit-mode');
         if(toolbar) toolbar.style.display='none';
-        removeOverlays(grid);
+        removeEditControls(grid);
+        grid.querySelectorAll('.widget[data-widget-hidden="true"]').forEach(w=>{
+          w.style.display='none';
+          w.querySelector('.widget-hidden-overlay')?.remove();
+        });
         saveLayout(gridId);
         editBtn.innerHTML='<span style="font-size:0.8rem">✨</span> Editar Layout';
         editBtn.style.background='var(--surface)';editBtn.style.color='var(--text-2)';
@@ -2080,19 +2241,28 @@ document.addEventListener('DOMContentLoaded',()=>{
 
     // Save button in toolbar
     document.addEventListener('click',e=>{
-      const saveBtn=e.target.closest('.btn-save-layout');
+      const saveBtn = e.target.closest('.btn-save-layout');
       if(!saveBtn) return;
-      const targetId=saveBtn.dataset.target;
-      const gridId=targetId+'-grid';
-      saveLayout(gridId);
-      // Exit edit mode
-      const editBtn=document.querySelector(`.btn-edit-layout[data-target="${targetId}"]`);
+      const targetId = saveBtn.dataset.target;
+      saveLayout(targetId+'-grid');
+      const editBtn = document.querySelector(`.btn-edit-layout[data-target="${targetId}"]`);
       if(editBtn) editBtn.click();
+    });
+
+    // Context menu on any widget right-click (even outside edit mode)
+    document.addEventListener('contextmenu',e=>{
+      const widget = e.target.closest('.widget[data-widget-id]');
+      if(!widget) return;
+      const grid = widget.closest('.widget-grid');
+      if(!grid) return;
+      showContextMenu(e, widget, grid);
     });
 
     // Restore saved layouts
     ['branch-resultados-grid'].forEach(id=>restoreLayout(id));
   });
+})();
+
 })();
 
 function updateBranchKPIBar(r){
@@ -3585,8 +3755,23 @@ function openProfilePopup() {
   // Populate fields
   const nombreInput = $('profile-nombre');
   const apellidoInput = $('profile-apellido');
+  const emailInput = $('profile-email');
   if (nombreInput) nombreInput.value = profile.firstName || '';
   if (apellidoInput) apellidoInput.value = profile.lastName || '';
+  
+  // Populate email from auth user
+  const authUser = getCurrentUser();
+  if (emailInput && authUser) emailInput.value = authUser.email || '';
+  
+  // Reset password change section
+  const pwdSection = $('profile-pwd-section');
+  if (pwdSection) pwdSection.removeAttribute('open');
+  const curPwd = $('profile-current-pwd');
+  const newPwd = $('profile-new-pwd');
+  const pwdMsg = $('pwd-change-msg');
+  if (curPwd) curPwd.value = '';
+  if (newPwd) newPwd.value = '';
+  if (pwdMsg) pwdMsg.style.display = 'none';
 
   // Photo state
   const placeholder = $('profile-photo-placeholder');
@@ -3675,6 +3860,8 @@ function openProfilePopup() {
     const firstName = (nombreInput?.value || '').trim();
     const lastName = (apellidoInput?.value || '').trim();
     saveProfile({ firstName, lastName, photo: pendingPhoto });
+    // Sync to auth user
+    updateUserProfile({ firstName, lastName, photo: pendingPhoto });
     updateHeaderAvatar();
     closeModal();
     showToast('Perfil guardado', 'success');
@@ -3685,7 +3872,221 @@ function openProfilePopup() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  /* ── Auth Gate ── */
+  const authScreen = $('auth-screen');
+  const appHeader = $('app-header');
+  const mainNav = $('main-nav');
+  const appContent = document.querySelector('.app-content') || $('view-bw2-home')?.parentElement;
+  const appFooter = $('app-footer');
+
+  function showApp() {
+    if (authScreen) authScreen.style.display = 'none';
+    if (appHeader) appHeader.style.display = '';
+    if (mainNav) mainNav.style.display = '';
+    if (appContent) appContent.style.display = '';
+    if (appFooter) appFooter.style.display = '';
+    updateHeaderAvatar();
+    // Sync auth user → old profile format
+    const user = getCurrentUser();
+    if (user) {
+      saveProfile({ firstName: user.firstName, lastName: user.lastName, photo: user.photo });
+    }
+  }
+
+  function showAuth() {
+    if (authScreen) authScreen.style.display = '';
+    if (appHeader) appHeader.style.display = 'none';
+    if (mainNav) mainNav.style.display = 'none';
+    if (appContent) appContent.style.display = 'none';
+    if (appFooter) appFooter.style.display = 'none';
+  }
+
+  if (isAuthenticated()) {
+    showApp();
+  } else {
+    showAuth();
+  }
+
+  /* ── Login/Register Toggle ── */
+  const loginView = $('auth-login-view');
+  const registerView = $('auth-register-view');
+  const gotoReg = $('goto-register');
+  const gotoLog = $('goto-login');
+
+  if (gotoReg) gotoReg.addEventListener('click', e => {
+    e.preventDefault();
+    loginView.style.display = 'none';
+    registerView.style.display = '';
+    registerView.style.animation = 'authViewIn 0.35s ease';
+    $('reg-firstName')?.focus();
+  });
+  if (gotoLog) gotoLog.addEventListener('click', e => {
+    e.preventDefault();
+    registerView.style.display = 'none';
+    loginView.style.display = '';
+    loginView.style.animation = 'authViewIn 0.35s ease';
+    $('login-email')?.focus();
+  });
+
+  /* ── Toggle Password Visibility ── */
+  document.querySelectorAll('.auth-toggle-pwd').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = $(btn.dataset.target);
+      if (!target) return;
+      const isPwd = target.type === 'password';
+      target.type = isPwd ? 'text' : 'password';
+      btn.textContent = isPwd ? '🙈' : '👁';
+    });
+  });
+
+  /* ── Password Strength Indicator ── */
+  const regPwd = $('reg-password');
+  const pwdFill = $('pwd-strength-fill');
+  const pwdLabel = $('pwd-strength-label');
+  if (regPwd && pwdFill && pwdLabel) {
+    regPwd.addEventListener('input', () => {
+      const v = regPwd.value;
+      let score = 0;
+      if (v.length >= 6) score++;
+      if (v.length >= 10) score++;
+      if (/[A-Z]/.test(v)) score++;
+      if (/[0-9]/.test(v)) score++;
+      if (/[^A-Za-z0-9]/.test(v)) score++;
+      const levels = [
+        { w: '0%', bg: 'transparent', label: '' },
+        { w: '20%', bg: '#f87171', label: 'Muy débil' },
+        { w: '40%', bg: '#fbbf24', label: 'Débil' },
+        { w: '60%', bg: '#fbbf24', label: 'Aceptable' },
+        { w: '80%', bg: '#34d399', label: 'Fuerte' },
+        { w: '100%', bg: '#16a34a', label: 'Excelente' }
+      ];
+      const l = levels[Math.min(score, 5)];
+      pwdFill.style.width = l.w;
+      pwdFill.style.background = l.bg;
+      pwdLabel.textContent = l.label;
+      pwdLabel.style.color = l.bg;
+    });
+  }
+
+  /* ── Login Form ── */
+  const loginForm = $('auth-login-form');
+  if (loginForm) loginForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const errorEl = $('login-error');
+    const btn = $('btn-login');
+    const btnText = btn.querySelector('.auth-btn-text');
+    const btnLoader = btn.querySelector('.auth-btn-loader');
+    errorEl.style.display = 'none';
+    btn.disabled = true;
+    btnText.style.display = 'none';
+    btnLoader.style.display = '';
+
+    const email = $('login-email').value;
+    const password = $('login-password').value;
+
+    const result = await loginUser(email, password);
+    btn.disabled = false;
+    btnText.style.display = '';
+    btnLoader.style.display = 'none';
+
+    if (result.success) {
+      showApp();
+      if (typeof renderCurrentView === 'function') renderCurrentView();
+    } else {
+      errorEl.textContent = result.error;
+      errorEl.style.display = '';
+      errorEl.style.animation = 'none';
+      errorEl.offsetHeight; // trigger reflow
+      errorEl.style.animation = 'authShake 0.4s ease';
+    }
+  });
+
+  /* ── Register Form ── */
+  const regForm = $('auth-register-form');
+  if (regForm) regForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const errorEl = $('register-error');
+    const btn = $('btn-register');
+    const btnText = btn.querySelector('.auth-btn-text');
+    const btnLoader = btn.querySelector('.auth-btn-loader');
+    errorEl.style.display = 'none';
+    btn.disabled = true;
+    btnText.style.display = 'none';
+    btnLoader.style.display = '';
+
+    const firstName = $('reg-firstName').value;
+    const lastName = $('reg-lastName').value;
+    const email = $('reg-email').value;
+    const password = $('reg-password').value;
+    const password2 = $('reg-password2').value;
+
+    if (password !== password2) {
+      errorEl.textContent = 'Las contraseñas no coinciden';
+      errorEl.style.display = '';
+      btn.disabled = false;
+      btnText.style.display = '';
+      btnLoader.style.display = 'none';
+      return;
+    }
+
+    const result = await registerUser(email, password, firstName, lastName);
+    btn.disabled = false;
+    btnText.style.display = '';
+    btnLoader.style.display = 'none';
+
+    if (result.success) {
+      showApp();
+      if (typeof renderCurrentView === 'function') renderCurrentView();
+      if (typeof showToast === 'function') showToast('¡Cuenta creada exitosamente!', 'success');
+    } else {
+      errorEl.textContent = result.error;
+      errorEl.style.display = '';
+      errorEl.style.animation = 'none';
+      errorEl.offsetHeight;
+      errorEl.style.animation = 'authShake 0.4s ease';
+    }
+  });
+
+  /* ── Profile Popup ── */
   updateHeaderAvatar();
   const openBtn = $('btn-open-profile');
   if (openBtn) openBtn.addEventListener('click', openProfilePopup);
+
+  /* ── Profile: Password Change ── */
+  const changePwdBtn = $('btn-change-pwd');
+  if (changePwdBtn) changePwdBtn.addEventListener('click', async () => {
+    const currentPwd = $('profile-current-pwd')?.value;
+    const newPwd = $('profile-new-pwd')?.value;
+    const msgEl = $('pwd-change-msg');
+    if (!currentPwd || !newPwd) {
+      if (msgEl) { msgEl.textContent = 'Completa ambos campos'; msgEl.style.color = '#dc2626'; msgEl.style.display = ''; }
+      return;
+    }
+    const result = await changePassword(currentPwd, newPwd);
+    if (msgEl) {
+      msgEl.textContent = result.success ? '✅ Contraseña actualizada' : result.error;
+      msgEl.style.color = result.success ? 'var(--green)' : '#dc2626';
+      msgEl.style.display = '';
+    }
+    if (result.success) {
+      $('profile-current-pwd').value = '';
+      $('profile-new-pwd').value = '';
+    }
+  });
+
+  /* ── Profile: Logout ── */
+  const logoutBtn = $('btn-logout');
+  if (logoutBtn) logoutBtn.addEventListener('click', () => {
+    logoutUser();
+    const modal = $('modal-profile');
+    if (modal) modal.style.display = 'none';
+    showAuth();
+    // Reset login form
+    if (loginForm) loginForm.reset();
+    if (loginView && registerView) {
+      registerView.style.display = 'none';
+      loginView.style.display = '';
+    }
+    $('login-error') && ($('login-error').style.display = 'none');
+  });
 });
