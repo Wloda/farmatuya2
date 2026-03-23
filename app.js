@@ -2477,19 +2477,19 @@ function updateBranchKPIBar(r){
     </svg>`;
   }
 
-  // 4) ROI circular gauge — large, prominent
+  // 4) ROI circular gauge — large, prominent, fills card
   const roiEl = $('kpi-roi-gauge');
   if(roiEl) {
     const roi = r.roi12 || 0;
     const roiClamped = Math.min(Math.max(roi, -50), 100);
     const pct = (roiClamped + 50) / 150;
-    const R = 36, cx = 48, cy = 46, sw = 6;
+    const R = 44, cx = 56, cy = 54, sw = 7;
     const circ = 2 * Math.PI * R;
     const arcLen = circ * 0.75;
     const filled = arcLen * pct;
     const color = roi > 20 ? '#34d399' : roi > 0 ? '#fbbf24' : '#f87171';
     roiEl.innerHTML = `
-      <svg width="96" height="88" viewBox="0 0 96 88" style="display:block;margin:0 auto">
+      <svg viewBox="0 0 112 104" style="display:block;width:100%;max-width:160px;margin:0 auto">
         <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface-alt)" stroke-width="${sw}"
           stroke-dasharray="${arcLen} ${circ}" stroke-linecap="round"
           transform="rotate(135,${cx},${cy})"/>
@@ -2498,10 +2498,10 @@ function updateBranchKPIBar(r){
           transform="rotate(135,${cx},${cy})"
           style="transition:stroke-dasharray 0.8s ease"/>
         <text x="${cx}" y="${cy - 2}" text-anchor="middle" dominant-baseline="central"
-          font-size="16" font-weight="900" fill="${color}" font-family="Inter,sans-serif">${roi.toFixed(1)}%</text>
-        <text x="${cx}" y="${cy + 14}" text-anchor="middle"
-          font-size="7" font-weight="800" fill="var(--text-3)" font-family="Inter,sans-serif"
-          text-transform="uppercase" letter-spacing="0.5">12 MESES</text>
+          font-size="20" font-weight="900" fill="${color}" font-family="Inter,sans-serif">${roi.toFixed(1)}%</text>
+        <text x="${cx}" y="${cy + 16}" text-anchor="middle"
+          font-size="9" font-weight="800" fill="var(--text-3)" font-family="Inter,sans-serif"
+          letter-spacing="0.5">12 MESES</text>
       </svg>`;
     roiEl.style.position = 'relative';
   }
