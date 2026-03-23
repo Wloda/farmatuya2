@@ -15,7 +15,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=bw37">
+  <link rel="stylesheet" href="styles.css?v=bw50">
   <script>
     window.addEventListener('error',e=>document.title='ERR:'+e.message);
     window.addEventListener('unhandledrejection',e=>document.title='REJ:'+e.reason);
@@ -51,23 +51,22 @@
   <!-- ═══ VIEWS ═══ -->
   <main id="main-content">
 
-    <!-- ═══ BW² HOME VIEW ═══ -->
+    <!-- ═══ BW² HOME VIEW (Level 1: User) ═══ -->
     <section id="view-bw2-home" style="display:none">
-      <div class="bw2-home">
-        <div class="bw2-header">
-          <div class="bw2-title-group">
-            <h1 class="bw2-title">BW²</h1>
-            <p class="bw2-subtitle">Panel de Control — Empresas y Proyectos</p>
-          </div>
-          <button class="btn-primary" id="btn-create-empresa">+ Nueva Empresa</button>
-        </div>
-        <!-- Global Consolidated Summary -->
-        <div id="bw2-global-summary" class="bw2-global-summary" style="display:none"></div>
-        <div id="bw2-empresas-grid" class="bw2-empresas-grid"></div>
-      </div>
+      <div id="bw2-home-container" class="bw2-home"></div>
     </section>
 
-    <!-- ═══ PORTFOLIO VIEW ═══ -->
+    <!-- ═══ EMPRESA DASHBOARD VIEW (Level 2: Empresa) ═══ -->
+    <section id="view-empresa-dashboard" style="display:none">
+      <div id="empresa-dash-summary" class="bw2-global-summary" style="margin-bottom:0.75rem"></div>
+      <div class="view-header">
+        <h2 id="empresa-dash-title">Empresa</h2>
+        <p>Selecciona un proyecto para ver las sucursales</p>
+      </div>
+      <div id="empresa-dash-proyectos" class="empresa-proyectos-grid"></div>
+    </section>
+
+    <!-- ═══ PORTFOLIO VIEW (Level 3: Proyecto) ═══ -->
     <section id="view-portfolio">
       <div id="portfolio-summary" class="bw2-global-summary" style="display:none;margin-bottom:0.75rem"></div>
       <div class="view-header"><h2 id="portfolio-title">Sucursales de Proyecto</h2><p>Haz clic en 📊 <strong>Ver</strong> para explorar los detalles de cada sucursal</p></div>

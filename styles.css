@@ -130,12 +130,14 @@ body{
 .ent-name{font-weight:800;font-size:0.75rem;color:var(--header-text)}
 .ent-stat{
   font-size:0.6rem;color:var(--text-1);font-weight:700;
-  background:var(--surface-alt);
-  padding:0.15rem 0.4rem;border-radius:6px;
-  box-shadow:none;border:1px solid var(--border);
+  background:var(--surface);
+  padding:0.2rem 0.5rem;border-radius:8px;
+  box-shadow:var(--shadow-neu-inset-sm);border:1px solid var(--border);
   display:inline-flex;align-items:center;gap:0.3rem;letter-spacing:0.02em;
+  white-space:nowrap;
 }
 .ent-stat.danger{color:var(--red)}
+.project-badge{font-weight:800;color:var(--accent)}
 
 /* Semaphore + Score */
 .semaphore{display:flex;align-items:center;gap:0.375rem}
@@ -309,13 +311,13 @@ body{
 .widget-grid{
   display:grid;
   grid-template-columns:repeat(12,1fr);
-  gap:0.5rem;
+  gap:0.375rem;
 }
 .widget{
   background:var(--surface);
   border-radius:var(--r-md);
   border:none;
-  padding:0.625rem;
+  padding:0.5rem 0.625rem;
   box-shadow:var(--shadow-card);
   display:flex;flex-direction:column;
   min-width:0;
@@ -1301,7 +1303,179 @@ body{
   padding:0 0.5rem 2rem;
 }
 
-/* ── Company Card — Neumorphic ── */
+/* ── Global / Portfolio Summary ── */
+.bw2-global-summary{
+  margin:0 0.5rem 0.75rem;
+  background:var(--bg-card);border-radius:var(--r-md);
+  padding:0.75rem;box-shadow:var(--shadow-neu-sm);border:1px solid var(--border);
+}
+.global-summary-title{
+  font-size:0.75rem;font-weight:800;color:var(--text-2);
+  text-transform:uppercase;letter-spacing:0.04em;
+  margin-bottom:0.5rem;padding-bottom:0.375rem;
+  border-bottom:1px solid var(--border);
+}
+.global-summary-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0.5rem}
+.global-summary-card{
+  background:var(--surface);border-radius:var(--r-sm);padding:0.5rem 0.625rem;
+  box-shadow:var(--shadow-neu-inset-sm);display:flex;flex-direction:column;gap:0.15rem;
+}
+.global-summary-label{font-size:0.575rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.04em}
+.global-summary-value{font-size:1rem;font-weight:800;color:var(--text-1);letter-spacing:-0.02em}
+.global-summary-value small{font-size:0.65em;font-weight:600;color:var(--text-3)}
+.global-summary-sub{font-size:0.55rem;color:var(--text-3);font-weight:500}
+@media(max-width:768px){.global-summary-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:480px){.global-summary-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* ═══ HOME PAGE — Clean Redesign ═══ */
+.bw2-home{padding:0.5rem 1rem 2rem;max-width:1000px;margin:0 auto}
+.home-title-row{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:0.75rem;
+}
+.home-h1{font-size:1.5rem;font-weight:900;color:var(--text-1);margin:0;display:inline}
+.home-sub{font-size:0.7rem;color:var(--text-3);margin-left:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em}
+.home-empty{text-align:center;padding:3rem 1rem;color:var(--text-2);font-size:0.9rem}
+
+/* KPI row */
+.home-kpi-row{
+  display:grid;grid-template-columns:repeat(6,1fr);gap:0.375rem;
+  background:var(--surface);border-radius:var(--r-md);
+  padding:0.5rem;border:1px solid var(--border);
+  box-shadow:var(--shadow-neu-sm);margin-bottom:1rem;
+}
+.home-kpi{
+  display:flex;flex-direction:column;align-items:center;
+  padding:0.35rem 0.25rem;gap:0.05rem;
+}
+.home-kpi-v{font-size:0.85rem;font-weight:800;color:var(--text-1);white-space:nowrap}
+.home-kpi-v small{font-size:0.65em;font-weight:600;color:var(--text-3)}
+.home-kpi-l{font-size:0.475rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.04em}
+
+/* Section header */
+.home-section-hdr{
+  display:flex;align-items:center;gap:0.5rem;
+  margin-bottom:0.5rem;padding:0 0.125rem;
+  font-size:0.7rem;font-weight:700;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:0.04em;
+}
+.home-section-count{
+  background:var(--accent);color:#fff;
+  font-size:0.55rem;font-weight:800;
+  padding:0.1rem 0.4rem;border-radius:10px;
+}
+
+/* Empresa rows */
+.home-emp-row{
+  display:flex;align-items:center;gap:0.75rem;
+  background:var(--surface);border-radius:var(--r-md);
+  padding:0.65rem 0.75rem;margin-bottom:0.5rem;
+  border:1px solid var(--border);box-shadow:var(--shadow-neu-sm);
+  transition:all 0.2s;
+}
+.home-emp-row:hover{transform:translateY(-1px);box-shadow:var(--shadow-neu)}
+.home-emp-left{display:flex;align-items:center;gap:0.5rem;flex:1;min-width:0}
+.home-emp-logo{width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0}
+.home-emp-icon{width:32px;height:32px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;border:1px solid var(--border)}
+.home-emp-info{min-width:0}
+.home-emp-name{font-size:0.85rem;font-weight:800;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-emp-meta{font-size:0.6rem;color:var(--text-3);white-space:nowrap}
+.home-emp-kpis{display:flex;gap:1rem;flex-shrink:0}
+.home-emp-stat{display:flex;flex-direction:column;align-items:flex-end;gap:0}
+.home-emp-stat-v{font-size:0.8rem;font-weight:800}
+.home-emp-stat-l{font-size:0.45rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.03em}
+.home-emp-actions{display:flex;align-items:center;gap:0.25rem;flex-shrink:0}
+.home-emp-open{
+  padding:0.35rem 0.75rem;background:var(--accent);color:#fff;
+  border:none;border-radius:var(--r-sm);font-weight:700;font-size:0.7rem;
+  cursor:pointer;transition:all 0.2s;white-space:nowrap;
+}
+.home-emp-open:hover{background:var(--accent-hover);transform:translateY(-1px)}
+
+@media(max-width:768px){
+  .home-kpi-row{grid-template-columns:repeat(3,1fr)}
+  .home-emp-row{flex-wrap:wrap}
+  .home-emp-kpis{width:100%;justify-content:space-around}
+}
+@media(max-width:480px){
+  .home-kpi-row{grid-template-columns:repeat(2,1fr)}
+}
+
+/* ── Simplified Empresa Cards (Home Level 1) ── */
+.bw2-empresa-card-simple{
+  background:var(--surface);border-radius:var(--r-md);
+  padding:1rem;box-shadow:var(--shadow-neu);border:1px solid var(--border);
+  transition:all 0.3s;
+}
+.bw2-empresa-card-simple:hover{transform:translateY(-2px);box-shadow:var(--shadow-neu-lg)}
+.bw2-empresa-kpis-row{
+  display:flex;gap:1.5rem;padding:0.75rem 0;margin:0.5rem 0;
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+}
+.bw2-emp-kpi{display:flex;flex-direction:column;gap:0.1rem}
+.bw2-emp-kpi-label{font-size:0.575rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.04em}
+.bw2-emp-kpi-value{font-size:0.95rem;font-weight:800;color:var(--text-1)}
+.btn-open-empresa{
+  width:100%;display:block;text-align:center;padding:0.6rem 1rem;
+  background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);
+  font-weight:700;font-size:0.8rem;cursor:pointer;transition:all 0.25s;
+  box-shadow:var(--shadow-neu-sm);
+}
+.btn-open-empresa:hover{background:var(--accent-hover);transform:translateY(-1px)}
+
+/* ── Empresa Dashboard (Level 2) — Project Cards ── */
+.empresa-proyectos-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem;
+  padding:0 0.5rem 2rem;
+}
+.emp-dash-proj-card{
+  background:var(--surface);border-radius:var(--r-md);padding:1rem;
+  box-shadow:var(--shadow-neu);border:1px solid var(--border);
+  transition:all 0.3s;display:flex;flex-direction:column;
+}
+.emp-dash-proj-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-neu-lg)}
+.emp-dash-add-card{
+  display:flex;align-items:center;justify-content:center;
+  border:2px dashed var(--border);background:transparent;box-shadow:none;
+  min-height:180px;
+}
+.emp-dash-proj-header{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  margin-bottom:0.75rem;
+}
+.emp-dash-proj-name{font-size:0.95rem;font-weight:800;color:var(--text-1)}
+.emp-dash-proj-meta{font-size:0.7rem;color:var(--text-3)}
+.emp-dash-proj-kpis{
+  display:flex;gap:1.25rem;padding:0.75rem 0;margin-bottom:0.75rem;
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+}
+.emp-dash-kpi{display:flex;flex-direction:column;gap:0.1rem}
+.emp-dash-kpi-label{font-size:0.575rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.04em}
+.emp-dash-kpi-value{font-size:0.9rem;font-weight:800}
+.btn-open-proyecto-dash{
+  width:100%;display:block;text-align:center;padding:0.55rem 1rem;
+  background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);
+  font-weight:700;font-size:0.8rem;cursor:pointer;transition:all 0.25s;
+  box-shadow:var(--shadow-neu-sm);margin-top:auto;
+}
+.btn-open-proyecto-dash:hover{background:var(--accent-hover);transform:translateY(-1px)}
+/* Compact CTA (Home empresa cards) */
+.emp-dash-proj-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:auto;padding-top:0.5rem;
+}
+.emp-dash-proj-meta-foot{font-size:0.6rem;color:var(--text-3);font-weight:500}
+.btn-compact-open{
+  padding:0.35rem 0.75rem;background:var(--accent);color:#fff;
+  border:none;border-radius:var(--r-sm);font-weight:700;font-size:0.7rem;
+  cursor:pointer;transition:all 0.2s;white-space:nowrap;
+}
+.btn-compact-open:hover{background:var(--accent-hover);transform:translateY(-1px)}
+.btn-add-proyecto-dash{
+  padding:0.75rem 1.5rem;background:none;border:none;color:var(--text-3);
+  font-size:0.85rem;font-weight:600;cursor:pointer;transition:color 0.2s;
+}
+.btn-add-proyecto-dash:hover{color:var(--accent)}
 .bw2-empresa-card{
   background:var(--surface);
   border-radius:var(--r-lg);padding:1rem 1.25rem;
@@ -1653,13 +1827,13 @@ body{
 /* Card base — shared premium shell */
 #branch-resultados-grid .kpi-card{
   display:flex;flex-direction:column;
-  padding:1.125rem 1.25rem !important;
+  padding:0.625rem 0.75rem !important;
   border-left:3px solid var(--accent);
   position:relative;overflow:hidden;
   transition:transform 0.3s cubic-bezier(0.2,0.8,0.2,1),
              box-shadow 0.3s cubic-bezier(0.2,0.8,0.2,1),
              border-color 0.3s ease;
-  animation:kpiSlideUp 0.5s ease both;
+  animation:kpiSlideUp 0.4s ease both;
 }
 #branch-resultados-grid .kpi-card:nth-child(2){animation-delay:0.06s}
 #branch-resultados-grid .kpi-card:nth-child(3){animation-delay:0.12s}
@@ -1696,94 +1870,84 @@ body{
 
 /* Card header: icon + label */
 .kpi-card-header{
-  display:flex;align-items:center;gap:0.4rem;margin-bottom:0.5rem;
+  display:flex;align-items:center;gap:0.3rem;margin-bottom:0.25rem;
 }
 .kpi-card-icon{
-  font-size:0.85rem;line-height:1;
+  font-size:0.7rem;line-height:1;
   filter:saturate(1.4) brightness(1.1);
 }
 .kpi-card-label{
-  font-size:0.6875rem;font-weight:800;text-transform:uppercase;
+  font-size:0.6rem;font-weight:800;text-transform:uppercase;
   letter-spacing:0.08em;color:var(--text-3);
 }
 
 /* Card values — big, bold, beautiful */
 .kpi-card-value{
-  font-size:1.5rem;font-weight:900;letter-spacing:-0.035em;
+  font-size:1.1rem;font-weight:900;letter-spacing:-0.03em;
   line-height:1.1;color:var(--text-1);margin:0;
   font-variant-numeric:tabular-nums;
-  text-shadow:0 1px 2px rgba(0,0,0,0.04);
 }
 
 /* ── Type: Progress Bar (Break-even) ── */
-.kpi-card--bar .kpi-card-value{font-size:1.6rem}
+.kpi-card--bar .kpi-card-value{font-size:1.15rem}
 .kpi-mini-bar{
-  height:10px;border-radius:5px;background:var(--surface-alt);
-  margin-top:0.75rem;overflow:hidden;
-  box-shadow:inset 1px 2px 4px rgba(0,0,0,0.1);
+  height:6px;border-radius:3px;background:var(--surface-alt);
+  margin-top:0.4rem;overflow:hidden;
+  box-shadow:inset 1px 1px 2px rgba(0,0,0,0.08);
   position:relative;
 }
 .kpi-mini-bar-fill{
-  height:100%;border-radius:5px;
+  height:100%;border-radius:3px;
   background:linear-gradient(90deg,#34d399 0%,#a3e635 40%,#fbbf24 70%,#f87171 100%);
-  transition:width 1.2s cubic-bezier(0.1,0.7,0.3,1);
+  transition:width 1s cubic-bezier(0.1,0.7,0.3,1);
   width:0%;
-  box-shadow:0 0 8px rgba(52,211,153,0.25);
 }
 .kpi-mini-label{
-  display:block;font-size:0.6875rem;font-weight:700;
-  color:var(--text-3);margin-top:0.35rem;text-align:right;
-  letter-spacing:0.02em;
+  display:block;font-size:0.575rem;font-weight:700;
+  color:var(--text-3);margin-top:0.2rem;text-align:right;
 }
 
 /* ── Type: Sparkline (Profit) ── */
-.kpi-card--spark .kpi-card-value{font-size:1.6rem}
+.kpi-card--spark .kpi-card-value{font-size:1.15rem}
 .kpi-sparkline{
-  margin-top:auto;height:44px;overflow:hidden;
+  margin-top:auto;height:28px;overflow:hidden;
   border-radius:0 0 var(--r-md) var(--r-md);
-  margin:-0.125rem -1.25rem -1.125rem;
-  padding:0 1.25rem;
+  margin:0 -0.75rem -0.625rem;
+  padding:0 0.75rem;
 }
 .kpi-sparkline svg{
   width:100%;height:100%;display:block;
-  filter:drop-shadow(0 1px 3px rgba(77,124,254,0.15));
 }
 
 /* ── Type: Ring Gauge (Payback) ── */
-.kpi-card--ring{padding-bottom:1rem !important}
+.kpi-card--ring{padding-bottom:0.5rem !important}
 .kpi-ring-layout{
-  display:flex;align-items:center;gap:0.75rem;
-  margin-top:0.35rem;flex:1;
+  display:flex;align-items:center;gap:0.4rem;
+  margin-top:0.15rem;flex:1;
 }
-.kpi-ring-svg{
-  flex-shrink:0;
-  filter:drop-shadow(0 2px 6px rgba(251,191,36,0.15));
-}
+.kpi-ring-svg{flex-shrink:0}
 .kpi-ring-text{display:flex;flex-direction:column;min-width:0}
-.kpi-ring-text .kpi-card-value{font-size:1.75rem}
+.kpi-ring-text .kpi-card-value{font-size:1.2rem}
 .kpi-ring-sub{
-  font-size:0.65rem;font-weight:700;color:var(--text-3);
-  margin-top:0.2rem;white-space:nowrap;text-transform:uppercase;
+  font-size:0.55rem;font-weight:700;color:var(--text-3);
+  margin-top:0.1rem;white-space:nowrap;text-transform:uppercase;
   letter-spacing:0.04em;
 }
 
-/* ── Type: Speedometer Gauge (ROI) ── */
 .kpi-card--gauge{align-items:stretch}
 .kpi-gauge-wrap{
   display:flex;flex-direction:column;align-items:center;
   justify-content:center;flex:1;position:relative;
-  min-height:90px;
+  min-height:56px;
 }
-.kpi-gauge-wrap svg{
-  filter:drop-shadow(0 3px 8px rgba(139,92,246,0.15));
-}
+.kpi-gauge-wrap svg{filter:drop-shadow(0 1px 4px rgba(0,0,0,0.06))}
 .kpi-gauge-value{
-  font-size:1.4rem;font-weight:900;letter-spacing:-0.03em;
+  font-size:1.0rem;font-weight:900;letter-spacing:-0.03em;
   line-height:1;
 }
 .kpi-gauge-label{
-  font-size:0.6rem;font-weight:800;color:var(--text-3);
-  text-transform:uppercase;letter-spacing:0.08em;margin-top:0.2rem;
+  font-size:0.5rem;font-weight:800;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:0.06em;margin-top:0.1rem;
 }
 
 /* ═══ DONUT LEGEND ═══ */
@@ -1808,7 +1972,7 @@ body{
   from{opacity:0;transform:translateY(16px)}
   to{opacity:1;transform:translateY(0)}
 }
-#view-portfolio,#view-branch,#view-consolidated,#view-comparador,#view-empresa,#view-glosario,#view-bw2-home{
+#view-portfolio,#view-branch,#view-consolidated,#view-comparador,#view-empresa,#view-glosario,#view-bw2-home,#view-empresa-dashboard{
   animation:viewFadeIn 0.4s var(--ease-smooth) both;
 }
 
@@ -2204,10 +2368,9 @@ body{
 }
 
 /* ═══ GLOBAL CONSOLIDATED (Home Page) ═══ */
-.bw2-global-summary{
-  display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
-  gap:0.75rem;margin-bottom:1.5rem;
-}
+/* Note: .bw2-global-summary base styles are defined above (line ~1307) */
+/* Only add non-conflicting overrides here */
+
 .bw2-global-card{
   background:var(--surface);
   border-radius:var(--r-md);
@@ -2226,3 +2389,518 @@ body{
 }
 .bw2-global-card .global-value.positive{color:#10b981}
 .bw2-global-card .global-value.negative{color:#ef4444}
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPREHENSIVE RESPONSIVE DESIGN
+   Thoroughly tested at 375px (iPhone), 768px, 1024px
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Prevent horizontal page scroll at all sizes ── */
+html,body{overflow-x:hidden;max-width:100vw}
+
+/* ── TABLET ≤1024px: sidebar → horizontal strip ── */
+@media(max-width:1024px){
+  :root{--sidebar-width:0px}
+
+  /* Sidebar → scrollable horizontal nav strip */
+  #main-nav{
+    position:static;width:100%;flex-direction:row;overflow-x:auto;
+    border-right:none;border-bottom:1px solid var(--border);
+    padding:0.4rem 0.5rem;top:auto;bottom:auto;height:auto;
+    gap:0.25rem;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  #main-nav::-webkit-scrollbar{display:none}
+  .nav-section{display:none}
+  .nav-divider{display:none}
+  .nav-spacer{display:none}
+  .nav-btn{
+    flex-direction:row;padding:0.45rem 0.65rem;font-size:0.75rem;
+    white-space:nowrap;border-radius:var(--r-sm);min-height:36px;
+    align-items:center;
+  }
+  .nav-btn::before{display:none}
+  .nav-btn.active{background:var(--accent-soft)}
+  .nav-icon{font-size:0.85rem;margin-right:0.2rem}
+  .nav-back{padding:0.45rem 0.65rem;font-size:0.75rem;white-space:nowrap;min-height:36px}
+  .btn-add{width:auto;margin-top:0;padding:0.45rem 0.65rem;font-size:0.75rem;white-space:nowrap}
+
+  /* Main content full width */
+  #main-content{margin-left:0;padding:0.5rem 0.75rem}
+  #app-footer{margin-left:0}
+
+  /* Header compact */
+  #app-header{padding:0.4rem 0.75rem;gap:0.5rem}
+  .header-logo{height:26px}
+  .header-home-btn svg{width:36px;height:24px}
+
+  /* Breadcrumbs horizontal scroll */
+  .header-breadcrumb{overflow-x:auto;flex-wrap:nowrap;white-space:nowrap;scrollbar-width:none}
+  .header-breadcrumb::-webkit-scrollbar{display:none}
+  .breadcrumb-item{font-size:0.7rem;white-space:nowrap}
+  .breadcrumb-sep{font-size:0.65rem}
+
+  /* Header stats smaller */
+  .header-center{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .header-center::-webkit-scrollbar{display:none}
+  .ent-stat{font-size:0.55rem;padding:0.15rem 0.35rem}
+
+  /* Summary grid → 3 cols */
+  .global-summary-grid{grid-template-columns:repeat(3,1fr)}
+
+  /* Empresa/Proyecto card grid → single col */
+  .empresa-proyectos-grid{grid-template-columns:1fr}
+
+  /* Portfolio grid single col */
+  .portfolio-grid{grid-template-columns:1fr}
+
+  /* Branch config */
+  .config-grid{grid-template-columns:1fr}
+  .branch-config-bar{flex-direction:column}
+
+  /* View headers: stack */
+  .view-header{flex-direction:column;align-items:flex-start !important;gap:0.5rem}
+  .view-header h2{font-size:1.1rem}
+
+  /* Two-col rows → single (CRITICAL for charts) */
+  .row-2col{grid-template-columns:1fr}
+
+  /* CRITICAL: Widget grid → single column on tablet/phone */
+  .widget-grid{grid-template-columns:1fr !important}
+  .widget-grid .widget{grid-column:1 !important}
+  /* Clear explicit row assignments so items flow naturally */
+  #branch-resultados-grid .kpi-card{grid-row:auto !important}
+  #branch-resultados-grid [data-widget-id]{grid-row:auto !important;grid-column:1 !important}
+
+  /* Branch back button: hide inline one, nav has back */
+  .btn-back{display:none}
+
+  /* KPI grid inside cards */
+  .emp-dash-proj-kpis{gap:0.75rem}
+
+  /* Branch action buttons: 2x2 grid */
+  .branch-actions{display:grid;grid-template-columns:1fr 1fr;gap:0.4rem}
+
+  /* Home page max-width override */
+  .bw2-home{padding:0.5rem 0.5rem 2rem}
+}
+
+/* ── SMALL TABLET / LARGE PHONE ≤768px ── */
+@media(max-width:768px){
+  /* Summary grid: 3→2 columns */
+  .global-summary-grid{grid-template-columns:repeat(2,1fr)}
+  .global-summary-value{font-size:0.95rem}
+  .global-summary-label{font-size:0.55rem}
+
+  /* Hide header center stats completely — too cramped */
+  .header-center{display:none}
+
+  /* Empresa grid → single column */
+  .empresa-proyectos-grid{grid-template-columns:1fr}
+
+  /* View header */
+  .view-header{gap:0.35rem}
+  .view-header p{font-size:0.75rem}
+
+  /* Cards compact */
+  .emp-dash-proj-card{padding:0.75rem}
+  .emp-dash-proj-name{font-size:0.9rem}
+  .emp-dash-add-card{min-height:100px}
+
+  /* Branch KPI cards */
+  .kpi-card{padding:0.5rem}
+  .kpi-value{font-size:0.85rem}
+  .kpi-label{font-size:0.5rem}
+
+  /* Socioeconomic/market table — horz scroll */
+  .market-table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .market-table th,.market-table td{padding:0.35rem 0.5rem;font-size:0.65rem;white-space:nowrap}
+
+  /* Portfolio branch cards KPIs: 2x2 grid */
+  .portfolio-kpis{display:grid !important;grid-template-columns:1fr 1fr;gap:0.35rem}
+
+  /* Branch action buttons: ensure 2x2 */
+  .branch-actions{display:grid;grid-template-columns:1fr 1fr;gap:0.35rem}
+  .branch-actions .btn-sm{font-size:0.7rem;padding:0.4rem 0.5rem;min-height:40px;justify-content:center}
+
+  /* Home KPI row */
+  .home-kpi-row{grid-template-columns:repeat(3,1fr)}
+  .home-emp-row{flex-wrap:wrap}
+  .home-emp-kpis{width:100%;justify-content:space-around}
+}
+
+/* ── TRUE PHONE ≤480px ── */
+@media(max-width:480px){
+  /* Summary grid: 2 columns */
+  .global-summary-grid{grid-template-columns:repeat(2,1fr)}
+  .global-summary-card{padding:0.4rem 0.5rem}
+  .global-summary-value{font-size:0.9rem}
+  .global-summary-label{font-size:0.5rem}
+  .global-summary-sub{font-size:0.5rem}
+
+  /* Header: minimized — logo + breadcrumbs only */
+  #app-header{padding:0.35rem 0.5rem;gap:0.35rem}
+  .header-center{display:none}
+  .header-logo{height:20px}
+  .header-home-btn svg{width:30px;height:20px}
+  .profile-avatar-btn{width:28px;height:28px;font-size:0.7rem}
+
+  /* Breadcrumbs: tight */
+  .breadcrumb-item{font-size:0.6rem;padding:0.15rem 0.25rem}
+  .breadcrumb-sep{font-size:0.55rem;padding:0 0.15rem}
+
+  /* Nav touch-friendly: 44px min height, scrollable */
+  #main-nav{padding:0.3rem 0.4rem;gap:0.2rem}
+  .nav-btn{
+    padding:0.4rem 0.6rem;font-size:0.7rem;min-height:40px;
+    display:flex;align-items:center;
+  }
+  .nav-back{font-size:0.7rem;min-height:40px;display:flex;align-items:center}
+  .btn-add{font-size:0.7rem;padding:0.4rem 0.6rem;min-height:40px}
+
+  /* Content: tight padding, no overflow */
+  #main-content{padding:0.25rem 0.35rem}
+  .bw2-home{padding:0.25rem 0.35rem 2rem}
+
+  /* Summary section: tighter */
+  .bw2-global-summary{margin:0 0 0.5rem;padding:0.5rem;border-radius:var(--r-sm)}
+
+  /* Empresa cards */
+  .emp-dash-proj-card{padding:0.65rem}
+  .emp-dash-proj-header{margin-bottom:0.4rem}
+  .emp-dash-proj-name{font-size:0.85rem}
+  .emp-dash-proj-meta{font-size:0.65rem}
+  .emp-dash-proj-kpis{padding:0.5rem 0;margin-bottom:0.4rem;gap:0.5rem;flex-wrap:wrap}
+  .emp-dash-kpi-label{font-size:0.5rem}
+  .emp-dash-kpi-value{font-size:0.8rem}
+  .btn-compact-open{font-size:0.65rem;padding:0.35rem 0.7rem;min-height:36px}
+  .btn-open-proyecto-dash{font-size:0.75rem;padding:0.5rem 0.75rem}
+  .emp-dash-add-card{min-height:80px}
+
+  /* View header stack */
+  .view-header h2{font-size:1rem}
+  .view-header p{font-size:0.65rem}
+
+  /* Portfolio branch cards */
+  .portfolio-kpis{display:grid !important;grid-template-columns:1fr 1fr;gap:0.3rem}
+
+  /* Branch action buttons: stack 2x2 with good touch targets */
+  .branch-actions{display:grid;grid-template-columns:1fr 1fr;gap:0.3rem}
+  .branch-actions .btn-sm{
+    font-size:0.7rem;padding:0.45rem 0.35rem;min-height:42px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:var(--r-sm);
+  }
+
+  /* Widgets: all full width */
+  .wg-8,.wg-6,.wg-4,.wg-3,.wg-2{grid-column:span 12}
+  .wg-h2,.wg-h3{grid-row:span 1}
+
+  /* Neu cards and chart containers */
+  .neu-card{padding:0.5rem;border-radius:var(--r-sm)}
+  .neu-card h3{font-size:0.8rem}
+
+  /* Config section */
+  .config-grid{grid-template-columns:1fr}
+  .config-item label{font-size:0.65rem}
+
+  /* Segmented controls: wrap nicely */
+  .neu-segmented{flex-wrap:wrap;gap:2px;padding:3px}
+  .seg-btn{padding:0.3rem 0.55rem;font-size:0.65rem;min-height:32px}
+
+  /* Investment block */
+  .inv-grid{grid-template-columns:1fr;gap:0.75rem}
+  .inv-main-input{font-size:1rem !important;width:100% !important}
+  .inv-input-row{flex-wrap:wrap}
+
+  /* Location panel: stack address input */
+  .loc-input-row{flex-direction:column;gap:0.35rem}
+  .loc-input-row .input-text{width:100%}
+  .loc-input-row .btn-action{width:100%}
+
+  /* Market impact — make scrollable instead of breaking */
+  .socio-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+  /* Radar/spider chart — reduce size */
+  .radar-container canvas,.radar-container svg{max-width:180px !important;max-height:180px !important;margin:0 auto}
+
+  /* Profile modal fullscreen */
+  .profile-modal{width:95vw;max-width:none;max-height:90vh;overflow-y:auto}
+
+  /* BW2 modal */
+  .bw2-modal-content{width:95vw;max-width:none;padding:1rem}
+
+  /* Footer */
+  #app-footer{font-size:0.65rem;padding:1rem;margin-left:0}
+
+  /* Home page KPIs */
+  .home-kpi-row{grid-template-columns:repeat(2,1fr)}
+}
+
+/* ── EXTRA SMALL PHONE ≤360px ── */
+@media(max-width:360px){
+  .global-summary-grid{grid-template-columns:1fr 1fr}
+  .global-summary-card{padding:0.35rem 0.4rem}
+  .global-summary-value{font-size:0.8rem}
+  .header-home-btn svg{width:26px;height:18px}
+  .breadcrumb-item{font-size:0.55rem}
+  #main-content{padding:0.2rem 0.25rem}
+  .emp-dash-proj-card{padding:0.5rem}
+  .branch-actions{grid-template-columns:1fr 1fr}
+  .branch-actions .btn-sm{font-size:0.65rem;padding:0.35rem 0.25rem}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PREMIUM MOBILE POLISH
+   Touch targets, typography, spacing, scroll behavior, feedback
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Smooth scroll globally ── */
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+
+/* ── Touch targets: 44px minimum on mobile ── */
+@media(max-width:768px){
+  .btn-icon{
+    min-width:44px;min-height:44px;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:1.1rem;padding:0.5rem;
+    border-radius:var(--r-sm);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn-icon:active{
+    background:var(--surface);box-shadow:var(--shadow-neu-inset-sm);
+    transform:scale(0.92);
+  }
+
+  /* Space out edit/delete icons */
+  .bw2-empresa-actions{gap:0.25rem}
+  .bw2-proj-actions{gap:0.25rem}
+
+  /* Breadcrumb items: proper touch targets */
+  .breadcrumb-item{
+    min-height:32px;display:inline-flex;align-items:center;
+    padding:0.25rem 0.4rem;
+  }
+
+  /* Profile avatar button */
+  .profile-avatar-btn{
+    min-width:36px;min-height:36px;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  /* Active tap feedback for all buttons */
+  button:active,.btn-primary:active,.btn-sm:active,
+  .nav-btn:active,.btn-add:active{
+    transform:scale(0.96) !important;
+    transition:transform 0.1s !important;
+  }
+
+  /* ── Nav bar polish ── */
+  #main-nav{
+    -ms-overflow-style:none;scrollbar-width:none;
+    padding-left:0.5rem;padding-right:0.5rem;
+    scroll-snap-type:x proximity;
+  }
+  #main-nav::-webkit-scrollbar{display:none}
+  .nav-btn,.nav-back,.btn-add{
+    flex-shrink:0;
+    -webkit-tap-highlight-color:transparent;
+    scroll-snap-align:start;
+  }
+
+  /* ── Summary cards: better proportions ── */
+  .global-summary-card{
+    padding:0.625rem 0.75rem;
+    border-radius:var(--r-sm);
+  }
+  .global-summary-value{
+    font-size:1.1rem;line-height:1.3;letter-spacing:-0.02em;
+    word-break:break-word;
+  }
+  .global-summary-label{
+    font-size:0.6rem;line-height:1.3;margin-bottom:0.15rem;
+  }
+  .global-summary-sub{font-size:0.55rem}
+
+  /* ── Title styling on L2/L3 summary ── */
+  .global-summary-title{
+    font-size:0.8rem;padding-bottom:0.5rem;margin-bottom:0.625rem;
+  }
+
+  /* ── Company card polish ── */
+  .bw2-empresa-card-simple{
+    padding:0.875rem;border-radius:var(--r-md);
+  }
+  .bw2-empresa-kpis-row{
+    gap:0.75rem;padding:0.625rem 0;
+    flex-wrap:wrap;
+  }
+  .bw2-emp-kpi-value{font-size:0.9rem}
+  .bw2-emp-kpi-label{font-size:0.55rem}
+
+  /* Card footer: single line with compact CTA */
+  .emp-dash-proj-footer,
+  .bw2-empresa-footer{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:0.5rem;
+  }
+
+  /* Emp dash project cards: tighter KPI grid for mobile */
+  .emp-dash-proj-kpis{
+    display:grid;grid-template-columns:1fr 1fr;
+    gap:0.5rem;text-align:center;
+  }
+
+  /* ── Branch card at L3 ── */
+  .portfolio-card{
+    padding:0.875rem;border-radius:var(--r-md);
+  }
+
+  /* Status badge — don't let it overflow */
+  .portfolio-status{
+    font-size:0.6rem;padding:0.2rem 0.5rem;
+    white-space:nowrap;flex-shrink:0;
+  }
+
+  /* ── L4 comparison tables: horizontal scroll ── */
+  .neu-card table{
+    display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .neu-card table::-webkit-scrollbar{display:none}
+  .neu-card table th,.neu-card table td{
+    white-space:nowrap;
+    padding:0.45rem 0.5rem;
+    font-size:0.7rem;
+  }
+  /* Sticky first column in comparison tables */
+  .neu-card table th:first-child,
+  .neu-card table td:first-child{
+    position:sticky;left:0;
+    background:var(--surface);
+    z-index:1;
+    box-shadow:2px 0 4px rgba(0,0,0,0.04);
+  }
+
+  /* ── Chart containers: prevent overflow ── */
+  .neu-card canvas{
+    max-width:100% !important;
+    height:auto !important;
+  }
+
+  /* ── Checklist widget compact ── */
+  .checklist-item{
+    padding:0.4rem 0.5rem;font-size:0.7rem;
+  }
+
+  /* ── Alerts widget compact ── */
+  .alert-item{
+    padding:0.4rem 0.5rem;font-size:0.7rem;
+  }
+
+  /* ── View header: title and buttons ── */
+  .view-header{gap:0.4rem}
+  .view-header h2{font-size:1.05rem;line-height:1.3}
+  .view-header p{
+    font-size:0.7rem;line-height:1.4;color:var(--text-3);
+  }
+
+  /* ── "Métricas de Resultados" card header ── */
+  .results-header{
+    flex-direction:column;align-items:flex-start;gap:0.4rem;
+  }
+  .results-header h3{font-size:1rem}
+
+  /* ── Better legibility for small labels ── */
+  .kpi-label,.emp-dash-kpi-label,.bw2-emp-kpi-label,
+  .global-summary-label{
+    letter-spacing:0.06em;
+  }
+
+  /* ── Footer: cleaner on phone ── */
+  #app-footer{
+    text-align:center;padding:0.75rem 0.5rem;
+    font-size:0.625rem;color:var(--text-3);
+  }
+}
+
+/* ── Phone-specific polishes ≤480px ── */
+@media(max-width:480px){
+  /* Nav items: compact but still scrollable with good touch */
+  .nav-btn{
+    padding:0.45rem 0.7rem;font-size:0.75rem;
+    border-radius:var(--r-sm);min-height:40px;
+  }
+
+  /* Ensure L4 KPI cards are 2x1 grid instead of 4 across */
+  .widget-grid .kpi-card{
+    min-width:0 !important;
+  }
+
+  /* Segmented controls: smarter wrap */
+  .neu-segmented{
+    overflow-x:auto;flex-wrap:nowrap;
+    scrollbar-width:none;padding:3px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .neu-segmented::-webkit-scrollbar{display:none}
+  .seg-btn{
+    flex-shrink:0;min-height:34px;
+    padding:0.35rem 0.65rem;font-size:0.7rem;
+    border-radius:var(--r-sm);
+  }
+  .seg-btn.active{
+    font-weight:700;
+  }
+
+  /* Market variables table rows: better readability */
+  .market-table tr{border-bottom:1px solid var(--border)}
+  .market-table td{padding:0.5rem 0.4rem;font-size:0.7rem}
+
+  /* Address input + reload button row */
+  .loc-input-row{
+    display:flex;flex-direction:row;gap:0.35rem;
+    align-items:stretch;
+  }
+  .loc-input-row .input-text{
+    flex:1;min-width:0;
+    font-size:0.75rem;padding:0.5rem;
+  }
+  .loc-input-row .btn-action{
+    width:auto;min-width:44px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  /* Better card shadows on phone (subtler = more premium) */
+  .bw2-empresa-card-simple,
+  .emp-dash-proj-card,
+  .portfolio-card{
+    box-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+  }
+
+  /* Rounded summary section on phone */
+  .bw2-global-summary{
+    border-radius:var(--r-md);
+    margin:0 0 0.75rem;
+  }
+
+  /* Hero KPI cards on L4: proper spacing */
+  .widget.kpi-card{
+    padding:0.75rem;
+    border-radius:var(--r-md);
+  }
+  .widget.kpi-card .kpi-value{
+    font-size:1.1rem;font-weight:800;
+  }
+  .widget.kpi-card .kpi-label{
+    font-size:0.55rem;
+  }
+}
+
+/* ── Tap highlight removal (global) ── */
+@media(hover:none){
+  *{-webkit-tap-highlight-color:transparent}
+  button,a,.nav-btn,.seg-btn,.breadcrumb-item{
+    -webkit-tap-highlight-color:transparent;
+  }
+}

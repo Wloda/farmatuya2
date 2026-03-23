@@ -191,6 +191,11 @@ function showToast(msg, type='info') {
   setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3000);
 }
 
+/* ── Listen for storage quota errors from empresa-store ── */
+window.addEventListener('bw2:storage-error', (e) => {
+  showToast(e.detail?.message || 'Error de almacenamiento', 'error');
+});
+
 /* ── Resize image file to max 256×256 base64 data URL ── */
 function resizeImageToDataURL(file, maxSize = 256) {
   return new Promise((resolve, reject) => {
@@ -254,6 +259,39 @@ const fmt={m:v=>'$'+Math.round(v).toLocaleString('es-MX'),mk:v=>'$'+(v/1000).toF
 function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 function kc(l,v,d,s,tip){return `<div class="kpi-card" data-status="${s}"${tip?' title="'+tip+'"':''}><div class="kpi-label">${l}</div><div class="kpi-value">${v}</div><div class="kpi-detail">${d}</div></div>`;}
 
+/* ── Shared KPI aggregation helper (eliminates redundancy across Home/L2/Portfolio) ── */
+function computeAggregate(branches, empresa) {
+  let totalInv=0,ebitda=0,score=0,scored=0,payback=0;
+  branches.forEach(b => {
+    if (b.status === 'archived') return;
+    try {
+      const r = runBranchProjection(b, empresa);
+      if (r) {
+        totalInv += r.totalInvestment || 0;
+        ebitda += r.avgMonthlyEBITDA || 0;
+        if (r.paybackMonth > payback) payback = r.paybackMonth;
+        if (r.viabilityScore) { score += r.viabilityScore; scored++; }
+      }
+    } catch(e) { /* skip failed projections */ }
+  });
+  return { totalInv, ebitda, avgScore: scored ? Math.round(score/scored) : 0, payback, scored, branchCount: branches.filter(b=>b.status!=='archived').length };
+}
+
+/* ── Global Escape key handler for modals ── */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  // Close dynamically-created modal overlays
+  const overlay = document.querySelector('.bw2-modal-overlay');
+  if (overlay) { overlay.remove(); return; }
+  // Close static modals
+  ['modal-add-branch', 'modal-confirm', 'modal-profile'].forEach(id => {
+    const m = document.getElementById(id);
+    if (m && m.style.display !== 'none' && m.style.display !== '') {
+      m.style.display = 'none';
+    }
+  });
+});
+
 let _suppressFullRender = false;
 let _suppressTimer = null;
 document.addEventListener('DOMContentLoaded',()=>{
@@ -287,7 +325,7 @@ function renderCurrentView() {
   const empresa=getEmpresa();
 
   // Hide all views
-  ['view-bw2-home','view-portfolio','view-branch','view-consolidated','view-comparador','view-empresa','view-glosario'].forEach(id=>{
+  ['view-bw2-home','view-empresa-dashboard','view-portfolio','view-branch','view-consolidated','view-comparador','view-empresa','view-glosario'].forEach(id=>{
     const el=$(id);if(el)el.style.display='none';
   });
 
@@ -295,15 +333,28 @@ function renderCurrentView() {
   const headerBrand = document.querySelector('#app-header .header-brand');
   const hInfo=$('enterprise-header-info');
 
-  if(isBW2Home || !empresa) {
+  const isEmpresaDash = state.view === 'empresa-dashboard';
+
+  if(isBW2Home || (!empresa && !isEmpresaDash)) {
     $('view-bw2-home').style.display='block';
     renderBW2Home();
-    if(hInfo) hInfo.innerHTML='<span style="color:var(--text-3);font-size:0.85rem">Selecciona una empresa y proyecto</span>';
+    if(hInfo) hInfo.innerHTML='';
     if(headerLogo) headerLogo.style.display = 'none';
     if(headerBrand) headerBrand.style.display = 'none';
-    // Full width when no sidebar
-    if(mainContent) mainContent.style.marginLeft = '0';
-    if(appFooter) appFooter.style.marginLeft = '0';
+    if(mainContent) mainContent.style.marginLeft = '';
+    if(appFooter) appFooter.style.marginLeft = '';
+  } else if(isEmpresaDash) {
+    // Level 2: Empresa Dashboard
+    $('view-empresa-dashboard').style.display='block';
+    const emp = getActiveEmpresa();
+    if(emp) {
+      renderEmpresaDashboard(emp);
+      if(hInfo) hInfo.innerHTML=`<span class="ent-stat">🏢 ${esc(emp.name)}</span>`;
+    }
+    if(headerLogo) headerLogo.style.display = '';
+    if(headerBrand) headerBrand.style.display = 'none';
+    if(mainContent) mainContent.style.marginLeft = '';
+    if(appFooter) appFooter.style.marginLeft = '';
   } else {
     if(headerLogo) headerLogo.style.display = '';
     if(headerBrand) headerBrand.style.display = '';
@@ -312,7 +363,7 @@ function renderCurrentView() {
     if(mainContent) mainContent.style.marginLeft = '';
     if(appFooter) appFooter.style.marginLeft = '';
 
-    if(state.view==='portfolio') { $('view-portfolio').style.display='block'; renderPortfolio(empresa); }
+    if(state.view==='portfolio') { $('view-portfolio').style.display='block'; renderPortfolioSummary(empresa); renderPortfolio(empresa); }
     else if(state.view==='branch'&&state.activeBranchId) {
       $('view-branch').style.display='block';
       // Ensure active tab is shown
@@ -323,7 +374,7 @@ function renderCurrentView() {
     else if(state.view==='comparador') { $('view-comparador').style.display='block'; renderComparador(empresa); }
     else if(state.view==='empresa') { $('view-empresa').style.display='block'; renderEmpresaSettings(empresa); }
     else if(state.view==='glosario') { $('view-glosario').style.display='block'; renderGlosario(); }
-    else { $('view-portfolio').style.display='block'; renderPortfolio(empresa); }
+    else { $('view-portfolio').style.display='block'; renderPortfolioSummary(empresa); renderPortfolio(empresa); }
   }
 
   // Update contextual sidebar and breadcrumb
@@ -373,159 +424,301 @@ function esc(str) {
     .replace(/'/g, '&#039;');
 }
 
-/* ═══ BW² HOME VIEW ═══ */
+/* ═══ HOME — Uses same design language as Level 2 ═══ */
 function renderBW2Home(){
-  const container=$('bw2-empresas-grid');if(!container)return;
+  const container=$('bw2-home-container');if(!container)return;
   const empresas = getEmpresas();
-  const ws = getWorkspace();
 
-  // Global consolidated summary
-  renderGlobalSummary(empresas);
+  // Calculate globals
+  let gCap=0,gComm=0,gBranches=0,gEBITDA=0,gScore=0,gScored=0;
+  empresas.forEach(emp => {
+    (emp.proyectos||[]).forEach(proj => {
+      gCap += proj.totalCapital||0;
+      (proj.branches||[]).forEach(b => {
+        if(b.status==='archived') return;
+        gBranches++;
+        try {
+          const r = runBranchProjection(b, proj);
+          if(r){
+            gComm += r.totalInvestment||0;
+            gEBITDA += r.avgMonthlyEBITDA||0;
+            if(r.viabilityScore){ gScore += r.viabilityScore; gScored++; }
+          }
+        } catch(e){}
+      });
+    });
+  });
+  const gFree = gCap - gComm;
+  const gAvg = gScored ? Math.round(gScore/gScored) : 0;
+  const sCol = gAvg>=80?'var(--green)':gAvg>=60?'var(--yellow)':'var(--red)';
+
+  let h = '';
+
+  // ── Summary (full-width grid, no floating title) ──
+  h += `<div class="bw2-global-summary">
+    <div class="global-summary-grid">
+      <div class="global-summary-card"><span class="global-summary-label">Capital Total</span><span class="global-summary-value">${fmt.m(gCap)}</span></div>
+      <div class="global-summary-card"><span class="global-summary-label">Comprometido</span><span class="global-summary-value" style="color:var(--yellow)">${fmt.m(gComm)}</span><span class="global-summary-sub">${gCap?((gComm/gCap)*100).toFixed(0):'0'}%</span></div>
+      <div class="global-summary-card"><span class="global-summary-label">Capital Libre</span><span class="global-summary-value" style="color:${gFree>=0?'var(--green)':'var(--red)'}">${fmt.m(gFree)}</span></div>
+      <div class="global-summary-card"><span class="global-summary-label">Sucursales</span><span class="global-summary-value">${gBranches}</span><span class="global-summary-sub">${empresas.length} empresa${empresas.length!==1?'s':''}</span></div>
+      <div class="global-summary-card"><span class="global-summary-label">EBITDA/mes</span><span class="global-summary-value" style="color:${gEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(gEBITDA)}</span></div>
+      <div class="global-summary-card"><span class="global-summary-label">Score</span><span class="global-summary-value" style="color:${sCol}">${gAvg}<small>/100</small></span></div>
+    </div>
+  </div>`;
+
+  // ── View header ──
+  h += `<div class="view-header" style="display:flex;justify-content:space-between;align-items:center">
+    <div><h2>Mis Empresas</h2><p>Selecciona una empresa para ver sus proyectos</p></div>
+    <button class="btn-primary" id="btn-create-empresa">+ Nueva Empresa</button>
+  </div>`;
 
   if(!empresas.length){
-    container.innerHTML='<div class="bw2-empty"><p>No hay empresas registradas.</p><p>Crea tu primera empresa para comenzar.</p></div>';
-    bindBW2Events();
+    h += `<div class="bw2-empty"><p>No hay empresas registradas.</p><p style="color:var(--text-3)">Crea tu primera empresa para comenzar.</p></div>`;
+    container.innerHTML = h;
+    $('btn-create-empresa').onclick = ()=>showBW2Modal('crear-empresa');
     return;
   }
 
-  let html='';
-  empresas.forEach(emp=>{
-    const projCount = emp.proyectos.length;
-    const isActive = emp.id===ws.activeEmpresaId;
-    const empLogoHtml = emp.logo
-      ? `<img src="${emp.logo}" alt="${esc(emp.name)}" class="bw2-card-logo">`
-      : '<span class="bw2-card-logo-placeholder">🏢</span>';
-    html+=`<div class="bw2-empresa-card ${isActive?'active':''}" data-emp-id="${emp.id}">
-      <div class="bw2-empresa-header">
-        <div class="bw2-empresa-info">
-          <div class="bw2-empresa-name-row">${empLogoHtml}<h3 class="bw2-empresa-name">${esc(emp.name)}</h3></div>
-          <span class="bw2-empresa-meta">${projCount} proyecto${projCount!==1?'s':''} · Creada ${new Date(emp.createdAt).toLocaleDateString('es-MX')}</span>
+  // ── Empresa cards grid (same card style as Level 2 project cards) ──
+  h += `<div class="empresa-proyectos-grid">`;
+  empresas.forEach(emp => {
+    const pCount = emp.proyectos.length;
+    let bCount=0, ebitda=0, score=0, scored=0, payback=0;
+    (emp.proyectos||[]).forEach(proj => {
+      (proj.branches||[]).forEach(b => {
+        if(b.status==='archived') return;
+        bCount++;
+        try {
+          const r = runBranchProjection(b, proj);
+          if(r){
+            ebitda += r.avgMonthlyEBITDA||0;
+            if(r.paybackMonth > payback) payback = r.paybackMonth;
+            if(r.viabilityScore){ score += r.viabilityScore; scored++; }
+          }
+        } catch(e){}
+      });
+    });
+    const aScore = scored ? Math.round(score/scored) : 0;
+    const sc = aScore>=80?'var(--green)':aScore>=60?'var(--yellow)':'var(--red)';
+    const logo = emp.logo
+      ? `<img src="${emp.logo}" alt="" style="width:28px;height:28px;border-radius:6px;object-fit:cover">`
+      : '<span style="font-size:1.25rem">🏢</span>';
+
+    h += `<div class="emp-dash-proj-card" data-emp-id="${emp.id}">
+      <div class="emp-dash-proj-header">
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          ${logo}
+          <div>
+            <div class="emp-dash-proj-name">${esc(emp.name)}</div>
+            <div class="emp-dash-proj-meta">${pCount} proyecto${pCount!==1?'s':''} · ${bCount} sucursal${bCount!==1?'es':''}</div>
+          </div>
         </div>
-        <div class="bw2-empresa-actions">
-          <button class="btn-icon btn-edit-empresa" data-emp-id="${emp.id}" title="Editar empresa">✏️</button>
-          <button class="btn-icon btn-delete-empresa" data-emp-id="${emp.id}" title="Eliminar empresa">🗑️</button>
+        <div style="display:flex;gap:0.25rem">
+          <button class="btn-icon btn-edit-empresa" data-emp-id="${emp.id}" title="Editar">✏️</button>
+          <button class="btn-icon btn-delete-empresa" data-emp-id="${emp.id}" title="Eliminar">🗑️</button>
         </div>
       </div>
-      <div class="bw2-proyectos-grid">
-        ${emp.proyectos.map(proj=>{
-          const isProjActive = proj.id===ws.activeProyectoId && isActive;
-          const activeBranchesCount = (proj.branches||[]).filter(b=>b.status==='active'||b.status==='planned').length;
-          
-          let totalEBITDA = 0, totalEq = 0, totalScore = 0, maxPayback = 0, validBranches = 0;
-          (proj.branches||[]).forEach(b => {
-             if(b.status === 'archived' || b.status === 'paused') return;
-             try {
-               const r = runBranchProjection(b, emp);
-               if(r) {
-                 totalEBITDA += r.avgMonthlyEBITDA;
-                 totalEq += r.breakEvenRevenue;
-                 if(r.paybackMonth > maxPayback) maxPayback = r.paybackMonth;
-                 if(r.viabilityScore) totalScore += r.viabilityScore;
-                 validBranches++;
-               }
-             } catch(e){}
-          });
-
-          const avgScore = validBranches ? Math.round(totalScore/validBranches) : 0;
-          const scoreColor = avgScore >= 80 ? 'var(--green)' : avgScore >= 60 ? 'var(--yellow)' : 'var(--red)';
-          const paybackStr = validBranches ? (maxPayback ? maxPayback + ' meses' : '∞') : '—';
-          
-          const projLogoHtml = proj.logo
-            ? `<img src="${proj.logo}" alt="${esc(proj.name)}" class="bw2-proj-logo">`
-            : '<span class="bw2-proj-logo-placeholder">📁</span>';
-            
-          return `<div class="bw2-proyecto-card ${isProjActive?'active':''}" data-emp-id="${emp.id}" data-proj-id="${proj.id}">
-            <div class="bw2-proj-header">
-              <div class="bw2-proj-name-row">${projLogoHtml}
-                <div class="branch-info" style="flex:1">
-                  <div class="bw2-proj-name">${esc(proj.name)}</div>
-                  <div class="branch-meta">Capital: ${fmt.m(proj.totalCapital)} · ${activeBranchesCount} sucursales</div>
-                </div>
-              </div>
-              <div class="bw2-proj-actions">
-                <button class="btn-icon btn-edit-proyecto" data-emp-id="${emp.id}" data-proj-id="${proj.id}" title="Editar proyecto">✏️</button>
-                <button class="btn-icon btn-delete-proyecto" data-emp-id="${emp.id}" data-proj-id="${proj.id}" title="Eliminar proyecto">🗑️</button>
-              </div>
-            </div>
-            ${validBranches>0 ? `<div class="branch-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;margin-bottom:1rem;background:var(--bg);padding:0.75rem;border-radius:8px;border:1px solid var(--border)">
-              <div class="branch-kpi" style="text-align:left">
-                <span class="widget-subtitle" title="Punto de equilibrio combinado" style="font-size:0.575rem;margin-bottom:0.15rem;margin-top:0">Pto. Equilibrio</span>
-                <span class="widget-title" style="font-size:0.875rem;display:block">${fmt.m(totalEq)}</span>
-              </div>
-              <div class="branch-kpi" style="text-align:left">
-                <span class="widget-subtitle" title="Ganancia mensual combinada" style="font-size:0.575rem;margin-bottom:0.15rem;margin-top:0">Ganancia/mes</span>
-                <span class="widget-title" style="color:${totalEBITDA>=0?'var(--accent)':'var(--red)'};font-size:0.875rem;display:block">${fmt.m(totalEBITDA)}</span>
-              </div>
-              <div class="branch-kpi" style="text-align:left">
-                <span class="widget-subtitle" title="Recuperación máxima entre sucursales" style="font-size:0.575rem;margin-bottom:0.15rem;margin-top:0">Recuperación</span>
-                <span class="widget-title" style="color:${maxPayback&&maxPayback<=36?'var(--text-1)':maxPayback&&maxPayback<=48?'var(--yellow)':'var(--red)'};font-size:0.875rem;display:block">${paybackStr}</span>
-              </div>
-              <div class="branch-kpi" style="text-align:left">
-                <span class="widget-subtitle" title="Calificación promedio" style="font-size:0.575rem;margin-bottom:0.15rem;margin-top:0">Calificación</span>
-                <span class="widget-title" style="color:${scoreColor};font-size:0.875rem;display:block">${avgScore}/100</span>
-              </div>
-            </div>` : '<div class="branch-kpis" style="margin-bottom:1rem;background:var(--bg);padding:0.75rem;border-radius:8px;border:1px dashed var(--border);text-align:center"><span style="color:var(--text-3);font-size:0.75rem">Sin sucursales activas</span></div>'}
-            <button class="btn-open-proyecto" data-emp-id="${emp.id}" data-proj-id="${proj.id}" style="width:100%;text-align:center;display:block">Abrir Proyecto →</button>
-          </div>`;
-        }).join('')}
-        <div class="bw2-proyecto-card bw2-add-card" data-emp-id="${emp.id}">
-          <button class="btn-add-proyecto" data-emp-id="${emp.id}">+ Nuevo Proyecto</button>
-        </div>
+      <div class="emp-dash-proj-kpis">
+        <div class="emp-dash-kpi"><span class="emp-dash-kpi-label">EBITDA/mes</span><span class="emp-dash-kpi-value" style="color:${ebitda>=0?'var(--accent)':'var(--red)'}">${fmt.m(ebitda)}</span></div>
+        <div class="emp-dash-kpi"><span class="emp-dash-kpi-label">Recuperación</span><span class="emp-dash-kpi-value">${payback?payback+' m':'—'}</span></div>
+        <div class="emp-dash-kpi"><span class="emp-dash-kpi-label">Score</span><span class="emp-dash-kpi-value" style="color:${sc}">${aScore}/100</span></div>
+      </div>
+      <div class="emp-dash-proj-footer">
+        <div class="emp-dash-proj-meta-foot">${pCount} proyecto${pCount!==1?'s':''} · ${bCount} sucursal${bCount!==1?'es':''}</div>
+        <button class="btn-open-empresa btn-compact-open" data-emp-id="${emp.id}">Abrir →</button>
       </div>
     </div>`;
   });
 
-  container.innerHTML=html;
+  // Add "new empresa" card
+  h += `<div class="emp-dash-proj-card emp-dash-add-card">
+    <button class="btn-add-proyecto-dash" id="btn-create-empresa-card">+ Nueva Empresa</button>
+  </div>`;
+  h += `</div>`;
+
+  container.innerHTML = h;
   bindBW2Events();
+  const cardBtn = $('btn-create-empresa-card');
+  if(cardBtn) cardBtn.onclick = ()=>showBW2Modal('crear-empresa');
 }
 
 function bindBW2Events(){
-  // Create empresa
   const createBtn = $('btn-create-empresa');
   if(createBtn) createBtn.onclick = ()=>showBW2Modal('crear-empresa');
 
-  // Edit empresa
   document.querySelectorAll('.btn-edit-empresa').forEach(btn=>{
-    btn.onclick = (e)=>{
-      e.stopPropagation();
-      showBW2Modal('editar-empresa', btn.dataset.empId);
-    };
+    btn.onclick = (e)=>{ e.stopPropagation(); showBW2Modal('editar-empresa', btn.dataset.empId); };
   });
-
-  // Delete empresa
   document.querySelectorAll('.btn-delete-empresa').forEach(btn=>{
     btn.onclick = (e)=>{
       e.stopPropagation();
       const emp = getEmpresaById(btn.dataset.empId);
       if(!emp) return;
-      showConfirm(
-        `🗑️ ¿Eliminar "${emp.name}"?`,
-        `<p>Se eliminarán todos los proyectos y sucursales de esta empresa.</p>`,
-        '🗑️ Eliminar',
-        ()=>{ removeEmpresa(btn.dataset.empId); renderBW2Home(); }
-      );
+      showConfirm(`🗑️ ¿Eliminar "${emp.name}"?`,`<p>Se eliminarán todos los proyectos y sucursales.</p>`,'🗑️ Eliminar',()=>{ removeEmpresa(btn.dataset.empId); renderBW2Home(); });
     };
   });
+  document.querySelectorAll('.btn-open-empresa').forEach(btn=>{
+    btn.onclick = ()=>{
+      setActiveEmpresa(btn.dataset.empId);
+      state.view = 'empresa-dashboard';
+      state.activeBranchId = null;
+      renderCurrentView();
+    };
+  });
+}
 
-  // Add proyecto
-  document.querySelectorAll('.btn-add-proyecto').forEach(btn=>{
-    btn.onclick = (e)=>{
-      e.stopPropagation();
+function renderPortfolioSummary(empresa){
+  const el=$('portfolio-summary'); if(!el) return;
+  if(!empresa){ el.style.display='none'; return; }
+
+  const consol = runConsolidation(empresa);
+  el.style.display='';
+  el.innerHTML=`
+    <div class="global-summary-title">📁 ${esc(empresa.name)} — Resumen</div>
+    <div class="global-summary-grid">
+      <div class="global-summary-card">
+        <span class="global-summary-label">Capital</span>
+        <span class="global-summary-value">${fmt.m(empresa.totalCapital)}</span>
+      </div>
+      <div class="global-summary-card">
+        <span class="global-summary-label">Comprometido</span>
+        <span class="global-summary-value" style="color:var(--yellow)">${fmt.m(consol.capitalCommitted)}</span>
+        <span class="global-summary-sub">${empresa.totalCapital?((consol.capitalCommitted/empresa.totalCapital)*100).toFixed(0):'0'}%</span>
+      </div>
+      <div class="global-summary-card">
+        <span class="global-summary-label">Libre</span>
+        <span class="global-summary-value" style="color:${consol.capitalFree>=0?'var(--green)':'var(--red)'}">${fmt.m(consol.capitalFree)}</span>
+      </div>
+      <div class="global-summary-card">
+        <span class="global-summary-label">Ganancia/mes</span>
+        <span class="global-summary-value" style="color:${consol.avgMonthlyEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(consol.avgMonthlyEBITDA)}</span>
+      </div>
+      <div class="global-summary-card">
+        <span class="global-summary-label">Sucursales</span>
+        <span class="global-summary-value">${consol.branchCount}</span>
+      </div>
+      <div class="global-summary-card">
+        <span class="global-summary-label">Score</span>
+        <span class="global-summary-value" style="color:${consol.avgScore>=80?'var(--green)':consol.avgScore>=60?'var(--yellow)':'var(--red)'}">${consol.avgScore}<small>/100</small></span>
+      </div>
+    </div>`;
+}
+
+/* ═══ EMPRESA DASHBOARD (Level 2) ═══ */
+function renderEmpresaDashboard(empresa){
+  const titleEl=$('empresa-dash-title');
+  const summaryEl=$('empresa-dash-summary');
+  const gridEl=$('empresa-dash-proyectos');
+  if(!titleEl||!gridEl) return;
+
+  titleEl.textContent = '🏢 ' + (empresa.name || 'Empresa');
+
+  // Calculate empresa-wide KPIs across all projects
+  let totalCap=0, totalComm=0, totalBranches=0, totalEBITDA=0, totalScore=0, scoredCount=0;
+  (empresa.proyectos||[]).forEach(proj => {
+    totalCap += proj.totalCapital||0;
+    (proj.branches||[]).forEach(b => {
+      if(b.status==='archived') return;
+      totalBranches++;
+      try {
+        const r = runBranchProjection(b, proj);
+        if(r) {
+          totalComm += r.totalInvestment||0;
+          totalEBITDA += r.avgMonthlyEBITDA||0;
+          if(r.viabilityScore){ totalScore += r.viabilityScore; scoredCount++; }
+        }
+      } catch(e){}
+    });
+  });
+  const avgScore = scoredCount ? Math.round(totalScore/scoredCount) : 0;
+  const totalFree = totalCap - totalComm;
+
+  if(summaryEl){
+    summaryEl.innerHTML=`
+      <div class="global-summary-title">🏢 ${esc(empresa.name)} — Resumen General</div>
+      <div class="global-summary-grid">
+        <div class="global-summary-card"><span class="global-summary-label">Capital Total</span><span class="global-summary-value">${fmt.m(totalCap)}</span></div>
+        <div class="global-summary-card"><span class="global-summary-label">Comprometido</span><span class="global-summary-value" style="color:var(--yellow)">${fmt.m(totalComm)}</span><span class="global-summary-sub">${totalCap?((totalComm/totalCap)*100).toFixed(0):'0'}%</span></div>
+        <div class="global-summary-card"><span class="global-summary-label">Capital Libre</span><span class="global-summary-value" style="color:${totalFree>=0?'var(--green)':'var(--red)'}">${fmt.m(totalFree)}</span></div>
+        <div class="global-summary-card"><span class="global-summary-label">Sucursales</span><span class="global-summary-value">${totalBranches}</span><span class="global-summary-sub">${empresa.proyectos.length} proyecto${empresa.proyectos.length!==1?'s':''}</span></div>
+        <div class="global-summary-card"><span class="global-summary-label">EBITDA/mes</span><span class="global-summary-value" style="color:${totalEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(totalEBITDA)}</span></div>
+        <div class="global-summary-card"><span class="global-summary-label">Score</span><span class="global-summary-value" style="color:${avgScore>=80?'var(--green)':avgScore>=60?'var(--yellow)':'var(--red)'}">${avgScore}<small>/100</small></span></div>
+      </div>`;
+  }
+
+  // Render project cards
+  let html = '';
+  (empresa.proyectos||[]).forEach(proj => {
+    const activeBranches = (proj.branches||[]).filter(b=>b.status!=='archived');
+    let projEBITDA=0, projScore=0, projScored=0, projPayback=0;
+    activeBranches.forEach(b => {
+      try {
+        const r = runBranchProjection(b, proj);
+        if(r) {
+          projEBITDA += r.avgMonthlyEBITDA||0;
+          if(r.paybackMonth > projPayback) projPayback = r.paybackMonth;
+          if(r.viabilityScore){ projScore += r.viabilityScore; projScored++; }
+        }
+      } catch(e){}
+    });
+    const pScore = projScored ? Math.round(projScore/projScored) : 0;
+    const scoreCol = pScore>=80?'var(--green)':pScore>=60?'var(--yellow)':'var(--red)';
+    const projLogoHtml = proj.logo
+      ? `<img src="${proj.logo}" alt="${esc(proj.name)}" style="width:28px;height:28px;border-radius:6px;object-fit:cover">`
+      : '<span style="font-size:1.25rem">📁</span>';
+
+    html += `<div class="emp-dash-proj-card" data-emp-id="${empresa.id}" data-proj-id="${proj.id}">
+      <div class="emp-dash-proj-header">
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          ${projLogoHtml}
+          <div>
+            <div class="emp-dash-proj-name">${esc(proj.name)}</div>
+            <div class="emp-dash-proj-meta">Capital: ${fmt.m(proj.totalCapital)} · ${activeBranches.length} sucursal${activeBranches.length!==1?'es':''}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:0.25rem">
+          <button class="btn-icon btn-edit-proyecto" data-emp-id="${empresa.id}" data-proj-id="${proj.id}" title="Editar">✏️</button>
+          <button class="btn-icon btn-delete-proyecto" data-emp-id="${empresa.id}" data-proj-id="${proj.id}" title="Eliminar">🗑️</button>
+        </div>
+      </div>
+      <div class="emp-dash-proj-kpis">
+        <div class="emp-dash-kpi"><span class="emp-dash-kpi-label">Ganancia/mes</span><span class="emp-dash-kpi-value" style="color:${projEBITDA>=0?'var(--accent)':'var(--red)'}">${fmt.m(projEBITDA)}</span></div>
+        <div class="emp-dash-kpi"><span class="emp-dash-kpi-label">Recuperación</span><span class="emp-dash-kpi-value">${projPayback?projPayback+' m':'—'}</span></div>
+        <div class="emp-dash-kpi"><span class="emp-dash-kpi-label">Score</span><span class="emp-dash-kpi-value" style="color:${scoreCol}">${pScore}/100</span></div>
+      </div>
+      <button class="btn-open-proyecto-dash" data-emp-id="${empresa.id}" data-proj-id="${proj.id}">Abrir Proyecto →</button>
+    </div>`;
+  });
+
+  // Add "new project" card
+  html += `<div class="emp-dash-proj-card emp-dash-add-card">
+    <button class="btn-add-proyecto-dash" data-emp-id="${empresa.id}">+ Nuevo Proyecto</button>
+  </div>`;
+
+  gridEl.innerHTML = html;
+
+  // Wire events
+  gridEl.querySelectorAll('.btn-open-proyecto-dash').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setActiveProyecto(btn.dataset.empId, btn.dataset.projId);
+      state.view = 'portfolio';
+      state.activeBranchId = null;
+      renderCurrentView();
+    });
+  });
+  gridEl.querySelectorAll('.btn-add-proyecto-dash').forEach(btn => {
+    btn.addEventListener('click', () => {
       showBW2Modal('crear-proyecto', btn.dataset.empId);
-    };
+    });
   });
-
-  // Edit proyecto
-  document.querySelectorAll('.btn-edit-proyecto').forEach(btn=>{
-    btn.onclick = (e)=>{
+  gridEl.querySelectorAll('.btn-edit-proyecto').forEach(btn => {
+    btn.addEventListener('click', (e) => {
       e.stopPropagation();
       showBW2Modal('editar-proyecto', btn.dataset.empId, btn.dataset.projId);
-    };
+    });
   });
-
-  // Delete proyecto
-  document.querySelectorAll('.btn-delete-proyecto').forEach(btn=>{
-    btn.onclick = (e)=>{
+  gridEl.querySelectorAll('.btn-delete-proyecto').forEach(btn => {
+    btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const proj = getProyectoById(btn.dataset.empId, btn.dataset.projId);
       if(!proj) return;
@@ -533,21 +726,13 @@ function bindBW2Events(){
         `🗑️ ¿Eliminar "${proj.name}"?`,
         `<p>Se eliminarán todas las sucursales de este proyecto.</p>`,
         '🗑️ Eliminar',
-        ()=>{ removeProyecto(btn.dataset.empId, btn.dataset.projId); renderBW2Home(); }
+        ()=>{ removeProyecto(btn.dataset.empId, btn.dataset.projId); renderEmpresaDashboard(getActiveEmpresa()); }
       );
-    };
-  });
-
-  // Open proyecto
-  document.querySelectorAll('.btn-open-proyecto').forEach(btn=>{
-    btn.onclick = ()=>{
-      setActiveProyecto(btn.dataset.empId, btn.dataset.projId);
-      state.view='portfolio';
-      state.activeBranchId=null;
-      renderCurrentView();
-    };
+    });
   });
 }
+
+
 
 function showBW2Modal(type, empId, projId){
   // Remove existing dynamically-created modal (not static ones like profile)
@@ -711,7 +896,8 @@ function showBW2Modal(type, empId, projId){
   // Submit handler
   overlay.querySelector('.bw2-modal-submit').onclick=()=>{
     const nameVal = $('bw2-input-name')?.value.trim();
-    if(!nameVal){showToast('El nombre es requerido','error');return;}
+    if(!nameVal || nameVal.length < 1){showToast('El nombre es requerido','error');return;}
+    if(nameVal.length > 100){showToast('El nombre es demasiado largo (máx 100 caracteres)','error');return;}
 
     if(type==='crear-empresa'){
       const newEmp = addEmpresa(nameVal);
@@ -768,18 +954,18 @@ function renderPortfolio(empresa){
     const isPlanned = b.status === 'planned';
     const isActive = b.status === 'active';
 
-    // Build action buttons based on status
-    let actionBtns = `<button class="btn-sm" onclick="window._openBranch('${b.id}')">📊 Ver</button>`;
-    actionBtns += `<button class="btn-sm" onclick="window._dupBranch('${b.id}')">📋 Duplicar</button>`;
+    // Build action buttons — using data attributes for event delegation (no inline onclick)
+    let actionBtns = `<button class="btn-sm" data-action="open" data-bid="${b.id}">📊 Ver</button>`;
+    actionBtns += `<button class="btn-sm" data-action="dup" data-bid="${b.id}">📋 Duplicar</button>`;
 
     if (isPlanned) {
-      actionBtns += `<button class="btn-sm success" onclick="window._activateBranch('${b.id}')">✅ Activar</button>`;
-      actionBtns += `<button class="btn-sm warn" onclick="window._deleteBranch('${b.id}')">🗑 Eliminar</button>`;
+      actionBtns += `<button class="btn-sm success" data-action="activate" data-bid="${b.id}">✅ Activar</button>`;
+      actionBtns += `<button class="btn-sm warn" data-action="delete" data-bid="${b.id}">🗑 Eliminar</button>`;
     } else if (isActive) {
-      actionBtns += `<button class="btn-sm warn" onclick="window._archiveBranch('${b.id}')">📦 Archivar</button>`;
+      actionBtns += `<button class="btn-sm warn" data-action="archive" data-bid="${b.id}">📦 Archivar</button>`;
     } else if (isArchived) {
-      actionBtns += `<button class="btn-sm success" onclick="window._restoreBranch('${b.id}')">▶ Restaurar</button>`;
-      actionBtns += `<button class="btn-sm danger" onclick="window._deleteBranch('${b.id}')">🗑 Eliminar</button>`;
+      actionBtns += `<button class="btn-sm success" data-action="restore" data-bid="${b.id}">▶ Restaurar</button>`;
+      actionBtns += `<button class="btn-sm danger" data-action="delete" data-bid="${b.id}">🗑 Eliminar</button>`;
     }
 
     return `<div class="branch-card ${isArchived?'archived':''}" data-branch="${b.id}">
@@ -797,6 +983,20 @@ function renderPortfolio(empresa){
       <div class="branch-actions">${actionBtns}</div>
     </div>`;
   }).join('');
+
+  // Event delegation for branch action buttons (replaces inline onclick)
+  container.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const bid = btn.dataset.bid;
+    const action = btn.dataset.action;
+    if (action === 'open') window._openBranch(bid);
+    else if (action === 'dup') window._dupBranch(bid);
+    else if (action === 'activate') window._activateBranch(bid);
+    else if (action === 'delete') window._deleteBranch(bid);
+    else if (action === 'archive') window._archiveBranch(bid);
+    else if (action === 'restore') window._restoreBranch(bid);
+  });
 }
 
 // Global action handlers
@@ -867,30 +1067,48 @@ function updateNav() {
   if (!nav) return;
 
   const empresa = getEmpresa();
-  const isBW2Home = state.view === 'bw2home' || !empresa;
+  const activeEmp = getActiveEmpresa();
+  const isHome = state.view === 'bw2home';
+  const isEmpresaDash = state.view === 'empresa-dashboard';
   const isBranch = state.view === 'branch' && state.activeBranchId;
   const branch = isBranch ? getBranch(state.activeBranchId) : null;
 
-  // Level class for CSS
   nav.className = '';
-  if (isBW2Home) {
-    nav.classList.add('nav-level-home');
-  }
-
   let html = '';
 
-  if (isBW2Home) {
-    // Level 1: Home — sidebar hidden (BW² logo is enough)
-    nav.innerHTML = '';
-    nav.style.display = 'none';
+  if (isHome) {
+    // Level 1: Home — minimal sidebar for consistency
+    nav.style.display = 'flex';
+    html += `<div class="nav-section">Panel de Control</div>`;
+    html += `<button class="nav-btn active"><span class="nav-icon">🏢</span>Empresas</button>`;
+    html += `<div class="nav-divider"></div>`;
+    html += `<div class="nav-spacer"></div>`;
+    html += `<button class="nav-btn" id="nav-open-profile"><span class="nav-icon">👤</span>Mi Perfil</button>`;
+    nav.innerHTML = html;
+    const profBtn = nav.querySelector('#nav-open-profile');
+    if(profBtn) profBtn.addEventListener('click', () => {
+      const profileBtn = $('btn-open-profile');
+      if(profileBtn) profileBtn.click();
+    });
     return;
   }
 
   nav.style.display = 'flex';
 
-  if (isBranch && branch) {
-    // Level 3: Inside a Branch
-    html += `<button class="nav-back" id="nav-back-project"><span class="nav-back-icon">←</span> Sucursales</button>`;
+  if (isEmpresaDash) {
+    // Level 2: Empresa Dashboard
+    html += `<button class="nav-back" id="nav-back-home"><span class="nav-back-icon">🏠</span> Home</button>`;
+    html += `<div class="nav-divider"></div>`;
+    html += `<div class="nav-section">Empresa</div>`;
+    html += `<button class="nav-btn active"><span class="nav-icon">📁</span>Proyectos</button>`;
+    html += `<div class="nav-divider"></div>`;
+    html += `<div class="nav-section">Configuración</div>`;
+    html += `<button class="nav-btn" data-action="empresa-settings"><span class="nav-icon">⚙️</span>Sociedad y Socios</button>`;
+    html += `<div class="nav-spacer"></div>`;
+    html += `<button class="btn-add" id="btn-add-proyecto-nav">+ Nuevo Proyecto</button>`;
+  } else if (isBranch && branch) {
+    // Level 4: Inside a Branch
+    html += `<button class="nav-back" id="nav-back-project"><span class="nav-back-icon">←</span> Proyecto</button>`;
     html += `<div class="nav-divider"></div>`;
     html += `<div class="nav-section">Sucursal</div>`;
     html += `<button class="nav-btn ${state.activeTab === 'resultados' ? 'active' : ''}" data-branch-tab="resultados"><span class="nav-icon">📊</span>Resultados</button>`;
@@ -900,7 +1118,9 @@ function updateNav() {
     html += `<div class="nav-spacer"></div>`;
     html += `<button class="btn-add" id="nav-export-pdf" style="background:var(--surface);color:var(--text-2);box-shadow:var(--shadow-neu-sm)"><span class="nav-icon">📄</span> Exportar PDF</button>`;
   } else {
-    // Level 2: Inside a Project
+    // Level 3: Inside a Project
+    html += `<button class="nav-back" id="nav-back-empresa"><span class="nav-back-icon">←</span> Empresa</button>`;
+    html += `<div class="nav-divider"></div>`;
     html += `<div class="nav-section">Proyecto</div>`;
     html += `<button class="nav-btn ${state.view === 'portfolio' ? 'active' : ''}" data-view="portfolio"><span class="nav-icon">📁</span>Sucursales</button>`;
     html += `<button class="nav-btn ${state.view === 'consolidated' ? 'active' : ''}" data-view="consolidated"><span class="nav-icon">📊</span>Consolidado</button>`;
@@ -915,7 +1135,32 @@ function updateNav() {
   nav.innerHTML = html;
 
   // Wire up events
-  if (isBranch) {
+  // Home button (available at empresa level)
+  const homeBtn = nav.querySelector('#nav-back-home');
+  if (homeBtn) homeBtn.addEventListener('click', () => {
+    state.view = 'bw2home'; state.activeBranchId = null; renderCurrentView();
+  });
+
+  if (isEmpresaDash) {
+    // Empresa-level buttons
+    const settingsBtn = nav.querySelector('[data-action="empresa-settings"]');
+    if (settingsBtn && activeEmp) {
+      settingsBtn.addEventListener('click', () => {
+        // Set the first project as active to access settings
+        if(activeEmp.proyectos.length) {
+          setActiveProyecto(activeEmp.id, activeEmp.proyectos[0].id);
+        }
+        state.view = 'empresa';
+        renderCurrentView();
+      });
+    }
+    const addProjBtn = nav.querySelector('#btn-add-proyecto-nav');
+    if (addProjBtn && activeEmp) {
+      addProjBtn.addEventListener('click', () => {
+        showBW2Modal('crear-proyecto', activeEmp.id);
+      });
+    }
+  } else if (isBranch) {
     // Back to project
     const backBtn = nav.querySelector('#nav-back-project');
     if (backBtn) backBtn.addEventListener('click', () => {
@@ -925,7 +1170,7 @@ function updateNav() {
     nav.querySelectorAll('[data-branch-tab]').forEach(btn => {
       btn.addEventListener('click', () => {
         switchBranchTab(btn.dataset.branchTab);
-        updateNav(); // refresh active state
+        updateNav();
       });
     });
     // PDF export
@@ -935,6 +1180,11 @@ function updateNav() {
       if (mainPdfBtn) mainPdfBtn.click();
     });
   } else {
+    // Back to empresa
+    const backEmpBtn = nav.querySelector('#nav-back-empresa');
+    if (backEmpBtn) backEmpBtn.addEventListener('click', () => {
+      state.view = 'empresa-dashboard'; state.activeBranchId = null; renderCurrentView();
+    });
     // Project-level nav buttons
     nav.querySelectorAll('[data-view]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -954,39 +1204,42 @@ function updateBreadcrumb() {
   const bc = $('header-breadcrumb');
   if (!bc) return;
 
-  const empresa = getEmpresa();
-  const isBW2Home = state.view === 'bw2home' || !empresa;
+  const isHome = state.view === 'bw2home';
+  const isEmpresaDash = state.view === 'empresa-dashboard';
 
-  if (isBW2Home) {
-    bc.innerHTML = '';
-    return;
-  }
+  if (isHome) { bc.innerHTML = ''; return; }
 
   const emp = getActiveEmpresa();
   const proy = getActiveProyecto();
+  const empresa = getEmpresa();
   const isBranch = state.view === 'branch' && state.activeBranchId;
   const branch = isBranch ? getBranch(state.activeBranchId) : null;
 
   let crumbs = [];
 
-  // Empresa name
+  // Empresa name (always first, clickable → empresa-dashboard)
   if (emp) {
-    crumbs.push({ label: emp.name || 'Empresa', action: 'home' });
+    crumbs.push({ label: emp.name || 'Empresa', action: 'empresa-dashboard' });
   }
-  // Proyecto name
-  if (proy) {
-    crumbs.push({ label: proy.name || 'Proyecto', action: 'portfolio' });
-  }
-  // Current view label
-  if (isBranch && branch) {
-    crumbs.push({ label: branch.name || 'Sucursal', action: null });
+
+  if (isEmpresaDash) {
+    // Level 2: Just show empresa name — no redundant "Proyectos"
   } else {
-    const viewLabels = {
-      portfolio: 'Sucursales', consolidated: 'Consolidado',
-      comparador: 'Comparar', empresa: 'Ajustes'
-    };
-    if (viewLabels[state.view]) {
-      crumbs.push({ label: viewLabels[state.view], action: null });
+    // Proyecto name (clickable → portfolio)
+    if (proy) {
+      crumbs.push({ label: proy.name || 'Proyecto', action: 'portfolio' });
+    }
+    // Current view / branch
+    if (isBranch && branch) {
+      crumbs.push({ label: branch.name || 'Sucursal', action: null });
+    } else {
+      const viewLabels = {
+        portfolio: 'Sucursales', consolidated: 'Consolidado',
+        comparador: 'Comparar', empresa: 'Ajustes'
+      };
+      if (viewLabels[state.view]) {
+        crumbs.push({ label: viewLabels[state.view], action: null });
+      }
     }
   }
 
@@ -994,17 +1247,17 @@ function updateBreadcrumb() {
     const isLast = i === crumbs.length - 1;
     const sep = i > 0 ? '<span class="breadcrumb-sep">›</span>' : '';
     if (isLast) {
-      return `${sep}<span class="breadcrumb-item current">${c.label}</span>`;
+      return `${sep}<span class="breadcrumb-item current">${esc(c.label)}</span>`;
     }
-    return `${sep}<button class="breadcrumb-item" data-bc-action="${c.action}">${c.label}</button>`;
+    return `${sep}<button class="breadcrumb-item" data-bc-action="${c.action}">${esc(c.label)}</button>`;
   }).join('');
 
   // Wire breadcrumb clicks
   bc.querySelectorAll('[data-bc-action]').forEach(btn => {
     btn.addEventListener('click', () => {
       const action = btn.dataset.bcAction;
-      if (action === 'home') {
-        state.view = 'bw2home'; state.activeBranchId = null;
+      if (action === 'empresa-dashboard') {
+        state.view = 'empresa-dashboard'; state.activeBranchId = null;
       } else if (action === 'portfolio') {
         state.view = 'portfolio'; state.activeBranchId = null;
       }
@@ -1043,9 +1296,9 @@ function setupGeocodingAutocomplete(inputId, suggestionsId, statusId, onSelectCa
           sugBox.innerHTML = data.map((r, i) => {
             const name = r.address?.suburb || r.address?.neighbourhood || r.address?.city || r.display_name.split(',')[0];
             const detail = [r.address?.city || r.address?.town, r.address?.state].filter(Boolean).join(', ');
-            return `<div class="colonia-suggestion" data-name="${name}" data-full="${r.display_name}" data-lat="${r.lat}" data-lon="${r.lon}">
-              <div class="sug-main">${name}</div>
-              <div class="sug-detail">${detail || r.display_name}</div>
+            return `<div class="colonia-suggestion" data-name="${esc(name)}" data-full="${esc(r.display_name)}" data-lat="${r.lat}" data-lon="${r.lon}">
+              <div class="sug-main">${esc(name)}</div>
+              <div class="sug-detail">${esc(detail || r.display_name)}</div>
             </div>`;
           }).join('');
           sugBox.classList.add('open');
@@ -1090,7 +1343,13 @@ window._confirmAddBranch=()=>{
   const name=$('modal-add-name').value||`Sucursal ${getEmpresa().branches.length+1}`;
   const colonia=$('modal-add-colonia').value;
   if(!colonia){
-    if(!confirm('No ingresaste una dirección. ¿Deseas crear la sucursal sin dirección?')) return;
+    showConfirm(
+      '📍 Sin dirección',
+      '<p>No ingresaste una dirección. ¿Deseas crear la sucursal sin ubicación?</p><p style="color:var(--text-3);font-size:0.8rem">Podrás agregarla después en la pestaña de Estudio de Mercado.</p>',
+      '✅ Crear sin dirección',
+      () => { addBranch(format, name, colonia); window._closeModal(); }
+    );
+    return;
   }
   addBranch(format,name,colonia);
   window._closeModal();
@@ -1672,16 +1931,16 @@ function updateBranchKPIBar(r){
     const total = r.months.length || 60;
     const month = pbVal || total;
     const pct = Math.min(month / total, 1);
-    const R = 26, cx = 30, cy = 30, sw = 5;
+    const R = 16, cx = 20, cy = 20, sw = 3.5;
     const circ = 2 * Math.PI * R;
     const filled = circ * pct;
-    ringEl.innerHTML = `<svg width="60" height="60" viewBox="0 0 60 60">
+    ringEl.innerHTML = `<svg width="40" height="40" viewBox="0 0 40 40">
       <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface-alt)" stroke-width="${sw}"/>
       <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${pbColor}" stroke-width="${sw}"
         stroke-dasharray="${filled} ${circ}" stroke-linecap="round"
-        transform="rotate(-90,${cx},${cy})" style="transition:stroke-dasharray 1s ease"/>
+        transform="rotate(-90,${cx},${cy})" style="transition:stroke-dasharray 0.8s ease"/>
       <text x="${cx}" y="${cy+1}" text-anchor="middle" dominant-baseline="central"
-        font-size="11" font-weight="800" fill="${pbColor}">${pbVal||'∞'}</text>
+        font-size="9" font-weight="800" fill="${pbColor}">${pbVal||'∞'}</text>
     </svg>`;
   }
 
@@ -1691,21 +1950,21 @@ function updateBranchKPIBar(r){
     const roi = r.roi12 || 0;
     const roiClamped = Math.min(Math.max(roi, -50), 100);
     const pct = (roiClamped + 50) / 150;
-    const R = 40, cx = 48, cy = 48, sw = 7;
+    const R = 28, cx = 34, cy = 34, sw = 5;
     const circ = 2 * Math.PI * R;
     const arcLen = circ * 0.75;
     const filled = arcLen * pct;
     const color = roi > 20 ? '#34d399' : roi > 0 ? '#fbbf24' : '#f87171';
     const glow = roi > 20 ? 'rgba(52,211,153,0.3)' : roi > 0 ? 'rgba(251,191,36,0.3)' : 'rgba(248,113,113,0.3)';
     roiEl.innerHTML = `
-      <svg width="96" height="86" viewBox="0 0 96 86">
+      <svg width="68" height="62" viewBox="0 0 68 62">
         <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface-alt)" stroke-width="${sw}"
           stroke-dasharray="${arcLen} ${circ}" stroke-linecap="round"
           transform="rotate(135,${cx},${cy})"/>
         <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${color}" stroke-width="${sw}"
           stroke-dasharray="${filled} ${circ}" stroke-linecap="round"
           transform="rotate(135,${cx},${cy})"
-          style="transition:stroke-dasharray 1s cubic-bezier(0.2,0.8,0.2,1);filter:drop-shadow(0 0 6px ${glow})"/>
+          style="transition:stroke-dasharray 0.8s ease"/>
       </svg>
       <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-55%);text-align:center">
         <span class="kpi-gauge-value" style="color:${color}">${roi.toFixed(1)}%</span>
@@ -2682,8 +2941,9 @@ function renderConsolidated(empresa){
   });
   document.querySelectorAll('.consol-view-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      state.view = 'branch-detail';
+      state.view = 'branch';
       state.activeBranchId = btn.dataset.bid;
+      state.activeTab = 'resultados';
       renderCurrentView();
     });
   });
@@ -2732,12 +2992,11 @@ function renderEmpresaSettings(empresa){
 
   // ── Form fields ──
   $('emp-name').value = empresa.name || '';
-  const projEl = $('emp-project-name');
-  if (projEl) projEl.value = empresa.projectName || 'FarmaTuya';
   
   const logoPreview = $('emp-logo-preview');
   if (logoPreview) logoPreview.src = empresa.logo || 'assets/nojom-bird.png';
-  if (projEl) projEl.value = empresa.projectName || 'FarmaTuya';
+  const projNameEl = $('emp-project-name');
+  if (projNameEl) projNameEl.value = empresa.projectName || 'FarmaTuya';
   $('emp-capital').value = empresa.totalCapital || 0;
   $('emp-reserve').value = empresa.corporateReserve || 0;
   const corpExpEl = $('emp-corp-expenses');
@@ -2789,7 +3048,7 @@ function renderPartnersTable(partners, consol){
       <td class="num calc" style="color:${retColor}">${fmt.m(pp.monthlyReturn || 0)}</td>
       <td class="num calc">${pp.roi60 != null ? pp.roi60.toFixed(1) + '%' : '—'}</td>
       <td class="num calc" style="color:${pbColor}">${pbStr}</td>
-      <td><button class="btn-sm warn" onclick="window._removePartner('${p.id}')">🗑</button></td>
+      <td><button class="btn-sm warn btn-remove-partner" data-pid="${p.id}">🗑</button></td>
     </tr>`;
   }).join('')}</tbody>
   <tfoot><tr>
@@ -2805,9 +3064,22 @@ function renderPartnersTable(partners, consol){
     inp.addEventListener('change', e => {
       const pid = e.target.dataset.pid, field = e.target.dataset.field;
       let val = e.target.value;
-      if (field === 'capital') val = parseFloat(val) || 0;
-      else if (field === 'equity') val = (parseFloat(val) || 0) / 100;
+      if (field === 'capital') { val = Math.max(0, parseFloat(val) || 0); }
+      else if (field === 'equity') { val = Math.max(0, Math.min(100, parseFloat(val) || 0)) / 100; }
+      else if (field === 'name') { val = val.trim().slice(0, 100); if (!val) return; }
       updatePartner(pid, { [field]: val });
+    });
+  });
+  // Event delegation for partner remove buttons
+  container.querySelectorAll('.btn-remove-partner').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pid = btn.dataset.pid;
+      showConfirm(
+        '🗑 ¿Eliminar este socio?',
+        '<p>Se eliminará del sistema y se recalcularán las métricas de todos los demás socios.</p>',
+        '🗑 Eliminar socio',
+        () => removePartner(pid)
+      );
     });
   });
 }

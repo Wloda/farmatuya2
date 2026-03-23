@@ -204,7 +204,17 @@ function _load() {
 }
 
 function _save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(_workspace));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(_workspace));
+  } catch(e) {
+    if (e.name === 'QuotaExceededError' || e.code === 22) {
+      console.error('[BW2] localStorage quota exceeded — data NOT saved');
+      // Dispatch a custom event so the UI can show a toast
+      window.dispatchEvent(new CustomEvent('bw2:storage-error', { detail: { message: 'Almacenamiento lleno. Elimina datos o exporta antes de continuar.' } }));
+    } else {
+      console.error('[BW2] localStorage save error:', e);
+    }
+  }
   _listeners.forEach(fn => fn(_workspace));
 }
 
@@ -358,7 +368,7 @@ export function addPartner(name, capital, equity) {
   const proj = getActiveProyecto();
   if (!proj) return;
   proj.partners.push({
-    id: 'p' + (proj.partners.length + 1),
+    id: uid('p'),
     name, capital, equity
   });
   _save();
