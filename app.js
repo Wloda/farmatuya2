@@ -8,7 +8,7 @@ import { runBranchProjection, runConsolidation } from './engine/enterprise-engin
 import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw4';
 import { runLocationStudy, calcCombinedMarketFactor, geocodeAddress } from './engine/location-engine.js?v=bw6';
 import { generateBranchPDF } from './pdf-export.js?v=bw4';
-import { setGoogleApiKey, loadGoogleMaps, attachPlacesAutocomplete, createGoogleMap, buildStudyMarkers, isGoogleMapsLoaded } from './engine/google-places.js';
+import { setGoogleApiKey, loadGoogleMaps, attachPlacesAutocomplete, createGoogleMap, buildStudyMarkers, isGoogleMapsLoaded, getGoogleApiKey } from './engine/google-places.js';
 
 /* ═══ GOOGLE API CONFIGURATION ═══ */
 // Set your Google Cloud API key here (requires Maps JS, Places, Geocoding APIs)
@@ -1160,8 +1160,8 @@ function renderPortfolio(empresa){
     </div>`;
   }).join('');
 
-  // Event delegation for branch action buttons (replaces inline onclick)
-  container.addEventListener('click', (e) => {
+  // Event delegation for branch action buttons (replaces inline onclick to avoid duplicates)
+  container.onclick = (e) => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     const bid = btn.dataset.bid;
@@ -1172,11 +1172,11 @@ function renderPortfolio(empresa){
     else if (action === 'delete') window._deleteBranch(bid);
     else if (action === 'archive') window._archiveBranch(bid);
     else if (action === 'restore') window._restoreBranch(bid);
-  });
+  };
 }
 
 // Global action handlers
-window._openBranch = (id)=>{ const b=getBranch(id); state.view='branch'; state.activeBranchId=id; state.activeTab=(b&&b.status==='active')?'resultados':'configuracion'; state.branchOverrides={}; renderCurrentView(); };
+window._openBranch = (id)=>{ const b=getBranch(id); state.view='branch'; state.activeBranchId=id; state.activeTab='resultados'; state.branchOverrides={}; renderCurrentView(); };
 window._activateBranch = (id)=>{ activateBranch(id); };
 window._restoreBranch = (id)=>{ restoreBranch(id); };
 
@@ -1452,9 +1452,13 @@ function switchBranchTab(tabName) {
 
 /* ─── GEOCODING AUTOCOMPLETE HELPER (Google Places + Nominatim fallback) ─── */
 let _googleAutocompletes = []; // Track attached autocompletes to avoid duplicates
-function setupGeocodingAutocomplete(inputId, suggestionsId, statusId, onSelectCallback) {
+async function setupGeocodingAutocomplete(inputId, suggestionsId, statusId, onSelectCallback) {
   const ci = $(inputId); const sugBox = $(suggestionsId); const statusEl = $(statusId);
   if (!ci) return;
+
+  if (getGoogleApiKey()) {
+    try { await loadGoogleMaps(); } catch(e) {}
+  }
 
   // If Google Places is available, use it
   if (isGoogleMapsLoaded()) {
@@ -1843,14 +1847,14 @@ document.addEventListener('DOMContentLoaded',()=>{
     else if (currentBranch?.locationStudy?.address) marketAddrInput.value = currentBranch.locationStudy.address;
 
     // ── Run Full Study ──
-    const doRefresh = async (overrideQuery) => {
+    const doRefresh = async (overrideQuery, preGeocodedObject) => {
       const query = overrideQuery || marketAddrInput.value.trim();
       if (!query || !state.activeBranchId) return;
       marketRefreshBtn.disabled = true;
       marketRefreshBtn.textContent = '⏳';
       if (typeof showToast === 'function') showToast('🔍 Analizando ubicación...', 'info');
       try {
-        const study = await runLocationStudy(query);
+        const study = await runLocationStudy(query, preGeocodedObject);
         if (study.errors?.length && !study.coordinates) {
           if (typeof showToast === 'function') showToast('❌ No se pudo encontrar la ubicación', 'error');
           return;
@@ -1869,61 +1873,74 @@ document.addEventListener('DOMContentLoaded',()=>{
     };
 
     // ── Google Places Autocomplete for inline market input ──
-    if (isGoogleMapsLoaded()) {
-      const acWrap = marketAddrInput.parentElement;
-      if (acWrap) acWrap.style.position = 'relative';
-      attachPlacesAutocomplete(marketAddrInput, {
-        types: ['geocode', 'establishment'],
-        onSelect: (place) => {
-          const name = place.colonia || place.name || place.displayName.split(',')[0];
-          marketAddrInput.value = name;
-          doRefresh(place.formattedAddress || name);
-        }
-      });
-    } else {
-      // Fallback: Nominatim autocomplete
-      let acDropdown = document.createElement('div');
-      acDropdown.className = 'market-ac-dropdown';
-      acDropdown.style.cssText = 'position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--bg-card,#fff);border:1px solid var(--border,#ddd);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.15);max-height:240px;overflow-y:auto;display:none;font-size:0.75rem';
-      const acWrap = marketAddrInput.parentElement;
-      if (acWrap) { acWrap.style.position = 'relative'; acWrap.appendChild(acDropdown); }
-
-      let acTimer = null;
-      const acSearch = async (query) => {
-        if (query.length < 3) { acDropdown.style.display = 'none'; return; }
+    // ── Google Places Autocomplete for inline market input ──
+    const setupInlineAutocomplete = async () => {
+      let useGoogle = false;
+      if (getGoogleApiKey()) {
         try {
-          const results = await geocodeAddress(query, true);
-          if (!results.length) { acDropdown.style.display = 'none'; return; }
-          acDropdown.innerHTML = results.map((r, i) => {
-            const parts = r.displayName.split(',');
-            const name = parts[0]?.trim() || query;
-            const detail = parts.slice(1, 3).map(s => s.trim()).join(', ');
-            return `<div class="market-ac-item" data-idx="${i}" style="padding:0.5rem 0.65rem;cursor:pointer;display:flex;align-items:center;gap:0.5rem;border-bottom:1px solid var(--border,#eee);transition:background 0.15s">
-              <div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--text-1,#333);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div><div style="font-size:0.65rem;color:var(--text-3,#999);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${detail}</div></div></div>`;
-          }).join('');
-          acDropdown.style.display = 'block';
-          acDropdown.querySelectorAll('.market-ac-item').forEach(item => {
-            item.addEventListener('mouseenter', () => item.style.background = 'var(--accent-soft,#f0f0f0)');
-            item.addEventListener('mouseleave', () => item.style.background = '');
-            item.addEventListener('click', () => {
-              const idx = parseInt(item.dataset.idx);
-              const selected = results[idx];
-              if (selected) {
-                marketAddrInput.value = selected.displayName.split(',')[0]?.trim() || selected.displayName;
-                acDropdown.style.display = 'none';
-                doRefresh(selected.displayName.split(',').slice(0, 2).join(','));
-              }
+          await loadGoogleMaps();
+          useGoogle = true;
+        } catch(e) { console.warn('Google Maps inline AC failed:', e); }
+      }
+
+      if (useGoogle) {
+        const acWrap = marketAddrInput.parentElement;
+        if (acWrap) acWrap.style.position = 'relative';
+        attachPlacesAutocomplete(marketAddrInput, {
+          types: ['geocode', 'establishment'],
+          onSelect: (place) => {
+            const name = place.colonia || place.name || place.displayName.split(',')[0];
+            marketAddrInput.value = name;
+            // Pass the pre-parsed place object to avoid re-geocoding
+            doRefresh(place.formattedAddress || name, place);
+          }
+        });
+      } else {
+        // Fallback: Nominatim autocomplete
+        let acDropdown = document.createElement('div');
+        acDropdown.className = 'market-ac-dropdown';
+        acDropdown.style.cssText = 'position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--bg-card,#fff);border:1px solid var(--border,#ddd);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.15);max-height:240px;overflow-y:auto;display:none;font-size:0.75rem';
+        const acWrap = marketAddrInput.parentElement;
+        if (acWrap) { acWrap.style.position = 'relative'; acWrap.appendChild(acDropdown); }
+
+        let acTimer = null;
+        const acSearch = async (query) => {
+          if (query.length < 3) { acDropdown.style.display = 'none'; return; }
+          try {
+            const results = await geocodeAddress(query, true);
+            if (!results.length) { acDropdown.style.display = 'none'; return; }
+            acDropdown.innerHTML = results.map((r, i) => {
+              const parts = r.displayName.split(',');
+              const name = parts[0]?.trim() || query;
+              const detail = parts.slice(1, 3).map(s => s.trim()).join(', ');
+              return `<div class="market-ac-item" data-idx="${i}" style="padding:0.5rem 0.65rem;cursor:pointer;display:flex;align-items:center;gap:0.5rem;border-bottom:1px solid var(--border,#eee);transition:background 0.15s">
+                <div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--text-1,#333);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div><div style="font-size:0.65rem;color:var(--text-3,#999);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${detail}</div></div></div>`;
+            }).join('');
+            acDropdown.style.display = 'block';
+            acDropdown.querySelectorAll('.market-ac-item').forEach(item => {
+              item.addEventListener('mouseenter', () => item.style.background = 'var(--accent-soft,#f0f0f0)');
+              item.addEventListener('mouseleave', () => item.style.background = '');
+              item.addEventListener('click', () => {
+                const idx = parseInt(item.dataset.idx);
+                const selected = results[idx];
+                if (selected) {
+                  marketAddrInput.value = selected.displayName.split(',')[0]?.trim() || selected.displayName;
+                  acDropdown.style.display = 'none';
+                  doRefresh(selected.displayName.split(',').slice(0, 2).join(','));
+                }
+              });
             });
-          });
-        } catch (e) {
-          acDropdown.innerHTML = `<div style="padding:0.5rem;color:var(--red,red);font-size:0.7rem">Error de conexión</div>`;
-          acDropdown.style.display = 'block';
-        }
-      };
-      marketAddrInput.addEventListener('input', () => { clearTimeout(acTimer); acTimer = setTimeout(() => acSearch(marketAddrInput.value.trim()), 400); });
-      marketAddrInput.addEventListener('focus', () => { if (marketAddrInput.value.trim().length >= 3) acSearch(marketAddrInput.value.trim()); });
-      document.addEventListener('click', (e) => { if (!acDropdown.contains(e.target) && e.target !== marketAddrInput) acDropdown.style.display = 'none'; });
-    }
+          } catch (e) {
+            acDropdown.innerHTML = `<div style="padding:0.5rem;color:var(--red,red);font-size:0.7rem">Error de conexión</div>`;
+            acDropdown.style.display = 'block';
+          }
+        };
+        marketAddrInput.addEventListener('input', () => { clearTimeout(acTimer); acTimer = setTimeout(() => acSearch(marketAddrInput.value.trim()), 400); });
+        marketAddrInput.addEventListener('focus', () => { if (marketAddrInput.value.trim().length >= 3) acSearch(marketAddrInput.value.trim()); });
+        document.addEventListener('click', (e) => { if (!acDropdown.contains(e.target) && e.target !== marketAddrInput) acDropdown.style.display = 'none'; });
+      }
+    };
+    setupInlineAutocomplete();
 
     marketRefreshBtn.addEventListener('click', () => doRefresh());
     marketAddrInput.addEventListener('keydown', e => { if (e.key === 'Enter') doRefresh(); });
@@ -1967,420 +1984,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
   });
 });
-/* ═══ APPLE-STYLE WIDGET SYSTEM ═══ */
-(function initAppleWidgetSystem(){
-  /* ── Size Definitions (Apple naming) ── */
-  const SIZES = [
-    {name:'S', label:'Small',  cols:3,  icon:'▪️'},
-    {name:'M', label:'Medium', cols:6,  icon:'◻️'},
-    {name:'L', label:'Large',  cols:8,  icon:'⬜'},
-    {name:'XL',label:'Full',   cols:12, icon:'📐'}
-  ];
-  const COL_MAP = {2:'S',3:'S',4:'S',6:'M',8:'L',12:'XL'};
-  const ALL_COLS = [2,3,4,6,8,12];
-  const ROW_SIZES = [1,2,3];
-
-  /* Per-widget allowed sizes & defaults */
-  const WIDGET_SIZES = {
-    // KPI Cards — small stat cards, S or M only
-    'wg-branch-eq':        {allowed:['S','M'], default:3},
-    'wg-branch-profit':    {allowed:['S','M'], default:3},
-    'wg-branch-payback':   {allowed:['S','M'], default:3},
-    'wg-branch-roi-gauge': {allowed:['S','M'], default:3},
-    'wg-branch-factor':    {allowed:['S','M'], default:3},
-    // Charts — need space, M to XL
-    'wg-branch-cashflow':  {allowed:['M','L','XL'], default:8},
-    'wg-branch-cost-donut':{allowed:['S','M','L'], default:4},
-    'wg-branch-market-radar':{allowed:['S','M','L'], default:4},
-    'wg-branch-market':    {allowed:['M','L','XL'], default:8},
-    'wg-branch-pnlchart':  {allowed:['M','L','XL'], default:8},
-    'wg-branch-donut':     {allowed:['S','M','L'], default:4},
-    'wg-branch-scenchart': {allowed:['M','L','XL'], default:8},
-    'wg-branch-tornado':   {allowed:['S','M','L'], default:4},
-    // Checklist & Alerts — flexible
-    'wg-branch-checklist': {allowed:['M','L','XL'], default:8},
-    'wg-branch-alerts':    {allowed:['S','M','L'], default:4},
-    // Tables — wide content, L or XL
-    'wg-branch-annual':    {allowed:['L','XL'], default:12},
-    'wg-branch-fulltable': {allowed:['L','XL'], default:12},
-    // Consolidated view
-    'wg-consol-inv':       {allowed:['S','M'], default:3},
-    'wg-consol-free':      {allowed:['S','M'], default:3},
-    'wg-consol-profit':    {allowed:['S','M'], default:3},
-    'wg-consol-score':     {allowed:['S','M'], default:3},
-    'wg-consol-cashflow':  {allowed:['M','L','XL'], default:8},
-    'wg-consol-partners':  {allowed:['S','M','L'], default:4},
-    'wg-consol-table':     {allowed:['L','XL'], default:12},
-  };
-  function getAllowedSizes(w){
-    const id = w.dataset?.widgetId;
-    const conf = WIDGET_SIZES[id];
-    if(!conf) return SIZES; // all sizes if unknown
-    return SIZES.filter(s=>conf.allowed.includes(s.name));
-  }
-  function getDefaultSize(w){
-    const id = w.dataset?.widgetId;
-    return WIDGET_SIZES[id]?.default || 6;
-  }
-
-  function getColSpan(w){ for(const s of [...ALL_COLS].reverse()) if(w.classList.contains('wg-'+s)) return s; return 6; }
-  function getRowSpan(w){ for(const s of [...ROW_SIZES].reverse()) if(w.classList.contains('wg-h'+s)) return s; return 1; }
-  function setColSpan(w,s){ ALL_COLS.forEach(c=>w.classList.remove('wg-'+c)); w.classList.add('wg-'+s); }
-  function setRowSpan(w,s){ ROW_SIZES.forEach(r=>w.classList.remove('wg-h'+r)); if(s>1) w.classList.add('wg-h'+s); }
-  function getSizeName(cols){ return COL_MAP[cols]||'M'; }
-
-  /* ── FLIP Animation for smooth reflow ── */
-  function flipAnimate(grid){
-    const widgets = Array.from(grid.querySelectorAll('.widget[data-widget-id]'));
-    const firstPos = new Map();
-    widgets.forEach(w=>{
-      const r = w.getBoundingClientRect();
-      firstPos.set(w,{x:r.left,y:r.top});
-    });
-    return function play(){
-      requestAnimationFrame(()=>{
-        widgets.forEach(w=>{
-          const first = firstPos.get(w);
-          if(!first) return;
-          const last = w.getBoundingClientRect();
-          const dx = first.x - last.left;
-          const dy = first.y - last.top;
-          if(Math.abs(dx)<2 && Math.abs(dy)<2) return;
-          w.style.transform = `translate(${dx}px,${dy}px)`;
-          w.style.transition = 'none';
-          requestAnimationFrame(()=>{
-            w.classList.add('widget-flipping');
-            w.style.transform = '';
-            w.style.transition = '';
-            const cleanup = ()=>{ w.classList.remove('widget-flipping'); };
-            w.addEventListener('transitionend',cleanup,{once:true});
-            setTimeout(cleanup,500);
-          });
-        });
-      });
-    };
-  }
-
-  /* ── Context Menu (Apple-style right-click) ── */
-  let ctxMenu = null;
-  function removeCtxMenu(){ if(ctxMenu){ctxMenu.remove();ctxMenu=null;} }
-
-  function showContextMenu(e, w, grid){
-    e.preventDefault(); e.stopPropagation();
-    removeCtxMenu();
-    const curCols = getColSpan(w);
-    const curSize = getSizeName(curCols);
-    const curRows = getRowSpan(w);
-    const isHidden = w.dataset.widgetHidden === 'true';
-
-    const menu = document.createElement('div');
-    menu.className = 'widget-ctx-menu';
-
-    const title = w.querySelector('.widget-title,.kpi-card-label');
-    const titleText = title ? title.textContent.trim() : 'Widget';
-
-    let html = `<div style="padding:0.3rem 0.65rem 0.2rem;font-size:0.65rem;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em">${titleText}</div><div class="widget-ctx-sep"></div>`;
-
-    // Width sizes
-    html += `<div style="padding:0.2rem 0.65rem;font-size:0.55rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.05em">Ancho</div>`;
-    const allowedSizes = getAllowedSizes(w);
-    allowedSizes.forEach(s=>{
-      const active = s.name === curSize ? 'active' : '';
-      html += `<div class="widget-ctx-item ${active}" data-action="resize" data-size="${s.cols}">
-        <span class="ctx-icon">${s.icon}</span>${s.label}
-        <span class="ctx-check">${s.name===curSize?'✓':''}</span></div>`;
-    });
-
-    // Height sizes
-    html += `<div class="widget-ctx-sep"></div>`;
-    html += `<div style="padding:0.2rem 0.65rem;font-size:0.55rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.05em">Alto</div>`;
-    const heightOpts = [
-      {rows:1, label:'Auto', icon:'↕️'},
-      {rows:2, label:'2× Alto', icon:'⬆️'},
-      {rows:3, label:'3× Alto', icon:'⏫'}
-    ];
-    heightOpts.forEach(h=>{
-      const active = h.rows === curRows ? 'active' : '';
-      html += `<div class="widget-ctx-item ${active}" data-action="height" data-rows="${h.rows}">
-        <span class="ctx-icon">${h.icon}</span>${h.label}
-        <span class="ctx-check">${h.rows===curRows?'✓':''}</span></div>`;
-    });
-
-    html += `<div class="widget-ctx-sep"></div>`;
-    html += `<div class="widget-ctx-item" data-action="${isHidden?'show':'hide'}">
-      <span class="ctx-icon">${isHidden?'👁️':'🙈'}</span>${isHidden?'Mostrar Widget':'Ocultar Widget'}</div>`;
-    html += `<div class="widget-ctx-sep"></div>`;
-    html += `<div class="widget-ctx-item" data-action="reset">
-      <span class="ctx-icon">↺</span>Restablecer</div>`;
-
-    menu.innerHTML = html;
-    document.body.appendChild(menu);
-
-    const mw = menu.offsetWidth, mh = menu.offsetHeight;
-    let x = e.clientX, y = e.clientY;
-    if(x + mw > window.innerWidth) x = window.innerWidth - mw - 8;
-    if(y + mh > window.innerHeight) y = window.innerHeight - mh - 8;
-    menu.style.left = x + 'px';menu.style.top = y + 'px';
-    ctxMenu = menu;
-
-    menu.querySelectorAll('.widget-ctx-item').forEach(item=>{
-      item.addEventListener('click',()=>{
-        const action = item.dataset.action;
-        const animate = flipAnimate(grid);
-        if(action==='resize'){
-          setColSpan(w, parseInt(item.dataset.size));
-          updateSizeLabel(w);
-          animate();
-        } else if(action==='height'){
-          setRowSpan(w, parseInt(item.dataset.rows));
-          animate();
-        } else if(action==='hide'){
-          toggleHidden(w, true);
-          animate();
-        } else if(action==='show'){
-          toggleHidden(w, false);
-          animate();
-        } else if(action==='reset'){
-          setColSpan(w, getDefaultSize(w));
-          setRowSpan(w, 1);
-          updateSizeLabel(w);
-          animate();
-        }
-        removeCtxMenu();
-        saveLayout(grid.id);
-      });
-    });
-  }
-  document.addEventListener('click', removeCtxMenu);
-
-  /* ── Click to cycle size (in edit mode only) ── */
-  document.addEventListener('click', e=>{
-    const widget = e.target.closest('.widget[data-widget-id]');
-    if(!widget) return;
-    const panel = widget.closest('.branch-tab-panel,section');
-    if(!panel || !panel.classList.contains('dashboard-edit-mode')) return;
-    // Don't cycle if clicking buttons/controls
-    if(e.target.closest('.widget-hide-btn,.widget-ctx-menu,button,input,select')) return;
-    const grid = widget.closest('.widget-grid');
-    if(!grid) return;
-    const allowed = getAllowedSizes(widget);
-    if(allowed.length < 2) return;
-    const curCols = getColSpan(widget);
-    const curIdx = allowed.findIndex(s=>s.cols===curCols);
-    const nextIdx = (curIdx + 1) % allowed.length;
-    const animate = flipAnimate(grid);
-    setColSpan(widget, allowed[nextIdx].cols);
-    updateSizeLabel(widget);
-    animate();
-    saveLayout(grid.id);
-  });
-
-  /* ── Hide / Show Widgets ── */
-  function toggleHidden(w, hide){
-    if(hide){
-      w.dataset.widgetHidden = 'true';
-      const panel = w.closest('.branch-tab-panel,.dashboard-edit-mode');
-      const isEditing = panel && panel.classList.contains('dashboard-edit-mode');
-      if(isEditing){
-        if(!w.querySelector('.widget-hidden-overlay')){
-          const ov = document.createElement('div');
-          ov.className='widget-hidden-overlay';
-          ov.innerHTML='<span>👁️ Oculto</span>';
-          w.appendChild(ov);
-        }
-      } else {
-        w.style.display = 'none';
-      }
-    } else {
-      delete w.dataset.widgetHidden;
-      w.style.display = '';
-      w.querySelector('.widget-hidden-overlay')?.remove();
-    }
-  }
-
-  /* ── Size Label ── */
-  function updateSizeLabel(w){
-    const label = w.querySelector('.widget-size-label');
-    if(label) label.textContent = getSizeName(getColSpan(w));
-  }
-
-  /* ── Edit Mode Controls ── */
-  function addEditControls(grid){
-    grid.querySelectorAll('.widget[data-widget-id]').forEach(w=>{
-      if(w.querySelector('.widget-hide-btn')) return;
-      if(!w.dataset.defaultSize) w.dataset.defaultSize = getColSpan(w);
-
-      // Red × button (macOS close style)
-      const hideBtn = document.createElement('button');
-      hideBtn.className = 'widget-hide-btn';
-      hideBtn.innerHTML = '×';
-      hideBtn.title = 'Ocultar widget';
-      hideBtn.addEventListener('click',e=>{
-        e.stopPropagation();
-        const animate = flipAnimate(grid);
-        toggleHidden(w, true);
-        animate();
-        saveLayout(grid.id);
-      });
-      w.appendChild(hideBtn);
-
-      // Size label badge
-      const sizeLabel = document.createElement('span');
-      sizeLabel.className = 'widget-size-label';
-      sizeLabel.textContent = getSizeName(getColSpan(w));
-      w.appendChild(sizeLabel);
-
-      // Drag-and-drop
-      w.setAttribute('draggable','true');
-      w.addEventListener('dragstart',e=>{
-        e.dataTransfer.setData('text/plain',w.dataset.widgetId);
-        e.dataTransfer.effectAllowed = 'move';
-        w.classList.add('widget-dragging');
-        setTimeout(()=>w.style.opacity='0.4',0);
-      });
-      w.addEventListener('dragend',()=>{
-        w.classList.remove('widget-dragging');
-        w.style.opacity='';
-      });
-      w.addEventListener('dragover',e=>{
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        w.classList.add('widget-drag-over');
-      });
-      w.addEventListener('dragleave',()=>w.classList.remove('widget-drag-over'));
-      w.addEventListener('drop',e=>{
-        e.preventDefault();
-        w.classList.remove('widget-drag-over');
-        const srcId = e.dataTransfer.getData('text/plain');
-        const src = grid.querySelector(`[data-widget-id="${srcId}"]`);
-        if(src && src!==w){
-          const animate = flipAnimate(grid);
-          const rect = w.getBoundingClientRect();
-          const midY = rect.top + rect.height/2;
-          if(e.clientY < midY) grid.insertBefore(src, w);
-          else grid.insertBefore(src, w.nextSibling);
-          animate();
-        }
-      });
-    });
-  }
-
-  function removeEditControls(grid){
-    grid.querySelectorAll('.widget-hide-btn').forEach(b=>b.remove());
-    grid.querySelectorAll('.widget-size-label').forEach(l=>l.remove());
-    grid.querySelectorAll('.widget-edit-overlay').forEach(o=>o.remove());
-    grid.querySelectorAll('.widget[draggable]').forEach(w=>{
-      w.removeAttribute('draggable'); w.style.opacity='';
-    });
-  }
-
-  /* ── Save / Restore Layout ── */
-  function saveLayout(gridId){
-    const grid = document.getElementById(gridId);
-    if(!grid) return;
-    const layout = [];
-    grid.querySelectorAll('.widget[data-widget-id]').forEach((w,i)=>{
-      layout.push({
-        id: w.dataset.widgetId,
-        col: getColSpan(w),
-        row: getRowSpan(w),
-        order: i,
-        hidden: w.dataset.widgetHidden==='true'
-      });
-    });
-    try{ localStorage.setItem('bw2_layout_'+gridId, JSON.stringify(layout)); }catch(e){}
-  }
-
-  function restoreLayout(gridId){
-    const grid = document.getElementById(gridId);
-    if(!grid) return;
-    let layout;
-    try{ layout = JSON.parse(localStorage.getItem('bw2_layout_'+gridId)); }catch(e){ return; }
-    if(!layout||!Array.isArray(layout)) return;
-    const widgets = Array.from(grid.querySelectorAll('.widget[data-widget-id]'));
-    const map = Object.fromEntries(widgets.map(w=>[w.dataset.widgetId,w]));
-    layout.forEach(item=>{
-      const w = map[item.id];
-      if(!w) return;
-      setColSpan(w, item.col);
-      setRowSpan(w, item.row);
-      if(item.hidden) toggleHidden(w, true);
-    });
-    layout.sort((a,b)=>a.order-b.order).forEach(item=>{
-      const w = map[item.id];
-      if(w) grid.appendChild(w);
-    });
-  }
-
-  /* ── Toggle Edit Mode ── */
-  document.addEventListener('DOMContentLoaded',()=>{
-    // Edit mode toggle
-    document.addEventListener('click',e=>{
-      const editBtn = e.target.closest('.btn-edit-layout');
-      if(!editBtn) return;
-      const targetId = editBtn.dataset.target;
-      const gridId = targetId+'-grid';
-      const grid = document.getElementById(gridId);
-      const toolbar = document.getElementById('toolbar-'+targetId);
-      if(!grid) return;
-
-      const panel = grid.closest('.branch-tab-panel')||document.body;
-      const isEditing = panel.classList.contains('dashboard-edit-mode');
-
-      if(!isEditing){
-        panel.classList.add('dashboard-edit-mode');
-        if(toolbar) toolbar.style.display='flex';
-        addEditControls(grid);
-        // Show hidden widgets as blurred in edit mode
-        grid.querySelectorAll('.widget[data-widget-hidden="true"]').forEach(w=>{
-          w.style.display='';
-          if(!w.querySelector('.widget-hidden-overlay')){
-            const ov = document.createElement('div');
-            ov.className='widget-hidden-overlay';
-            ov.innerHTML='<span>👁️ Oculto — clic derecho para mostrar</span>';
-            w.appendChild(ov);
-          }
-        });
-        editBtn.innerHTML='<span style="font-size:0.8rem">💾</span> Guardar';
-        editBtn.style.background='var(--accent)';editBtn.style.color='#fff';
-      } else {
-        panel.classList.remove('dashboard-edit-mode');
-        if(toolbar) toolbar.style.display='none';
-        removeEditControls(grid);
-        grid.querySelectorAll('.widget[data-widget-hidden="true"]').forEach(w=>{
-          w.style.display='none';
-          w.querySelector('.widget-hidden-overlay')?.remove();
-        });
-        saveLayout(gridId);
-        editBtn.innerHTML='<span style="font-size:0.8rem">✨</span> Editar Layout';
-        editBtn.style.background='var(--surface)';editBtn.style.color='var(--text-2)';
-        if(typeof showToast==='function') showToast('✅ Layout guardado','success');
-      }
-    });
-
-    // Save button in toolbar
-    document.addEventListener('click',e=>{
-      const saveBtn = e.target.closest('.btn-save-layout');
-      if(!saveBtn) return;
-      const targetId = saveBtn.dataset.target;
-      saveLayout(targetId+'-grid');
-      const editBtn = document.querySelector(`.btn-edit-layout[data-target="${targetId}"]`);
-      if(editBtn) editBtn.click();
-    });
-
-    // Context menu on any widget right-click (even outside edit mode)
-    document.addEventListener('contextmenu',e=>{
-      const widget = e.target.closest('.widget[data-widget-id]');
-      if(!widget) return;
-      const grid = widget.closest('.widget-grid');
-      if(!grid) return;
-      showContextMenu(e, widget, grid);
-    });
-
-    // Restore saved layouts
-    ['branch-resultados-grid'].forEach(id=>restoreLayout(id));
-  });
-})();
 
 function updateBranchKPIBar(r){
   const be=r.breakEvenPctCapacity, net=r.perPartnerMonthly[0]?.monthlyIncome||0;

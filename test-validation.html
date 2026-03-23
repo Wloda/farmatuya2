@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Engine Validation</title>
+  <style>
+    body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
+    #out { white-space: pre-wrap; word-wrap: break-word; }
+  </style>
+</head>
+<body>
+  <h1>Validación de Engine BW²</h1>
+  <div id="out">Corriendo validación...<br><br></div>
+  <script>
+    // Overwrite console.log to print to the screen
+    const out = document.getElementById('out');
+    const ogLog = console.log;
+    console.log = function(...args) {
+      ogLog.apply(console, args);
+      out.innerHTML += args.join(' ') + '<br>';
+    };
+  </script>
+  <script type="module" src="./validate_engine.mjs"></script>
+</body>
+</html>

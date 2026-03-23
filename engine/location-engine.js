@@ -583,7 +583,7 @@ async function queryDENUE(lat, lng, radiusMeters = 1000) {
 /* ══════════════════════════════════════════
    FULL LOCATION STUDY (enhanced v3)
    ══════════════════════════════════════════ */
-export async function runLocationStudy(addressQuery) {
+export async function runLocationStudy(addressQuery, preGeocodedObject) {
   const errors = [];
   let geocode = null;
   let multiRadius = null;
@@ -591,7 +591,11 @@ export async function runLocationStudy(addressQuery) {
 
   // Step 1: Geocode
   try {
-    geocode = await geocodeAddress(addressQuery);
+    if (preGeocodedObject && preGeocodedObject.lat && preGeocodedObject.lng) {
+      geocode = preGeocodedObject;
+    } else {
+      geocode = await geocodeAddress(addressQuery);
+    }
   } catch (e) {
     errors.push({ step: 'geocoding', error: e.message });
     return { errors, partial: true };
