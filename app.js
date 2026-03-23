@@ -1865,6 +1865,49 @@ document.addEventListener('DOMContentLoaded',()=>{
   const ALL_COLS = [2,3,4,6,8,12];
   const ROW_SIZES = [1,2,3];
 
+  /* Per-widget allowed sizes & defaults */
+  const WIDGET_SIZES = {
+    // KPI Cards — small stat cards, S or M only
+    'wg-branch-eq':        {allowed:['S','M'], default:3},
+    'wg-branch-profit':    {allowed:['S','M'], default:3},
+    'wg-branch-payback':   {allowed:['S','M'], default:3},
+    'wg-branch-roi-gauge': {allowed:['S','M'], default:3},
+    'wg-branch-factor':    {allowed:['S','M'], default:3},
+    // Charts — need space, M to XL
+    'wg-branch-cashflow':  {allowed:['M','L','XL'], default:8},
+    'wg-branch-cost-donut':{allowed:['S','M','L'], default:4},
+    'wg-branch-market-radar':{allowed:['S','M','L'], default:4},
+    'wg-branch-market':    {allowed:['M','L','XL'], default:8},
+    'wg-branch-pnlchart':  {allowed:['M','L','XL'], default:8},
+    'wg-branch-donut':     {allowed:['S','M','L'], default:4},
+    'wg-branch-scenchart': {allowed:['M','L','XL'], default:8},
+    'wg-branch-tornado':   {allowed:['S','M','L'], default:4},
+    // Checklist & Alerts — flexible
+    'wg-branch-checklist': {allowed:['M','L','XL'], default:8},
+    'wg-branch-alerts':    {allowed:['S','M','L'], default:4},
+    // Tables — wide content, L or XL
+    'wg-branch-annual':    {allowed:['L','XL'], default:12},
+    'wg-branch-fulltable': {allowed:['L','XL'], default:12},
+    // Consolidated view
+    'wg-consol-inv':       {allowed:['S','M'], default:3},
+    'wg-consol-free':      {allowed:['S','M'], default:3},
+    'wg-consol-profit':    {allowed:['S','M'], default:3},
+    'wg-consol-score':     {allowed:['S','M'], default:3},
+    'wg-consol-cashflow':  {allowed:['M','L','XL'], default:8},
+    'wg-consol-partners':  {allowed:['S','M','L'], default:4},
+    'wg-consol-table':     {allowed:['L','XL'], default:12},
+  };
+  function getAllowedSizes(w){
+    const id = w.dataset?.widgetId;
+    const conf = WIDGET_SIZES[id];
+    if(!conf) return SIZES; // all sizes if unknown
+    return SIZES.filter(s=>conf.allowed.includes(s.name));
+  }
+  function getDefaultSize(w){
+    const id = w.dataset?.widgetId;
+    return WIDGET_SIZES[id]?.default || 6;
+  }
+
   function getColSpan(w){ for(const s of [...ALL_COLS].reverse()) if(w.classList.contains('wg-'+s)) return s; return 6; }
   function getRowSpan(w){ for(const s of [...ROW_SIZES].reverse()) if(w.classList.contains('wg-h'+s)) return s; return 1; }
   function setColSpan(w,s){ ALL_COLS.forEach(c=>w.classList.remove('wg-'+c)); w.classList.add('wg-'+s); }
@@ -1922,7 +1965,8 @@ document.addEventListener('DOMContentLoaded',()=>{
 
     let html = `<div style="padding:0.3rem 0.65rem 0.2rem;font-size:0.65rem;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em">${titleText}</div><div class="widget-ctx-sep"></div>`;
 
-    SIZES.forEach(s=>{
+    const allowedSizes = getAllowedSizes(w);
+    allowedSizes.forEach(s=>{
       const active = s.name === curSize ? 'active' : '';
       html += `<div class="widget-ctx-item ${active}" data-action="resize" data-size="${s.cols}">
         <span class="ctx-icon">${s.icon}</span>${s.label}
@@ -1960,7 +2004,7 @@ document.addEventListener('DOMContentLoaded',()=>{
           toggleHidden(w, false);
           animate();
         } else if(action==='reset'){
-          setColSpan(w, parseInt(w.dataset.defaultSize||6));
+          setColSpan(w, getDefaultSize(w));
           setRowSpan(w, 1);
           updateSizeLabel(w);
           animate();
