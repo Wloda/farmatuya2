@@ -1074,19 +1074,20 @@ function renderPortfolio(empresa){
 
     if (isPlanned) {
       actionBtns += `<button class="btn-sm success" data-action="activate" data-bid="${b.id}">✅ Activar</button>`;
-      actionBtns += `<button class="btn-sm warn" data-action="delete" data-bid="${b.id}">🗑 Eliminar</button>`;
     } else if (isActive) {
       actionBtns += `<button class="btn-sm warn" data-action="archive" data-bid="${b.id}">📦 Archivar</button>`;
     } else if (isArchived) {
       actionBtns += `<button class="btn-sm success" data-action="restore" data-bid="${b.id}">▶ Restaurar</button>`;
-      actionBtns += `<button class="btn-sm danger" data-action="delete" data-bid="${b.id}">🗑 Eliminar</button>`;
     }
 
     return `<div class="branch-card ${isArchived?'archived':''}" data-branch="${b.id}">
       <div class="branch-card-header">
         <span class="branch-emoji">${emoji}</span>
         <div class="branch-info"><div class="branch-name">${b.name}</div><div class="branch-meta">${MODELS[b.format]?.label||b.format} · ${b.colonia||'Sin colonia'}</div></div>
-        ${statusBadge}
+        <div class="branch-header-actions">
+          ${statusBadge}
+          <button class="btn-icon-delete" data-action="delete" data-bid="${b.id}" title="Eliminar sucursal">🗑️</button>
+        </div>
       </div>
       ${r?`<div class="branch-kpis">
         <div class="branch-kpi"><span class="bk-label" title="Ganancia mensual antes de impuestos">Ganancia/mes</span><span class="bk-value" style="color:${r.avgMonthlyEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(r.avgMonthlyEBITDA)}</span></div>
