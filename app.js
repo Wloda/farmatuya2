@@ -3796,8 +3796,8 @@ function openProfilePopup() {
     }
     
     saveProfile({ firstName, lastName, photo: pendingPhoto });
-    // Sync to auth user
-    updateUserProfile({ firstName, lastName, photo: pendingPhoto });
+    // Sync to auth user (only if auth module loaded)
+    if (typeof updateUserProfile === 'function') updateUserProfile({ firstName, lastName, photo: pendingPhoto });
     updateHeaderAvatar();
     closeModal();
     showToast('Perfil guardado', 'success');
