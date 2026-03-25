@@ -151,16 +151,6 @@ body:has(#app-header){padding-top:50px}
 .neu-segmented.small .seg-btn{font-size:0.6875rem;padding:0.3125rem 0.6875rem}
 
 /* ═══ ENTERPRISE HEADER INFO ═══ */
-.ent-name{font-weight:800;font-size:0.75rem;color:var(--header-text)}
-.ent-stat{
-  font-size:0.6rem;color:var(--text-1);font-weight:700;
-  background:var(--surface);
-  padding:0.2rem 0.5rem;border-radius:8px;
-  box-shadow:var(--shadow-neu-inset-sm);border:1px solid var(--border);
-  display:inline-flex;align-items:center;gap:0.3rem;letter-spacing:0.02em;
-  white-space:nowrap;
-}
-.ent-stat.danger{color:var(--red)}
 .project-badge{font-weight:800;color:var(--accent)}
 
 /* Semaphore + Score */
@@ -205,19 +195,6 @@ body:has(#app-header){padding-top:50px}
 
 /* ═══ ADVANCED PANEL ═══ */
 #advanced-panel{background:var(--surface)}
-#advanced-panel.collapsed .adv-body{display:none}
-.adv-toggle{
-  width:100%;border:none;background:transparent;color:var(--text-2);
-  font-family:var(--font);font-size:0.8125rem;font-weight:600;
-  padding:0.625rem 1.75rem;cursor:pointer;text-align:left;
-  display:flex;align-items:center;gap:0.5rem;transition:color 0.2s
-}
-.adv-toggle:hover{color:var(--text-1)}
-.adv-arrow{font-size:0.625rem;transition:transform 0.3s}
-#advanced-panel:not(.collapsed) .adv-arrow{transform:rotate(180deg)}
-.adv-body{padding:0.75rem 1.75rem 1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem}
-.adv-group h4{font-size:0.6875rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;font-weight:700}
-.adv-sliders{display:flex;flex-direction:column;gap:0.5rem}
 
 /* Slider */
 .slider-row{display:flex;align-items:center;gap:0.5rem}
@@ -315,13 +292,7 @@ body:has(#app-header){padding-top:50px}
 .filter-select:hover{color:var(--text-1)}
 .filter-select:focus{outline:none;color:var(--text-1)}
 
-/* ── Level 101: Breadcrumb Sucursal Dropdown ── */
-.breadcrumb-select{
-  appearance:auto;background:transparent;border:none;
-  font-size:0.8rem;font-weight:700;color:var(--text-1);
-  font-family:var(--font);cursor:pointer;padding:0.15rem 0.25rem
-}
-.breadcrumb-select:focus{outline:none}
+
 
 /* ── Legacy controls bar (kept for compat) ── */
 .resultados-controls-bar{
@@ -705,14 +676,7 @@ body:has(#app-header){padding-top:50px}
 }
 .expand-btn:hover{background:rgba(74,108,247,0.2)}
 
-/* ═══ CIRCULAR GAUGE ═══ */
-.circular-gauge{display:flex;justify-content:center;align-items:center;padding:0.25rem 0}
-.gauge-ring{transition:stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)}
-.viability-gauge{text-align:center;padding:0.25rem 0}
-.gauge-score{font-size:2rem;font-weight:900;line-height:1;letter-spacing:-0.03em}
-.gauge-label{font-size:0.6875rem;font-weight:800;margin:0.125rem 0 0.5rem;text-transform:uppercase;letter-spacing:0.1em}
-.gauge-bar{height:6px;background:var(--surface-alt);border-radius:var(--r-sm);overflow:hidden;box-shadow:var(--shadow-neu-inset-sm)}
-.gauge-fill{height:100%;border-radius:6px;transition:width 0.8s var(--ease-smooth);background:linear-gradient(90deg, var(--accent), var(--green))}
+
 
 /* ═══ CHECKLIST ═══ */
 .checklist-item{
