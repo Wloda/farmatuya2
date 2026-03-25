@@ -1243,8 +1243,16 @@ function updateNav() {
     // Level 1: Home (Workspace)
     html += `<div class="nav-section">Mi Workspace</div>`;
     html += `<button class="nav-btn active"><span class="nav-icon">🏢</span><span class="nav-text">Mis Empresas</span></button>`;
-    html += `<div class="nav-spacer"></div>`;
+    html += `<div style="margin-top:1.5rem">`;
+    html += `<button class="btn-add" id="btn-nav-crear-empresa"><span class="nav-icon">+</span> <span class="nav-text">Nueva Empresa</span></button>`;
+    html += `</div>`;
+    
     nav.innerHTML = html;
+    
+    const navEmpBtn = nav.querySelector('#btn-nav-crear-empresa');
+    if (navEmpBtn) {
+      navEmpBtn.addEventListener('click', () => showBW2Modal('config-empresa'));
+    }
     return;
   }
 
