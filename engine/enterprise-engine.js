@@ -33,8 +33,13 @@ export function runBranchProjection(branch, empresa) {
     overrides.scenarioFactor *= combinedFactor;
   }
 
-  // Partners come from empresa, not from branch
-  overrides.partners = empresa.partners;
+  // Partners come from empresa, not from branch (safely mapped for engine compat)
+  const rawPartners = empresa.socios || empresa.partners || [];
+  overrides.partners = rawPartners.map(p => ({
+    name: p.nombre || p.name,
+    capital: p.capitalAportado !== undefined ? p.capitalAportado : p.capital,
+    equity: p.porcentajeAcciones !== undefined ? p.porcentajeAcciones : p.equity
+  }));
 
   // Enforce 0 royalty if the project is not a franchise
   const proj = empresa.proyectos?.find(p => p.id === branch.proyectoId);
@@ -96,8 +101,16 @@ export function runConsolidation(empresa) {
   // Total 5Y
   const totalNet60 = months.reduce((s, m) => s + m.netIncome, 0);
 
-  // Per-partner attribution
-  const perPartner = empresa.partners.map(p => ({
+  // Per-partner attribution (safely mapping Spanish data contract)
+  const rawPartners = empresa.socios || empresa.partners || [];
+  const mappedPartners = rawPartners.map(p => ({
+    id: p.id,
+    name: p.nombre || p.name,
+    capital: p.capitalAportado !== undefined ? p.capitalAportado : p.capital,
+    equity: p.porcentajeAcciones !== undefined ? p.porcentajeAcciones : p.equity
+  }));
+  
+  const perPartner = mappedPartners.map(p => ({
     id: p.id,
     name: p.name,
     equity: p.equity,

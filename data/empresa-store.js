@@ -51,7 +51,11 @@ export function createBranch(format, name = '', colonia = '', proyectoId = null)
   return {
     id: uid('br'),
     name: name || 'Nueva Sucursal',
-    format,
+    format, // Deprecated in favor of formatId, kept for backward comp
+    formatId: format, 
+    modeloId: `FT-${format.toUpperCase()}`,
+    modeloVersion: 'v8.0',
+    auditStatus: 'placeholder',
     colonia,
     zona: '',
     ciudad: '',
@@ -79,19 +83,16 @@ export function duplicateBranch(branch) {
 }
 
 /* ── Proyecto Factory ── */
-function createProyecto(name = 'Nuevo Proyecto') {
+function createProyecto(name = 'Nuevo Proyecto', brandId = 'farmatuya') {
   return {
     id: uid('proj'),
     name,
+    brandId,
     isFranchise: true,
     logo: null,
     totalCapital: 2000000,
     corporateReserve: 200000,
     corporateExpenses: 0,
-    partners: [
-      { id: 'p1', name: 'Socio 1', capital: 1000000, equity: 0.50 },
-      { id: 'p2', name: 'Socio 2', capital: 1000000, equity: 0.50 }
-    ],
     branches: [
       createBranch('super', 'Sucursal 1', 'Col. Centro')
     ],
@@ -105,6 +106,11 @@ function createEmpresa(name = 'Mi Empresa') {
     id: uid('emp'),
     name,
     logo: null,
+    capitalInicial: 2000000,
+    socios: [
+      { id: 'p1', name: 'Socio 1', capitalAportado: 1000000, porcentajeAcciones: 0.50 },
+      { id: 'p2', name: 'Socio 2', capitalAportado: 1000000, porcentajeAcciones: 0.50 }
+    ],
     createdAt: new Date().toISOString(),
     proyectos: [
       createProyecto('Proyecto 1')
@@ -118,36 +124,62 @@ function createDefaultWorkspace() {
   emp.proyectos[0].name = 'FarmaTuya';
   return {
     id: uid('bw2'),
+    user: { id: uid('usr'), name: 'Usuario Nuevo', preferences: { theme: 'light', defaultCurrency: 'MXN' } },
     empresas: [emp],
     activeEmpresaId: emp.id,
-    activeProyectoId: emp.proyectos[0].id
+    activeProyectoId: emp.proyectos[0].id,
+    activeSucursalId: null
   };
 }
 
 /* ── Migration from legacy single-empresa ── */
 function migrateFromLegacy(legacy) {
+  // Legacy partners migrate to Empresa socios
+  const mappedSocios = (legacy.partners || []).map(p => ({
+    id: p.id,
+    nombre: p.name,
+    capitalAportado: p.capital || 0,
+    porcentajeAcciones: p.equity || 0
+  }));
+  if (mappedSocios.length === 0) {
+     mappedSocios.push({ id: 'p1', nombre: 'Benjamin', capitalAportado: legacy.totalCapital || 2000000, porcentajeAcciones: 1.0 });
+  }
+
+  // Ensure branches have the new schema fields
+  const safeBranches = (legacy.branches || []).map(b => {
+     if (!b.formatId) b.formatId = b.format || 'super';
+     if (!b.modeloId) b.modeloId = `FT-${(b.format || 'super').toUpperCase()}`;
+     if (!b.modeloVersion) b.modeloVersion = 'v8.0';
+     if (!b.auditStatus) b.auditStatus = 'reconciled';
+     return b;
+  });
+
   const emp = {
     id: legacy.id || uid('emp'),
-    name: legacy.name || 'Mi Empresa',
+    nombre: legacy.name || 'Mi Empresa', // Using 'nombre' for Empresa matching new schema
     logo: null,
+    capitalInicial: legacy.totalCapital || 2000000,
+    socios: mappedSocios,
     createdAt: new Date().toISOString(),
     proyectos: [{
       id: uid('proj'),
-      name: legacy.projectName || 'FarmaTuya',
+      nombre: legacy.projectName || 'FarmaTuya', // Changed to nombre
+      brandId: 'farmatuya',
       isFranchise: true,
       totalCapital: legacy.totalCapital || 2000000,
       corporateReserve: legacy.corporateReserve || 200000,
       corporateExpenses: legacy.corporateExpenses || 0,
-      partners: legacy.partners || [],
-      branches: legacy.branches || [],
+      branches: safeBranches,
       createdAt: new Date().toISOString()
     }]
   };
   return {
     id: uid('bw2'),
+    user: { id: uid('usr'), name: 'Benjamin', preferences: { theme: 'light', defaultCurrency: 'MXN' } },
     empresas: [emp],
     activeEmpresaId: emp.id,
-    activeProyectoId: emp.proyectos[0].id
+    activeProyectoId: emp.proyectos[0].id,
+    activeSucursalId: safeBranches.length > 0 ? safeBranches[0].id : null
   };
 }
 
@@ -254,9 +286,9 @@ export function setActiveEmpresa(empresaId) {
   }
 }
 
-export function addEmpresa(name) {
+export function addEmpresa(nombre) {
   const ws = _load();
-  const emp = createEmpresa(name);
+  const emp = createEmpresa(nombre);
   ws.empresas.push(emp);
   _save();
   return emp;
@@ -265,7 +297,7 @@ export function addEmpresa(name) {
 export function updateEmpresaData(empresaId, updates) {
   const emp = getEmpresaById(empresaId);
   if (emp) {
-    if (updates.name !== undefined) emp.name = updates.name;
+    if (updates.nombre !== undefined) emp.nombre = updates.nombre;
     if (updates.logo !== undefined) emp.logo = updates.logo;
     _save();
   }
@@ -276,7 +308,8 @@ export function removeEmpresa(empresaId) {
   ws.empresas = ws.empresas.filter(e => e.id !== empresaId);
   if (ws.activeEmpresaId === empresaId) {
     ws.activeEmpresaId = ws.empresas[0]?.id || null;
-    ws.activeProyectoId = ws.empresas[0]?.proyectos[0]?.id || null;
+    ws.activeProyectoId = ws.empresas[0]?.proyectos?.[0]?.id || null;
+    ws.activeSucursalId = null;
   }
   _save();
 }
@@ -307,10 +340,10 @@ export function setActiveProyecto(empresaId, proyectoId) {
   _save();
 }
 
-export function addProyecto(empresaId, name) {
+export function addProyecto(empresaId, nombre) {
   const emp = getEmpresaById(empresaId);
   if (!emp) return null;
-  const proj = createProyecto(name);
+  const proj = createProyecto(nombre);
   emp.proyectos.push(proj);
   _save();
   return proj;
@@ -319,7 +352,7 @@ export function addProyecto(empresaId, name) {
 export function updateProyecto(empresaId, proyectoId, updates) {
   const proj = getProyectoById(empresaId, proyectoId);
   if (proj) {
-    if (updates.name !== undefined) proj.name = updates.name;
+    if (updates.nombre !== undefined) proj.nombre = updates.nombre;
     if (updates.isFranchise !== undefined) proj.isFranchise = updates.isFranchise;
     if (updates.logo !== undefined) proj.logo = updates.logo;
     if (updates.totalCapital !== undefined) proj.totalCapital = updates.totalCapital;
@@ -336,6 +369,7 @@ export function removeProyecto(empresaId, proyectoId) {
   const ws = _load();
   if (ws.activeProyectoId === proyectoId) {
     ws.activeProyectoId = emp.proyectos[0]?.id || null;
+    ws.activeSucursalId = null;
   }
   _save();
 }
@@ -343,7 +377,11 @@ export function removeProyecto(empresaId, proyectoId) {
 /* ══════════ BACKWARD-COMPATIBLE API ══════════ */
 /* getEmpresa() returns the active proyecto — same shape as old empresa */
 export function getEmpresa() {
-  return getActiveProyecto();
+  const proj = getActiveProyecto();
+  const emp = getActiveEmpresa();
+  if (!proj || !emp) return null;
+  // Inject parent's socios as partners to prevent UI from crashing until Phase 2 is finished
+  return { ...proj, partners: emp.socios || [] };
 }
 
 export function updateEmpresa(updates) {
@@ -364,28 +402,29 @@ export function resetEmpresa() {
   _save();
 }
 
-/* ── Partners (on active proyecto) ── */
-export function addPartner(name, capital, equity) {
-  const proj = getActiveProyecto();
-  if (!proj) return;
-  proj.partners.push({
+/* ── Partners (ahora en Empresa activa) ── */
+export function addPartner(nombre, capitalAportado, porcentajeAcciones) {
+  const emp = getActiveEmpresa();
+  if (!emp) return;
+  if (!emp.socios) emp.socios = [];
+  emp.socios.push({
     id: uid('p'),
-    name, capital, equity
+    nombre, capitalAportado, porcentajeAcciones
   });
   _save();
 }
 
 export function updatePartner(partnerId, updates) {
-  const proj = getActiveProyecto();
-  if (!proj) return;
-  const p = proj.partners.find(p => p.id === partnerId);
+  const emp = getActiveEmpresa();
+  if (!emp || !emp.socios) return;
+  const p = emp.socios.find(s => s.id === partnerId);
   if (p) { Object.assign(p, updates); _save(); }
 }
 
 export function removePartner(partnerId) {
-  const proj = getActiveProyecto();
-  if (!proj) return;
-  proj.partners = proj.partners.filter(p => p.id !== partnerId);
+  const emp = getActiveEmpresa();
+  if (!emp || !emp.socios) return;
+  emp.socios = emp.socios.filter(s => s.id !== partnerId);
   _save();
 }
 
@@ -449,6 +488,10 @@ export function removeBranch(branchId) {
   const proj = getActiveProyecto();
   if (!proj) return;
   proj.branches = proj.branches.filter(b => b.id !== branchId);
+  const ws = _load();
+  if (ws.activeSucursalId === branchId) {
+    ws.activeSucursalId = null;
+  }
   _save();
 }
 

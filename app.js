@@ -63,10 +63,10 @@ function resizeImageToDataURL(file, maxSize = 256) {
   });
 }
 
-Chart.defaults.color='#6B7280';
+Chart.defaults.color='#374151';
 Chart.defaults.font.family="'Inter',-apple-system,sans-serif";
 Chart.defaults.font.size=11;
-Chart.defaults.font.weight=500;
+Chart.defaults.font.weight=600;
 Chart.defaults.plugins.legend.labels.boxWidth=12;
 Chart.defaults.plugins.legend.labels.padding=16;
 Chart.defaults.plugins.legend.labels.usePointStyle=true;
@@ -79,7 +79,7 @@ Chart.defaults.elements.point.radius=0;
 Chart.defaults.elements.point.hoverRadius=5;
 Chart.defaults.elements.point.hoverBorderWidth=2;
 // Scale defaults — merge, don't replace
-Object.assign(Chart.defaults.scale.grid, {color:'rgba(0,0,0,0.04)', drawBorder:false});
+Object.assign(Chart.defaults.scale.grid, {color:'rgba(0,0,0,0.07)', drawBorder:false});
 if(Chart.defaults.scale.border) Object.assign(Chart.defaults.scale.border, {display:false});
 // Tooltip — merge into existing defaults (replacing entire object breaks Chart.js)
 Object.assign(Chart.defaults.plugins.tooltip, {
@@ -856,6 +856,10 @@ function showBW2Modal(type, empId, projId){
       <label>Nombre de la Empresa</label>
       <input type="text" id="bw2-input-name" class="input-text" placeholder="Ej: Mi Empresa S.A. de C.V." autofocus>
     </div>
+    <div class="bw2-form-group">
+      <label>Capital Inicial ($)</label>
+      <input type="number" id="bw2-input-capital" class="input-text" value="2000000" step="100000">
+    </div>
     ${logoField('Logo de la Empresa', null)}`;
     submitLabel='Crear Empresa';
   } else if(type==='editar-empresa'){
@@ -863,7 +867,11 @@ function showBW2Modal(type, empId, projId){
     title='Editar Empresa';
     fields=`<div class="bw2-form-group">
       <label>Nombre de la Empresa</label>
-      <input type="text" id="bw2-input-name" class="input-text" value="${emp?.name||''}" autofocus>
+      <input type="text" id="bw2-input-name" class="input-text" value="${emp?.nombre||emp?.name||''}" autofocus>
+    </div>
+    <div class="bw2-form-group">
+      <label>Capital Inicial ($)</label>
+      <input type="number" id="bw2-input-capital" class="input-text" value="${emp?.capitalInicial||2000000}" step="100000">
     </div>
     ${logoField('Logo de la Empresa', emp?.logo || null)}`;
   } else if(type==='crear-proyecto'){
@@ -891,7 +899,7 @@ function showBW2Modal(type, empId, projId){
     title='Editar Proyecto';
     fields=`<div class="bw2-form-group">
       <label>Nombre del Proyecto</label>
-      <input type="text" id="bw2-input-name" class="input-text" value="${proj?.name||''}" autofocus>
+      <input type="text" id="bw2-input-name" class="input-text" value="${proj?.nombre||proj?.name||''}" autofocus>
     </div>
     <div class="bw2-form-group">
       <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
@@ -988,11 +996,13 @@ function showBW2Modal(type, empId, projId){
     if(nameVal.length > 100){showToast('El nombre es demasiado largo (máx 100 caracteres)','error');return;}
 
     if(type==='crear-empresa'){
+      const cap = parseFloat($('bw2-input-capital')?.value)||2000000;
       const newEmp = addEmpresa(nameVal);
-      if(pendingLogoDataURL) updateEmpresaData(newEmp.id, {logo: pendingLogoDataURL});
+      if(pendingLogoDataURL || cap !== 2000000) updateEmpresaData(newEmp.id, {logo: pendingLogoDataURL, capitalInicial: cap});
       showToast(`Empresa "${nameVal}" creada`,'success');
     } else if(type==='editar-empresa'){
-      updateEmpresaData(empId, {name:nameVal, logo: pendingLogoDataURL});
+      const cap = parseFloat($('bw2-input-capital')?.value)||2000000;
+      updateEmpresaData(empId, {nombre:nameVal, logo: pendingLogoDataURL, capitalInicial: cap});
       showToast('Empresa actualizada','success');
     } else if(type==='crear-proyecto'){
       const cap = parseFloat($('bw2-input-capital')?.value)||2000000;
@@ -1004,12 +1014,16 @@ function showBW2Modal(type, empId, projId){
       }
     } else if(type==='editar-proyecto'){
       const isFranchise = $('bw2-input-franchise') ? $('bw2-input-franchise').checked : true;
-      updateProyecto(empId, projId, {name:nameVal, isFranchise, logo: pendingLogoDataURL});
+      updateProyecto(empId, projId, {nombre:nameVal, isFranchise, logo: pendingLogoDataURL});
       showToast('Proyecto actualizado','success');
     }
 
     overlay.remove();
-    renderBW2Home();
+    if (type === 'crear-empresa' || type === 'editar-empresa') {
+      renderBW2Home();
+    } else {
+      renderCurrentView();
+    }
   };
 
   // Enter key submit
@@ -1044,6 +1058,7 @@ function renderPortfolio(empresa){
 
     // Build action buttons — using data attributes for event delegation (no inline onclick)
     let actionBtns = `<button class="btn-sm" data-action="open" data-bid="${b.id}">📊 Ver</button>`;
+    actionBtns += `<button class="btn-sm" data-action="rename" data-bid="${b.id}">✏️ Renombrar</button>`;
     actionBtns += `<button class="btn-sm" data-action="dup" data-bid="${b.id}">📋 Duplicar</button>`;
 
     if (isPlanned) {
@@ -1079,6 +1094,7 @@ function renderPortfolio(empresa){
     const bid = btn.dataset.bid;
     const action = btn.dataset.action;
     if (action === 'open') window._openBranch(bid);
+    else if (action === 'rename') window._renameBranch(bid);
     else if (action === 'dup') window._dupBranch(bid);
     else if (action === 'activate') window._activateBranch(bid);
     else if (action === 'delete') window._deleteBranch(bid);
@@ -1091,6 +1107,40 @@ function renderPortfolio(empresa){
 window._openBranch = (id)=>{ const b=getBranch(id); state.view='branch'; state.activeBranchId=id; state.activeTab='resultados'; state.branchOverrides={}; renderCurrentView(); };
 window._activateBranch = (id)=>{ activateBranch(id); };
 window._restoreBranch = (id)=>{ restoreBranch(id); };
+window._renameBranch = (id)=>{
+  const b = getBranch(id);
+  if(!b) return;
+  // Use the BW2 modal system for consistent UX
+  const old = document.querySelector('.bw2-modal-overlay:not([id])');
+  if(old) old.remove();
+  const overlay = document.createElement('div');
+  overlay.className='bw2-modal-overlay';
+  overlay.innerHTML=`<div class="bw2-modal">
+    <div class="bw2-modal-header"><h3>Renombrar Sucursal</h3><button class="bw2-modal-close">✕</button></div>
+    <div class="bw2-modal-body">
+      <div class="bw2-form-group"><label>Nombre de la Sucursal</label>
+      <input type="text" id="bw2-input-branch-name" class="input-text" value="${esc(b.name)}" autofocus></div>
+    </div>
+    <div class="bw2-modal-footer">
+      <button class="btn-secondary bw2-modal-cancel">Cancelar</button>
+      <button class="btn-primary bw2-modal-submit">Guardar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(()=>{const inp=document.getElementById('bw2-input-branch-name');if(inp){inp.focus();inp.select();}},100);
+  overlay.querySelector('.bw2-modal-close').onclick=()=>overlay.remove();
+  overlay.querySelector('.bw2-modal-cancel').onclick=()=>overlay.remove();
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  overlay.querySelector('.bw2-modal-submit').onclick=()=>{
+    const newName = document.getElementById('bw2-input-branch-name')?.value.trim();
+    if(!newName){showToast('El nombre es requerido','error');return;}
+    updateBranch(id, {name: newName});
+    showToast(`Sucursal renombrada: "${newName}"`,'success');
+    overlay.remove();
+    renderCurrentView();
+  };
+  overlay.addEventListener('keydown',e=>{if(e.key==='Enter')overlay.querySelector('.bw2-modal-submit').click();});
+};
 
 /* ── Custom confirm modal (replaces native confirm) ── */
 function showConfirm(title, bodyHtml, dangerLabel, onConfirm) {
@@ -1137,7 +1187,11 @@ window._deleteBranch = (id)=>{
     '🗑 Eliminar definitivamente',
     () => {
       removeBranch(id);
-      if (state.activeBranchId === id) { state.view = 'portfolio'; state.activeBranchId = null; }
+      if (state.activeBranchId === id) { 
+        state.view = 'empresa-dashboard'; 
+        state.activeBranchId = null; 
+      }
+      renderCurrentView();
     }
   );
 };
@@ -1154,24 +1208,23 @@ function updateNav() {
   const nav = $('main-nav');
   if (!nav) return;
 
-  const empresa = getEmpresa();
-  const activeEmp = getActiveEmpresa();
   const isHome = state.view === 'bw2home';
   const isEmpresaDash = state.view === 'empresa-dashboard';
   const isBranch = state.view === 'branch' && state.activeBranchId;
   const branch = isBranch ? getBranch(state.activeBranchId) : null;
+  const activeEmp = getActiveEmpresa();
 
   nav.className = '';
   let html = '';
 
+  nav.style.display = 'flex';
+
   if (isHome) {
-    // Level 1: Home — minimal sidebar for consistency
-    nav.style.display = 'flex';
-    html += `<div class="nav-section">Panel de Control</div>`;
-    html += `<button class="nav-btn active"><span class="nav-icon">🏢</span><span class="nav-text">Empresas</span></button>`;
-    html += `<div class="nav-divider"></div>`;
+    // Level 1: Home (Workspace)
+    html += `<div class="nav-section">Mi Workspace</div>`;
+    html += `<button class="nav-btn active"><span class="nav-icon">🏢</span><span class="nav-text">Mis Empresas</span></button>`;
     html += `<div class="nav-spacer"></div>`;
-    html += `<button class="nav-btn" id="nav-open-profile"><span class="nav-icon">👤</span><span class="nav-text">Mi Perfil</span></button>`;
+    html += `<button class="nav-btn" id="nav-open-profile"><span class="nav-icon">👤</span><span class="nav-text">Perfil</span></button>`;
     nav.innerHTML = html;
     const profBtn = nav.querySelector('#nav-open-profile');
     if(profBtn) profBtn.addEventListener('click', () => {
@@ -1181,91 +1234,66 @@ function updateNav() {
     return;
   }
 
-  nav.style.display = 'flex';
-
   if (isEmpresaDash) {
-    // Level 2: Empresa Dashboard
-    html += `<button class="nav-back" id="nav-back-home"><span class="nav-icon">🏠</span><span class="nav-text">Home</span></button>`;
-    html += `<div class="nav-divider"></div>`;
-    html += `<div class="nav-section">Empresa</div>`;
+    // Level 2: Empresa
+    html += `<div class="nav-section">Portafolio</div>`;
     html += `<button class="nav-btn active"><span class="nav-icon">📁</span><span class="nav-text">Proyectos</span></button>`;
     html += `<div class="nav-divider"></div>`;
-    html += `<div class="nav-section">Configuración</div>`;
-    html += `<button class="nav-btn" data-action="empresa-settings"><span class="nav-icon">⚙️</span><span class="nav-text">Sociedad y Socios</span></button>`;
+    html += `<div class="nav-section">Corporativo</div>`;
+    html += `<button class="nav-btn" data-action="empresa-settings"><span class="nav-icon">⚖️</span><span class="nav-text">Sociedad y Configuración</span></button>`;
     html += `<div class="nav-spacer"></div>`;
     html += `<button class="btn-add" id="btn-add-proyecto-nav"><span class="nav-icon">+</span> <span class="nav-text">Nuevo Proyecto</span></button>`;
   } else if (isBranch && branch) {
-    // Level 4: Inside a Branch — sidebar = tabs only (navigation handled by breadcrumb)
-    html += `<div class="nav-section">Sucursal</div>`;
-    html += `<button class="nav-btn ${state.activeTab === 'resultados' ? 'active' : ''}" data-branch-tab="resultados"><span class="nav-icon">📈</span><span class="nav-text">Resultados</span></button>`;
-    html += `<button class="nav-btn ${state.activeTab === 'config' ? 'active' : ''}" data-branch-tab="config"><span class="nav-icon">⚙️</span><span class="nav-text">Configuración</span></button>`;
+    // Level 4: Branch Details
+    html += `<div class="nav-section">Análisis Operativo</div>`;
+    html += `<button class="nav-btn ${state.activeTab === 'resultados' ? 'active' : ''}" data-branch-tab="resultados"><span class="nav-icon">📈</span><span class="nav-text">Estado de Resultados</span></button>`;
+    html += `<button class="nav-btn ${state.activeTab === 'marketing' ? 'active' : ''}" data-branch-tab="marketing"><span class="nav-icon">🚀</span><span class="nav-text">Growth & Marketing</span></button>`;
+    html += `<button class="nav-btn ${state.activeTab === 'config' ? 'active' : ''}" data-branch-tab="config"><span class="nav-icon">⚙️</span><span class="nav-text">Configuración Capex</span></button>`;
     html += `<button class="nav-btn ${state.activeTab === 'socioeconomico' ? 'active' : ''}" data-branch-tab="socioeconomico"><span class="nav-icon">🗺</span><span class="nav-text">Estudio de Mercado</span></button>`;
-    html += `<div class="nav-divider"></div>`;
-    html += `<div class="nav-spacer"></div>`;
-    html += `<button class="btn-add" id="nav-export-pdf" style="background:var(--surface);color:var(--text-2);box-shadow:var(--shadow-neu-sm)"><span class="nav-icon">📄</span><span class="nav-text">Exportar PDF</span></button>`;
+    html += `<div style="margin-top:auto;border-top:1px solid var(--border);padding-top:1rem">`;
+    html += `<button class="btn-add" id="nav-export-pdf" style="width:100%;box-sizing:border-box;justify-content:flex-start;background:var(--surface);color:var(--text-2);box-shadow:var(--shadow-card)"><span class="nav-icon">📄</span><span class="nav-text">Generar Reporte PDF</span></button>`;
+    html += `</div>`;
   } else {
-    // Level 3: Inside a Project
-    html += `<button class="nav-back" id="nav-back-empresa"><span class="nav-icon">←</span><span class="nav-text">Empresa</span></button>`;
-    html += `<div class="nav-divider"></div>`;
-    html += `<div class="nav-section">Proyecto</div>`;
-    html += `<button class="nav-btn ${state.view === 'portfolio' ? 'active' : ''}" data-view="portfolio"><span class="nav-icon">📁</span><span class="nav-text">Sucursales</span></button>`;
-    html += `<button class="nav-btn ${state.view === 'consolidated' ? 'active' : ''}" data-view="consolidated"><span class="nav-icon">📊</span><span class="nav-text">Consolidado</span></button>`;
-    html += `<button class="nav-btn ${state.view === 'comparador' ? 'active' : ''}" data-view="comparador"><span class="nav-icon">⚖️</span><span class="nav-text">Comparar</span></button>`;
-    html += `<div class="nav-divider"></div>`;
-    html += `<div class="nav-section">Configuración</div>`;
-    html += `<button class="nav-btn ${state.view === 'empresa' ? 'active' : ''}" data-view="empresa"><span class="nav-icon">⚙️</span><span class="nav-text">Sociedad y Socios</span></button>`;
+    // Level 3: Project Portfolio
+    html += `<div class="nav-section">Unidades de Negocio</div>`;
+    html += `<button class="nav-btn ${state.view === 'portfolio' ? 'active' : ''}" data-view="portfolio"><span class="nav-icon">📍</span><span class="nav-text">Sucursales</span></button>`;
+    html += `<button class="nav-btn ${state.view === 'consolidated' ? 'active' : ''}" data-view="consolidated"><span class="nav-icon">📊</span><span class="nav-text">P&L Consolidado</span></button>`;
+    html += `<button class="nav-btn ${state.view === 'comparador' ? 'active' : ''}" data-view="comparador"><span class="nav-icon">⚖️</span><span class="nav-text">Comparar Red</span></button>`;
     html += `<div class="nav-spacer"></div>`;
-    html += `<button class="btn-add" id="btn-add-branch"><span class="nav-icon">+</span> <span class="nav-text">Nueva Sucursal</span></button>`;
+    html += `<button class="btn-add" id="btn-add-branch"><span class="nav-icon">+</span> <span class="nav-text">Nueva Unidad</span></button>`;
   }
 
   nav.innerHTML = html;
 
   // Wire up events
-  // Home button (available at empresa level)
-  const homeBtn = nav.querySelector('#nav-back-home');
-  if (homeBtn) homeBtn.addEventListener('click', () => {
-    state.view = 'bw2home'; state.activeBranchId = null; renderCurrentView();
-  });
-
   if (isEmpresaDash) {
-    // Empresa-level buttons
     const settingsBtn = nav.querySelector('[data-action="empresa-settings"]');
     if (settingsBtn && activeEmp) {
       settingsBtn.addEventListener('click', () => {
-        // Set the first project as active to access settings
         if(activeEmp.proyectos.length) {
           setActiveProyecto(activeEmp.id, activeEmp.proyectos[0].id);
         }
-        state.view = 'empresa';
+        state.view = 'empresa'; // the UI view for society settings
         renderCurrentView();
       });
     }
     const addProjBtn = nav.querySelector('#btn-add-proyecto-nav');
     if (addProjBtn && activeEmp) {
-      addProjBtn.addEventListener('click', () => {
-        showBW2Modal('crear-proyecto', activeEmp.id);
-      });
+      addProjBtn.addEventListener('click', () => showBW2Modal('crear-proyecto', activeEmp.id));
     }
   } else if (isBranch) {
-    // Branch tab buttons
     nav.querySelectorAll('[data-branch-tab]').forEach(btn => {
       btn.addEventListener('click', () => {
         switchBranchTab(btn.dataset.branchTab);
         updateNav();
       });
     });
-    // PDF export
     const pdfBtn = nav.querySelector('#nav-export-pdf');
     if (pdfBtn) pdfBtn.addEventListener('click', () => {
       const mainPdfBtn = $('btn-export-pdf');
       if (mainPdfBtn) mainPdfBtn.click();
     });
   } else {
-    // Back to empresa
-    const backEmpBtn = nav.querySelector('#nav-back-empresa');
-    if (backEmpBtn) backEmpBtn.addEventListener('click', () => {
-      state.view = 'empresa-dashboard'; state.activeBranchId = null; renderCurrentView();
-    });
     // Project-level nav buttons
     nav.querySelectorAll('[data-view]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1286,66 +1314,56 @@ function updateBreadcrumb() {
   if (!bc) return;
 
   const isHome = state.view === 'bw2home';
-  const isEmpresaDash = state.view === 'empresa-dashboard';
-
   if (isHome) { bc.innerHTML = ''; return; }
 
   const emp = getActiveEmpresa();
   const proy = getActiveProyecto();
-  const empresa = getEmpresa();
   const isBranch = state.view === 'branch' && state.activeBranchId;
   const branch = isBranch ? getBranch(state.activeBranchId) : null;
 
   let crumbs = [];
 
-  // Empresa name (always first, clickable → empresa-dashboard)
+  // Home Link
+  crumbs.push({ label: 'Mis Empresas', action: 'bw2home' });
+
+  // Level 2: Empresa
   if (emp) {
     crumbs.push({ label: emp.name || 'Empresa', action: 'empresa-dashboard' });
   }
 
-  if (isEmpresaDash) {
-    // Level 2: Just show empresa name — no redundant "Proyectos"
-  } else {
-    // Proyecto name (clickable → portfolio)
-    if (proy) {
-      crumbs.push({ label: proy.name || 'Proyecto', action: 'portfolio' });
-    }
-    // Current view / branch
-    if (isBranch && branch) {
-      crumbs.push({ label: branch.name || 'Sucursal', action: null });
-    } else {
-      const viewLabels = {
-        portfolio: 'Sucursales', consolidated: 'Consolidado',
-        comparador: 'Comparar', empresa: 'Ajustes'
-      };
-      if (viewLabels[state.view]) {
-        crumbs.push({ label: viewLabels[state.view], action: null });
-      }
+  // Level 3: Proyecto
+  if (state.view !== 'empresa-dashboard' && proy) {
+    crumbs.push({ label: proy.name || 'Proyecto', action: 'portfolio' });
+  }
+
+  // Level 4: Current Entity (Branch or Settings view)
+  if (isBranch && branch) {
+    crumbs.push({ label: branch.name || 'Sucursal', action: null });
+  } else if (state.view !== 'empresa-dashboard' && state.view !== 'portfolio' && proy) {
+    const viewLabels = {
+      consolidated: 'Consolidado', comparador: 'Comparar', empresa: 'Sociedad y Socios'
+    };
+    if (viewLabels[state.view]) {
+      crumbs.push({ label: viewLabels[state.view], action: null });
     }
   }
 
   bc.innerHTML = crumbs.map((c, i) => {
     const isLast = i === crumbs.length - 1;
-    const sep = i > 0 ? '<span class="breadcrumb-sep">›</span>' : '';
-    if (isLast && isBranch && branch && empresa?.branches) {
-      // Lateral sucursal dropdown in breadcrumb
-      const options = empresa.branches
-        .filter(s => s.status !== 'archived')
-        .map(s => `<option value="${s.id}" ${s.id===state.activeBranchId?'selected':''}>${esc(s.name)}</option>`)
-        .join('');
-      return `${sep}<select class="breadcrumb-select" id="bc-branch-select">${options}</select>`;
-    }
+    const sep = i > 0 ? '<span class="breadcrumb-sep" style="margin:0 8px;color:var(--text-3)">/</span>' : '';
     if (isLast) {
-      return `${sep}<span class="breadcrumb-item current">${esc(c.label)}</span>`;
+      return `${sep}<span class="breadcrumb-item current" style="font-weight:700;color:var(--text-1)">${esc(c.label)}</span>`;
     }
-    return `${sep}<button class="breadcrumb-item" data-bc-action="${c.action}">${esc(c.label)}</button>`;
+    return `${sep}<button class="breadcrumb-item" data-bc-action="${c.action}" style="background:transparent;border:none;color:var(--text-2);cursor:pointer;font-family:inherit;font-size:inherit;padding:0;transition:color 0.2s" onmouseover="this.style.color='var(--text-1)'" onmouseout="this.style.color='var(--text-2)'">${esc(c.label)}</button>`;
   }).join('');
 
   // Wire breadcrumb clicks
   bc.querySelectorAll('[data-bc-action]').forEach(btn => {
     btn.addEventListener('click', () => {
       const action = btn.dataset.bcAction;
-      if (action === 'empresa-dashboard') {
+      if (action === 'bw2home') {
+        state.view = 'bw2home'; state.activeEmpresaId = null; state.activeProyectoId = null; state.activeBranchId = null;
+      } else if (action === 'empresa-dashboard') {
         state.view = 'empresa-dashboard'; state.activeBranchId = null;
       } else if (action === 'portfolio') {
         state.view = 'portfolio'; state.activeBranchId = null;
@@ -1353,15 +1371,6 @@ function updateBreadcrumb() {
       renderCurrentView();
     });
   });
-  // Wire lateral sucursal dropdown
-  const bcSelect = $('bc-branch-select');
-  if (bcSelect) {
-    bcSelect.addEventListener('change', () => {
-      state.activeBranchId = bcSelect.value;
-      state.activeTab = 'resultados';
-      renderCurrentView();
-    });
-  }
 }
 
 /* ── Switch branch tab from sidebar ── */
@@ -1375,6 +1384,26 @@ function switchBranchTab(tabName) {
     if (b.dataset.branchTab === tabName) b.classList.add('active');
     else b.classList.remove('active');
   });
+  // When switching to socioeconomico tab, fix/init the Leaflet map
+  if (tabName === 'socioeconomico') {
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        if (window._pendingMapData && !locMap) {
+          const { study, c, s } = window._pendingMapData;
+          _renderLeafletMap(study, c, s);
+        } else if (locMap) {
+          const container = document.getElementById('loc-map');
+          if (container) {
+            const rect = container.getBoundingClientRect();
+            if (rect.width > 0 && locMap._size && Math.abs(rect.width - locMap._size.x) > 10) {
+              locMap.invalidateSize({animate:false});
+              locMap.setView(locMap.getCenter(), locMap.getZoom(), {reset:true, animate:false});
+            }
+          }
+        }
+      }, 100);
+    });
+  }
 }
 
 /* ─── GEOCODING AUTOCOMPLETE HELPER (Google Places + Nominatim fallback) ─── */
@@ -1697,6 +1726,17 @@ function renderBranchDetail(empresa){
   const currentPreOpen = String(branch.overrides?.preOpenMonths || 0);
   const timelineSel = $('branch-timeline-select'); if(timelineSel) timelineSel.value = currentPreOpen;
 
+  // --- INJECT GROWTH & MARKETING ---
+  const caf = branch.overrides?.caf || {};
+  const mkt = branch.overrides?.marketing || {};
+  if($('mkt-caf-consultas')) $('mkt-caf-consultas').value = caf.consultas || 0;
+  if($('mkt-caf-conversion')) $('mkt-caf-conversion').value = Math.round((caf.conversion || 0.40)*100);
+  if($('mkt-caf-ticket')) $('mkt-caf-ticket').value = caf.ticket || 350;
+  if($('mkt-seo')) $('mkt-seo').value = mkt.seoLocal || 0;
+  if($('mkt-ads')) $('mkt-ads').value = mkt.ads || 0;
+  if($('mkt-cofepris')) $('mkt-cofepris').value = mkt.cofepris || 0;
+  if($('mkt-loyalty-toggle')) $('mkt-loyalty-toggle').checked = mkt.loyalty || false;
+
   updateBranchKPIBar(r);
   renderMarketStudyPanel(branch);
   renderBranchResumen(r);
@@ -1733,6 +1773,34 @@ document.addEventListener('DOMContentLoaded',()=>{
       btn.classList.add('active');
     });
   });
+  
+  // --- GROWTH & MARKETING LISTENERS ---
+  const updateMarketing = () => {
+    if (!state.activeBranchId) return;
+    const branch = getBranch(state.activeBranchId);
+    if (!branch) return;
+    const rawConv = parseInt($('mkt-caf-conversion')?.value || 0);
+    const cafObj = {
+      consultas: parseInt($('mkt-caf-consultas')?.value || 0),
+      conversion: (isNaN(rawConv) ? 0 : rawConv) / 100,
+      ticket: parseInt($('mkt-caf-ticket')?.value || 350)
+    };
+    const mktObj = {
+      seoLocal: parseInt($('mkt-seo')?.value || 0),
+      ads: parseInt($('mkt-ads')?.value || 0),
+      cofepris: parseInt($('mkt-cofepris')?.value || 0),
+      loyalty: $('mkt-loyalty-toggle')?.checked || false
+    };
+    updateBranchOverrides(state.activeBranchId, { caf: cafObj, marketing: mktObj });
+    renderCurrentView();
+  };
+  ['mkt-caf-consultas','mkt-caf-conversion','mkt-caf-ticket','mkt-seo','mkt-ads','mkt-cofepris'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('focusout', updateMarketing);
+    if (el) el.addEventListener('keyup', (e) => { if (e.key === 'Enter') { el.blur(); } });
+  });
+  if($('mkt-loyalty-toggle')) $('mkt-loyalty-toggle').addEventListener('change', updateMarketing);
+
   // P&L Tabs
   document.querySelectorAll('#branch-pnl-tabs-header .tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2713,6 +2781,55 @@ async function renderLocationResults(study) {
     kc('Tráfico', apiOk ? (s.trafficGenerators ? Object.values(s.trafficGenerators).reduce((a,b)=>a+b,0) : 0) : '—', apiOk ? 'generadores' : 'Sin dato', apiOk ? sc(s.factors?.traffic?.score || 0) : 'warning'),
   ].join('');
 
+  // ── CONFIDENCE & INSIGHTS ──
+  const insightsContainer = $('loc-insights-container');
+  if (insightsContainer) {
+      const hasInsights = s.explicability && s.explicability.length > 0;
+      const hasConfidence = s.confidence !== undefined;
+
+      if (hasInsights || hasConfidence) {
+        insightsContainer.style.display = 'block';
+        let confidenceHtml = '';
+        if (hasConfidence) {
+           const confColor = s.confidence >= 80 ? 'var(--success)' : s.confidence >= 50 ? '#ca8a04' : 'var(--danger)';
+           confidenceHtml = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border)">
+             <span style="font-weight:600; font-size:0.9rem; color:var(--text-2)">Nivel de Confianza (Data Quality)</span>
+             <span style="font-weight:700; color:${confColor}; font-size:1.1rem">${s.confidence}%</span>
+           </div>`;
+           if (s.confidenceReasons && s.confidenceReasons.length > 0) {
+             confidenceHtml += `<ul style="font-size:0.8rem; color:var(--text-3); margin-bottom:1rem; padding-left:1.2rem; line-height: 1.4">
+               ${s.confidenceReasons.map(r => `<li style="margin-bottom:0.25rem">${r}</li>`).join('')}
+             </ul>`;
+           }
+        }
+        
+        let insightsHtml = '';
+        if (hasInsights) {
+          insightsHtml = s.explicability.map(ins => {
+             const bg = ins.type === 'danger' ? 'rgba(239, 68, 68, 0.08)' : ins.type === 'warning' ? 'rgba(245, 158, 11, 0.08)' : ins.type === 'success' ? 'rgba(34, 197, 94, 0.08)' : 'rgba(100, 116, 139, 0.08)';
+             const color = ins.type === 'danger' ? 'var(--danger)' : ins.type === 'warning' ? '#ca8a04' : ins.type === 'success' ? 'var(--success)' : 'var(--text-2)';
+             const border = ins.type === 'danger' ? 'border-left: 3px solid var(--danger)' : ins.type === 'warning' ? 'border-left: 3px solid #ca8a04' : ins.type === 'success' ? 'border-left: 3px solid var(--success)' : 'border-left: 3px solid var(--text-3)';
+             return `<div style="padding:0.75rem 1rem; border-radius:0 var(--r-md) var(--r-md) 0; background:${bg}; color:${color}; ${border}; font-size:0.875rem; margin-bottom:0.5rem; line-height:1.4">
+               <strong>${ins.text.split(':')[0]}:</strong>${ins.text.split(':').length > 1 ? ins.text.substring(ins.text.indexOf(':') + 1) : ''}
+             </div>`;
+          }).join('');
+        }
+        
+        insightsContainer.innerHTML = `
+          <div class="neu-card">
+            <h3 class="card-title" style="margin-bottom:1rem">Insights y Análisis IA</h3>
+            ${confidenceHtml}
+            <div style="margin-top:0.75rem">
+              ${insightsHtml}
+            </div>
+          </div>
+        `;
+      } else {
+        insightsContainer.style.display = 'none';
+        insightsContainer.innerHTML = '';
+      }
+  }
+
   // ── RADAR CHART (15 factors) ──
   if (s.factors) {
     const radarCanvas = $('loc-radar-chart');
@@ -2839,6 +2956,8 @@ async function renderLocationResults(study) {
         // ── Google Maps ──
         try {
           const markers = buildStudyMarkers(study);
+          // Defer map init to next frame so container is fully laid out
+          await new Promise(r => requestAnimationFrame(() => setTimeout(r, 50)));
           const gmap = await createGoogleMap(mapContainer, study.coordinates.lat, study.coordinates.lng, {
             zoom: 14,
             markers: markers,
@@ -2847,10 +2966,13 @@ async function renderLocationResults(study) {
           console.log('[BW2] Socioeconomic Google Map rendered ✓');
         } catch (e) {
           console.error('[BW2] Google Map error, falling back to Leaflet:', e);
+          // Defer Leaflet init to ensure container is visible and laid out
+          await new Promise(r => requestAnimationFrame(() => setTimeout(r, 50)));
           _renderLeafletMap(study, c, s);
         }
       } else {
-        // ── Leaflet fallback ──
+        // ── Leaflet fallback — must wait for container to be visible ──
+        await new Promise(r => requestAnimationFrame(() => setTimeout(r, 50)));
         _renderLeafletMap(study, c, s);
       }
     }
@@ -2863,95 +2985,126 @@ async function renderLocationResults(study) {
 /** Leaflet map fallback for when Google Maps is not available */
 function _renderLeafletMap(study, c, s) {
   if (typeof L === 'undefined') return;
-  try {
-    locMap = L.map('loc-map').setView([study.coordinates.lat, study.coordinates.lng], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OSM', maxZoom: 18
-    }).addTo(locMap);
 
-    L.marker([study.coordinates.lat, study.coordinates.lng]).addTo(locMap)
-      .bindPopup(`<b>${study.colonia || study.address}</b><br>${study.municipio || ''}<br>Score: ${s.total}/100`).openPopup();
+  const container = document.getElementById('loc-map');
+  if (!container) return;
 
-    [500, 1000, 2000].forEach((r, i) => {
-      L.circle([study.coordinates.lat, study.coordinates.lng], {
-        radius: r, color: ['#2563eb', '#3b82f6', '#93c5fd'][i],
-        fillOpacity: [0.04, 0.02, 0.01][i], weight: 1.5, dashArray: r > 500 ? '6 4' : null
+  // If container is hidden (in a non-active tab), defer map init
+  if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+    window._pendingMapData = { study, c, s };
+    console.log('[BW2] Map container hidden, deferring init');
+    return;
+  }
+  window._pendingMapData = null; // clear pending since we're initializing now
+
+  function _initMap() {
+    try {
+      if (locMap) { try { locMap.remove(); } catch(e){} locMap = null; }
+      container.innerHTML = '';
+
+      locMap = L.map('loc-map', { zoomControl: true }).setView([study.coordinates.lat, study.coordinates.lng], 14);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OSM', maxZoom: 18
       }).addTo(locMap);
-    });
 
-    const markerGroups = [
-      { data: c.farmacias || [], color: '#dc2626', emoji: '💊', prefix: 'Farmacia' },
-      { data: c.salud || [],     color: '#16a34a', emoji: '🏥', prefix: 'Salud' },
-      { data: c.escuelas || [],  color: '#7c3aed', emoji: '🎓', prefix: 'Escuela' },
-      { data: c.mercados || [],  color: '#ea580c', emoji: '🛒', prefix: 'Mercado' },
-      { data: c.transporte || [],color: '#0284c7', emoji: '🚌', prefix: 'Transporte' },
-      { data: c.bancos || [],    color: '#ca8a04', emoji: '🏦', prefix: 'Banco' },
-    ];
-    markerGroups.forEach(({ data, color, emoji, prefix }) => {
-      data.forEach(p => {
-        if (p.lat) L.circleMarker([p.lat, p.lng], {
-          radius: prefix === 'Farmacia' ? 7 : 5, color, fillColor: color, fillOpacity: 0.7, weight: 1
-        }).addTo(locMap).bindPopup(`${emoji} <b>${p.name}</b><br>${p.type || prefix}${p.chain ? ' · ' + p.chain : ''}${p.distance ? '<br>' + p.distance + 'm' : ''}`);
+      L.marker([study.coordinates.lat, study.coordinates.lng]).addTo(locMap)
+        .bindPopup(`<b>${study.colonia || study.address}</b><br>${study.municipio || ''}<br>Score: ${s.total}/100`).openPopup();
+
+      [500, 1000, 2000].forEach((r, i) => {
+        L.circle([study.coordinates.lat, study.coordinates.lng], {
+          radius: r, color: ['#2563eb', '#3b82f6', '#93c5fd'][i],
+          fillOpacity: [0.04, 0.02, 0.01][i], weight: 1.5, dashArray: r > 500 ? '6 4' : null
+        }).addTo(locMap);
       });
-    });
 
-    setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 100);
-    setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 400);
-    setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 1000);
+      const markerGroups = [
+        { data: c.farmacias || [], color: '#dc2626', emoji: '💊', prefix: 'Farmacia' },
+        { data: c.salud || [],     color: '#16a34a', emoji: '🏥', prefix: 'Salud' },
+        { data: c.escuelas || [],  color: '#7c3aed', emoji: '🎓', prefix: 'Escuela' },
+        { data: c.mercados || [],  color: '#ea580c', emoji: '🛒', prefix: 'Mercado' },
+        { data: c.transporte || [],color: '#0284c7', emoji: '🚌', prefix: 'Transporte' },
+        { data: c.bancos || [],    color: '#ca8a04', emoji: '🏦', prefix: 'Banco' },
+      ];
+      markerGroups.forEach(({ data, color, emoji, prefix }) => {
+        data.forEach(p => {
+          if (p.lat) L.circleMarker([p.lat, p.lng], {
+            radius: prefix === 'Farmacia' ? 7 : 5, color, fillColor: color, fillOpacity: 0.7, weight: 1
+          }).addTo(locMap).bindPopup(`${emoji} <b>${p.name}</b><br>${p.type || prefix}${p.chain ? ' · ' + p.chain : ''}${p.distance ? '<br>' + p.distance + 'm' : ''}`);
+        });
+      });
 
-    // ── Click-to-select location ──
-    locMap.getContainer().style.cursor = 'crosshair';
-    locMap.on('click', async (e) => {
-      if (!state.activeBranchId) return;
-      const { lat, lng } = e.latlng;
-      // Show temporary marker immediately
-      const tmpMarker = L.marker([lat, lng], {
-        icon: L.divIcon({ className: 'map-click-marker', html: '📍', iconSize: [24, 24], iconAnchor: [12, 24] })
-      }).addTo(locMap).bindPopup('⏳ Analizando...').openPopup();
-
-      const statusEl = $('loc-status');
-      const addrInput = $('loc-address-input');
-      if (statusEl) statusEl.innerHTML = '<span class="loc-loading">📍 Reverse geocoding → calculando scores...</span>';
-
-      try {
-        // Reverse geocode via Nominatim
-        const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&accept-language=es`, { headers: { 'User-Agent': 'BW2-Dashboard/1.0' } });
-        const data = await resp.json();
-        const addr = data.address || {};
-        const name = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city_district || data.display_name?.split(',')[0] || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-        const full = data.display_name || name;
-
-        // Update input
-        if (addrInput) addrInput.value = name;
-
-        // Run study with pre-geocoded coords
-        _suppressFullRender = true;
-        updateBranch(state.activeBranchId, { colonia: name, coloniaFull: full });
-        _suppressFullRender = false;
-
-        const result = await runLocationStudy(name, { lat, lng, display_name: full, colonia: name, municipio: addr.city || addr.town || addr.state || '' });
-        updateBranchLocation(state.activeBranchId, result);
-
-        // Re-render
-        const freshBranch = getBranch(state.activeBranchId);
-        if (freshBranch) {
-          renderLocationResults(result);
-          renderMarketStudyPanel(freshBranch);
-          updateMarketIndicators(freshBranch);
+      // Force tile recalculation after layout stabilizes
+      const _lat = study.coordinates.lat, _lng = study.coordinates.lng;
+      const _fixMapSize = () => {
+        if (!locMap) return;
+        const rect = container.getBoundingClientRect();
+        console.log('[BW2] Map fix: container=', rect.width, 'x', rect.height, 'leaflet=', locMap._size?.x, 'x', locMap._size?.y);
+        locMap.invalidateSize({animate:false, pan:false});
+        // Force Leaflet's internal size to match the container
+        if (locMap._size && rect.width > locMap._size.x + 10) {
+          console.log('[BW2] Map size mismatch! Forcing size to', rect.width, 'x', rect.height);
+          locMap._size = L.point(Math.round(rect.width), Math.round(rect.height));
+          locMap._sizeChanged = true;
+          locMap.fire('resize');
         }
+        locMap.setView([_lat, _lng], 14, {reset:true, animate:false});
+      };
+      setTimeout(_fixMapSize, 100);
+      setTimeout(_fixMapSize, 500);
+      setTimeout(_fixMapSize, 1500);
 
-        if (result.errors?.length) {
-          if (statusEl) statusEl.innerHTML = '<span class="loc-warning">⚠️ Estudio parcial: ' + result.errors.map(e => e.error).join('; ') + '</span>';
-        } else {
-          if (statusEl) statusEl.innerHTML = '<span class="loc-success">✅ Estudio completo — ' + new Date(result.lastUpdated).toLocaleString('es-MX') + '</span>';
+      // ── Click-to-select location ──
+      locMap.getContainer().style.cursor = 'crosshair';
+      locMap.on('click', async (e) => {
+        if (!state.activeBranchId) return;
+        const { lat, lng } = e.latlng;
+        const tmpMarker = L.marker([lat, lng], {
+          icon: L.divIcon({ className: 'map-click-marker', html: '📍', iconSize: [24, 24], iconAnchor: [12, 24] })
+        }).addTo(locMap).bindPopup('⏳ Analizando...').openPopup();
+
+        const statusEl = $('loc-status');
+        const addrInput = $('loc-address-input');
+        if (statusEl) statusEl.innerHTML = '<span class="loc-loading">📍 Reverse geocoding → calculando scores...</span>';
+
+        try {
+          const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&accept-language=es`, { headers: { 'User-Agent': 'BW2-Dashboard/1.0' } });
+          const data = await resp.json();
+          const addr = data.address || {};
+          const name = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city_district || data.display_name?.split(',')[0] || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+          const full = data.display_name || name;
+
+          if (addrInput) addrInput.value = name;
+
+          _suppressFullRender = true;
+          updateBranch(state.activeBranchId, { colonia: name, coloniaFull: full });
+          _suppressFullRender = false;
+
+          const result = await runLocationStudy(name, { lat, lng, display_name: full, colonia: name, municipio: addr.city || addr.town || addr.state || '' });
+          updateBranchLocation(state.activeBranchId, result);
+
+          const freshBranch = getBranch(state.activeBranchId);
+          if (freshBranch) {
+            renderLocationResults(result);
+            renderMarketStudyPanel(freshBranch);
+            updateMarketIndicators(freshBranch);
+          }
+
+          if (result.errors?.length) {
+            if (statusEl) statusEl.innerHTML = '<span class="loc-warning">⚠️ Estudio parcial: ' + result.errors.map(e => e.error).join('; ') + '</span>';
+          } else {
+            if (statusEl) statusEl.innerHTML = '<span class="loc-success">✅ Estudio completo — ' + new Date(result.lastUpdated).toLocaleString('es-MX') + '</span>';
+          }
+        } catch (err) {
+          console.error('[BW2] Map click study error:', err);
+          if (statusEl) statusEl.innerHTML = '<span class="loc-error">❌ Error: ' + err.message + '</span>';
+          tmpMarker.setPopupContent('❌ Error').openPopup();
         }
-      } catch (err) {
-        console.error('[BW2] Map click study error:', err);
-        if (statusEl) statusEl.innerHTML = '<span class="loc-error">❌ Error: ' + err.message + '</span>';
-        tmpMarker.setPopupContent('❌ Error').openPopup();
-      }
-    });
-  } catch (e) { console.error('Leaflet map error:', e); }
+      });
+    } catch (e) { console.error('Leaflet map error:', e); }
+  }
+
+  // Container is visible (checked earlier), init immediately  
+  _initMap();
 }
 
 /** Render demographic indicators, nearby detail table, and sources (called from renderLocationResults) */

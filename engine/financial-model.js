@@ -82,11 +82,16 @@ export function runProjection(modelId, overrides={}) {
     totalInv += model.royaltyPromo.upfront5Y || 125000;
   }
 
-  // Partners
-  const partners = overrides.partners || [
+  // Partners (Safely map Spanish data contract to English engine contract)
+  const rawPartners = overrides.partners || [
     {name:'Socio 1',capital:1500000,equity:0.50},
     {name:'Socio 2',capital:1500000,equity:0.50}
   ];
+  const partners = rawPartners.map(p => ({
+    name: p.nombre || p.name,
+    capital: p.capitalAportado !== undefined ? p.capitalAportado : p.capital,
+    equity: p.porcentajeAcciones !== undefined ? p.porcentajeAcciones : p.equity
+  }));
   const totalCapital = partners.reduce((s,p)=>s+p.capital,0);
 
   // Ramp
@@ -114,19 +119,46 @@ export function runProjection(modelId, overrides={}) {
     months.push({ month: m, revenue: 0, cogs: 0, grossProfit: 0, totalFixedCosts: preOpenCost, variableCosts: 0, variableCostsExCogs: 0, ebitda, ebitdaMargin: 0, taxes: 0, netIncome: net, cashFlow: net, cumulativeCashFlow: cumCF, seasonFactor: 1, preOpen: true });
   }
 
+  // Extract Marketing & CAF Levers
+  const mkt = overrides.marketing || {};
+  const seoLocal = mkt.seoLocal || 0;
+  const ads = mkt.ads || 0;
+  const cofepris = mkt.cofepris || 0;
+  const loyaltyActive = mkt.loyalty || false;
+  
+  const caf = overrides.caf || {};
+  const maxConsultas = caf.consultas || 0;
+  const conversionCAF = caf.conversion || 0.40;
+  const ticketCAF = caf.ticket || 350;
+  
   // Operating phase
   for (let i=0; i<horizonMonths; i++) {
     const m = preOpenMonths + i + 1;
     const opMonth = i + 1; // operating month (for ramp/fixed cost calc)
     const season = SEASONALITY[i%12];
-    const revenue = ramp[i] * season;
-    const cfTotal = calcFixedCosts(fcWithRent, opMonth);
+    
+    // Base revenue + CAF revenue (ramped up)
+    let baseRevenue = ramp[i] * season;
+    let cafRevenue = maxConsultas * conversionCAF * ticketCAF * Math.min(1, ramp[i] / (ramp[horizonMonths-1] || 1)) * season;
+    let revenue = baseRevenue + cafRevenue;
+    
+    // Loyalty Boost (+10% sales, but costs 2% of total sales)
+    if (loyaltyActive) revenue *= 1.10;
+    
+    // Fixed Costs + Marketing/Compliance
+    const cfTotal = calcFixedCosts(fcWithRent, opMonth) + seoLocal + ads + cofepris;
+    
     const varRate = calcVarRate(vc, royaltyMode, opMonth);
     const cogs = revenue * vc.cogs;
     const grossProfit = revenue - cogs;
-    const varCostsTotal = revenue * varRate;
+    
+    // Variable costs + Loyalty expense
+    let varCostsTotal = revenue * varRate;
+    if (loyaltyActive) varCostsTotal += (revenue * 0.02);
+    
     const varCostsExCogs = varCostsTotal - cogs;
     const ebitda = grossProfit - varCostsExCogs - cfTotal;
+    
     // Tax loss carryforward: losses offset future taxable income
     let taxes = 0;
     if (ebitda > 0) {
