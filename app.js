@@ -19,7 +19,15 @@ if (GOOGLE_API_KEY) {
 
 /* ═══ GLOBALS & STATE ═══ */
 // State view: dashboard, bw2home, comparador, etc.
-let state = { view: 'bw2home', activeBranchId: null, showInactive: false, activeTab: 'resultados' };
+const defaultState = { view: 'bw2home', activeBranchId: null, showInactive: false, activeTab: 'resultados' };
+const savedState = JSON.parse(localStorage.getItem('bw2_ui_state') || 'null') || defaultState;
+let state = new Proxy(savedState, {
+  set(target, prop, value) {
+    target[prop] = value;
+    localStorage.setItem('bw2_ui_state', JSON.stringify(target));
+    return true;
+  }
+});
 
 /* ═══ LOCALSTORAGE MIGRATION ═══ */
 let charts = {};
@@ -1243,15 +1251,54 @@ function updateNav() {
     // Level 1: Home (Workspace)
     html += `<div class="nav-section">Mi Workspace</div>`;
     html += `<button class="nav-btn active"><span class="nav-icon">🏢</span><span class="nav-text">Mis Empresas</span></button>`;
-    html += `<div style="margin-top:1.5rem">`;
+    html += `<div style="margin-top:1.5rem; display:flex; flex-direction:column; gap:0.5rem">`;
     html += `<button class="btn-add" id="btn-nav-crear-empresa"><span class="nav-icon">+</span> <span class="nav-text">Nueva Empresa</span></button>`;
+    html += `<button class="btn-add" id="btn-nav-export-data" style="background:var(--surface);color:var(--text-1);border:1px solid var(--border)"><span class="nav-icon">💾</span> <span class="nav-text">Respaldar Datos</span></button>`;
+    html += `<button class="btn-add" id="btn-nav-import-data" style="background:var(--surface);color:var(--text-1);border:1px solid var(--border)"><span class="nav-icon">📂</span> <span class="nav-text">Cargar Respaldo</span></button>`;
+    html += `<input type="file" id="import-data-file" accept=".json" style="display:none">`;
     html += `</div>`;
     
     nav.innerHTML = html;
     
     const navEmpBtn = nav.querySelector('#btn-nav-crear-empresa');
-    if (navEmpBtn) {
-      navEmpBtn.addEventListener('click', () => showBW2Modal('config-empresa'));
+    if (navEmpBtn) navEmpBtn.addEventListener('click', () => showBW2Modal('config-empresa'));
+
+    const btnExport = nav.querySelector('#btn-nav-export-data');
+    if (btnExport) {
+      btnExport.addEventListener('click', () => {
+        const data = localStorage.getItem('bw_data_v2');
+        if(!data) return alert('No hay datos para respaldar.');
+        const blob = new Blob([data], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bw2_respaldo_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+      });
+    }
+
+    const btnImport = nav.querySelector('#btn-nav-import-data');
+    const fileImport = nav.querySelector('#import-data-file');
+    if (btnImport && fileImport) {
+      btnImport.addEventListener('click', () => fileImport.click());
+      fileImport.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const parsed = JSON.parse(evt.target.result);
+            if(parsed.version || parsed.empresas) { // weak validation
+              localStorage.setItem('bw_data_v2', evt.target.result);
+              alert('Respaldo cargado correctamente. El sistema se reiniciará.');
+              location.reload();
+            } else throw new Error('Formato inválido');
+          } catch(err) {
+            alert('El archivo no es un respaldo válido de BW2.');
+          }
+        };
+        reader.readAsText(file);
+      });
     }
     return;
   }
