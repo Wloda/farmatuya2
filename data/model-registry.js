@@ -56,7 +56,7 @@ export const MODELS = {
 
     derived: null,
     franchise: null,
-    royaltyPromo: null,
+    royaltyPromo: { default: 'variable_2_5', waiver6m: true, upfront5Y: 125000 },
     taxRate: 0.30,  // ISR estándar
     totalInitialInvestment: { min: 968059, max: 1071119, default: 1071119 },
     sourceNotes: {
@@ -202,7 +202,7 @@ export const MODELS = {
 
     derived: null,
     franchise: null,
-    royaltyPromo: null,
+    royaltyPromo: { default: 'variable_2_5', waiver6m: true, upfront5Y: 125000 },
     taxRate: 0.30,  // ISR estándar
     totalInitialInvestment: { min: 1437519, max: 1612039, default: 1612039 },
     sourceNotes: {
@@ -262,7 +262,7 @@ export const MODELS = {
 
     derived: null,
     franchise: { brandFee: 219000, services: 70000, equipment: 270000, additional: 40000, total: 599000 },
-    royaltyPromo: null,
+    royaltyPromo: { default: 'variable_2_5', waiver6m: true, upfront5Y: 125000 },
     totalInitialInvestment: { min: 514000, max: 599000, default: 599000 },
     sourceNotes: {
       capex_documented: 'brochure_coolpet',
@@ -311,7 +311,7 @@ export const MODELS = {
 
     derived: null,
     franchise: { brandFee: 219000, services: 80000, equipment: 300000, inventory: 200000, total: 799000 },
-    royaltyPromo: null,
+    royaltyPromo: { default: 'variable_2_5', waiver6m: true, upfront5Y: 125000 },
     totalInitialInvestment: { min: 714000, max: 799000, default: 799000 },
     sourceNotes: {
       capex_documented: 'brochure_coolpet',
@@ -360,7 +360,7 @@ export const MODELS = {
 
     derived: null,
     franchise: { brandFee: 249000, services: 100000, equipment: 400000, inventory: 250000, total: 999000 },
-    royaltyPromo: null,
+    royaltyPromo: { default: 'variable_2_5', waiver6m: true, upfront5Y: 125000 },
     totalInitialInvestment: { min: 914000, max: 999000, default: 999000 },
     sourceNotes: {
       capex_documented: 'brochure_coolpet',

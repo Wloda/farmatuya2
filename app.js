@@ -1,7 +1,7 @@
 /**
  * BW² — Multi-Empresa Multi-Proyecto Dashboard v8
  */
-import { MODELS, SCENARIOS } from './data/model-registry.js?v=bw4';
+import { MODELS, SCENARIOS } from './data/model-registry.js?v=bw5';
 import { runProjection, runSensitivity, calcStress, generateChecklist, evaluateAlerts } from './engine/financial-model.js?v=bw5';
 import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw4';
 import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw4';
@@ -1697,7 +1697,7 @@ async function renderBranchDetail(empresa){
   const proj = empresa.proyectos?.find(p => p.id === branch.proyectoId);
   const isFranchise = proj?.isFranchise !== false;
   const rg=$('branch-royalty-group');
-  if(rg) rg.style.display=(branch.format==='super' && isFranchise)?'block':'none';
+  if(rg) rg.style.display=(MODELS[branch.format]?.royaltyPromo && isFranchise)?'block':'none';
   // Royalty active state
   const currentRoyalty = branch.overrides?.royaltyMode || 'variable_2_5';
   document.querySelectorAll('#branch-royalty-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.royalty===currentRoyalty);});
@@ -1705,12 +1705,14 @@ async function renderBranchDetail(empresa){
   // ═══ RESULTS-LEVEL ROYALTY PANEL ═══
   const resRoyaltyPanel = $('res-royalty-panel');
   if (resRoyaltyPanel) {
-    if (isFranchise && branch.format === 'super') {
+    if (isFranchise && MODELS[branch.format]?.royaltyPromo) {
       resRoyaltyPanel.style.display = '';
+      const promoConfig = MODELS[branch.format].royaltyPromo;
+      const upfrontAmt = promoConfig.upfront5Y || 125000;
       const royaltyDescs = {
-        variable_2_5: '💳 Pagas 2.5% de ingresos como regalía mensual.',
-        condonacion_6m: '🎁 Los primeros 6 meses se condonan las regalías.',
-        pago_unico: '💰 Pago único de $125,000 — sin regalías futuras.'
+        variable_2_5: '💳 Pagas 2.5% de ingresos como retención mensual.',
+        condonacion_6m: '🎁 Los primeros 6 meses se exentan de retención.',
+        pago_unico: `💰 Pago único de $${upfrontAmt.toLocaleString()} — sin retenciones por 5 años.`
       };
       const descEl = $('res-royalty-desc');
       const royaltySel = $('res-royalty-select');
@@ -4033,6 +4035,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const customLogoImg = $('bw2-custom-logo');
   const defaultLogoSvg = $('bw2-default-logo');
   const homeBtn = $('btn-bw2-home');
+  const editLogoBtn = $('btn-edit-platform-logo');
 
   function loadPlatformLogo() {
     const saved = localStorage.getItem(PLATFORM_LOGO_KEY);
@@ -4040,32 +4043,28 @@ document.addEventListener('DOMContentLoaded', () => {
       customLogoImg.src = saved;
       customLogoImg.style.display = '';
       defaultLogoSvg.style.display = 'none';
+      if (editLogoBtn) editLogoBtn.style.opacity = '0.6';
     } else if (customLogoImg && defaultLogoSvg) {
       customLogoImg.style.display = 'none';
       defaultLogoSvg.style.display = '';
+      if (editLogoBtn) editLogoBtn.style.opacity = '';
     }
   }
 
   // Load on init
   loadPlatformLogo();
 
-  // Double-click BW logo → upload custom platform logo
-  if (homeBtn) {
-    homeBtn.addEventListener('dblclick', (e) => {
+  // Click 📷 button → upload custom platform logo
+  if (editLogoBtn) {
+    editLogoBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       if (platformLogoInput) platformLogoInput.click();
     });
   }
 
-  // Also allow clicking the custom logo image to change it
+  // Right-click custom logo to remove
   if (customLogoImg) {
-    customLogoImg.addEventListener('dblclick', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (platformLogoInput) platformLogoInput.click();
-    });
-    // Right-click to remove
     customLogoImg.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       if (confirm('¿Eliminar logo personalizado?')) {
