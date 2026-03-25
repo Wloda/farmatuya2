@@ -480,9 +480,11 @@ function updateEnterpriseHeader(empresa){
     if(emp && emp.logo) {
       headerLogo.src = emp.logo;
       headerLogo.alt = empName;
+      headerLogo.style.display = '';
     } else {
-      headerLogo.src = 'assets/nojom-bird.png';
-      headerLogo.alt = 'Logo';
+      headerLogo.src = '';
+      headerLogo.alt = '';
+      headerLogo.style.display = 'none';
     }
   }
 }
@@ -1233,13 +1235,7 @@ function updateNav() {
     html += `<div class="nav-section">Mi Workspace</div>`;
     html += `<button class="nav-btn active"><span class="nav-icon">🏢</span><span class="nav-text">Mis Empresas</span></button>`;
     html += `<div class="nav-spacer"></div>`;
-    html += `<button class="nav-btn" id="nav-open-profile"><span class="nav-icon">👤</span><span class="nav-text">Perfil</span></button>`;
     nav.innerHTML = html;
-    const profBtn = nav.querySelector('#nav-open-profile');
-    if(profBtn) profBtn.addEventListener('click', () => {
-      const profileBtn = $('btn-open-profile');
-      if(profileBtn) profileBtn.click();
-    });
     return;
   }
 
@@ -3648,12 +3644,100 @@ function openProfilePopup() {
 
   async function handleFile(file) {
     if (!file || !file.type.startsWith('image/')) { showToast('Solo se aceptan imágenes', 'error'); return; }
-    if (file.size > 2 * 1024 * 1024) { showToast('Imagen muy grande (máx 2MB)', 'error'); return; }
+    if (file.size > 5 * 1024 * 1024) { showToast('Imagen muy grande (máx 5MB)', 'error'); return; }
     try {
-      const dataURL = await resizeImageToDataURL(file, 256);
-      showPhotoPreview(dataURL);
+      const dataURL = await readFileAsDataURL(file);
+      openCropper(dataURL);
     } catch(e) { showToast('Error al procesar imagen', 'error'); }
   }
+  function readFileAsDataURL(f) {
+    return new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = fail; r.readAsDataURL(f); });
+  }
+
+  /* ── CROPPER ENGINE ── */
+  const cropArea = $('profile-crop-area');
+  const cropCanvas = $('crop-canvas');
+  const cropCtx = cropCanvas ? cropCanvas.getContext('2d') : null;
+  const cropZoom = $('crop-zoom');
+  const cropConfirm = $('btn-crop-confirm');
+  const cropCancel = $('btn-crop-cancel');
+  const cropContainer = $('crop-container');
+  let cropImg = null, cropScale = 1, cropX = 0, cropY = 0, cropDragging = false, cropStartX = 0, cropStartY = 0;
+  const CROP_SIZE = 220;
+
+  function openCropper(dataURL) {
+    cropImg = new Image();
+    cropImg.onload = () => {
+      // Fit image to canvas initially
+      const aspect = cropImg.width / cropImg.height;
+      cropScale = 1;
+      cropX = 0; cropY = 0;
+      if (cropZoom) cropZoom.value = 100;
+      // Show crop area, hide dropzone
+      if (cropArea) cropArea.style.display = '';
+      dropzone.style.display = 'none';
+      drawCrop();
+    };
+    cropImg.src = dataURL;
+  }
+
+  function drawCrop() {
+    if (!cropCtx || !cropImg) return;
+    cropCtx.clearRect(0, 0, CROP_SIZE, CROP_SIZE);
+    const scale = cropScale;
+    const imgW = cropImg.width, imgH = cropImg.height;
+    // Fit the smaller dimension to CROP_SIZE, then apply scale
+    const fitScale = Math.max(CROP_SIZE / imgW, CROP_SIZE / imgH) * scale;
+    const dw = imgW * fitScale, dh = imgH * fitScale;
+    const dx = (CROP_SIZE - dw) / 2 + cropX;
+    const dy = (CROP_SIZE - dh) / 2 + cropY;
+    cropCtx.drawImage(cropImg, dx, dy, dw, dh);
+  }
+
+  function closeCropper() {
+    if (cropArea) cropArea.style.display = 'none';
+    dropzone.style.display = '';
+    cropImg = null;
+  }
+
+  function exportCrop() {
+    if (!cropImg) return;
+    // Draw final 256x256 circular crop
+    const out = document.createElement('canvas');
+    out.width = 256; out.height = 256;
+    const ctx = out.getContext('2d');
+    // Clip to circle
+    ctx.beginPath();
+    ctx.arc(128, 128, 128, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    // Draw image at same position/scale but mapped to 256px
+    const ratio = 256 / CROP_SIZE;
+    const imgW = cropImg.width, imgH = cropImg.height;
+    const fitScale = Math.max(CROP_SIZE / imgW, CROP_SIZE / imgH) * cropScale;
+    const dw = imgW * fitScale * ratio, dh = imgH * fitScale * ratio;
+    const dx = ((CROP_SIZE - imgW * fitScale) / 2 + cropX) * ratio;
+    const dy = ((CROP_SIZE - imgH * fitScale) / 2 + cropY) * ratio;
+    ctx.drawImage(cropImg, dx, dy, dw, dh);
+    const result = out.toDataURL('image/png', 0.92);
+    showPhotoPreview(result);
+    closeCropper();
+  }
+
+  // Crop drag handlers
+  if (cropContainer) {
+    cropContainer.addEventListener('mousedown', (e) => { cropDragging = true; cropStartX = e.clientX - cropX; cropStartY = e.clientY - cropY; });
+    cropContainer.addEventListener('touchstart', (e) => { cropDragging = true; const t = e.touches[0]; cropStartX = t.clientX - cropX; cropStartY = t.clientY - cropY; }, { passive: true });
+    window.addEventListener('mousemove', (e) => { if (!cropDragging) return; cropX = e.clientX - cropStartX; cropY = e.clientY - cropStartY; drawCrop(); });
+    window.addEventListener('touchmove', (e) => { if (!cropDragging) return; const t = e.touches[0]; cropX = t.clientX - cropStartX; cropY = t.clientY - cropStartY; drawCrop(); }, { passive: true });
+    window.addEventListener('mouseup', () => { cropDragging = false; });
+    window.addEventListener('touchend', () => { cropDragging = false; });
+    // Mouse wheel zoom
+    cropContainer.addEventListener('wheel', (e) => { e.preventDefault(); const delta = e.deltaY > 0 ? -10 : 10; const newVal = Math.min(300, Math.max(100, parseInt(cropZoom.value) + delta)); cropZoom.value = newVal; cropScale = newVal / 100; drawCrop(); }, { passive: false });
+  }
+  if (cropZoom) cropZoom.addEventListener('input', () => { cropScale = cropZoom.value / 100; drawCrop(); });
+  if (cropConfirm) cropConfirm.addEventListener('click', exportCrop);
+  if (cropCancel) cropCancel.addEventListener('click', closeCropper);
 
   const onDropzoneClick = (e) => {
     if (e.target === fileInput) return;
