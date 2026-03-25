@@ -63,39 +63,46 @@ function resizeImageToDataURL(file, maxSize = 256) {
   });
 }
 
-Chart.defaults.color='#374151';
-Chart.defaults.font.family="'Inter',-apple-system,sans-serif";
-Chart.defaults.font.size=11;
-Chart.defaults.font.weight=600;
-Chart.defaults.plugins.legend.labels.boxWidth=12;
-Chart.defaults.plugins.legend.labels.padding=16;
-Chart.defaults.plugins.legend.labels.usePointStyle=true;
-Chart.defaults.plugins.legend.labels.pointStyle='circle';
-Chart.defaults.elements.bar.borderRadius=6;
-Chart.defaults.elements.bar.borderSkipped=false;
-Chart.defaults.elements.line.tension=0.35;
-Chart.defaults.elements.line.borderWidth=2.5;
-Chart.defaults.elements.point.radius=0;
-Chart.defaults.elements.point.hoverRadius=5;
-Chart.defaults.elements.point.hoverBorderWidth=2;
-// Scale defaults — merge, don't replace
-Object.assign(Chart.defaults.scale.grid, {color:'rgba(0,0,0,0.07)', drawBorder:false});
-if(Chart.defaults.scale.border) Object.assign(Chart.defaults.scale.border, {display:false});
-// Tooltip — merge into existing defaults (replacing entire object breaks Chart.js)
-Object.assign(Chart.defaults.plugins.tooltip, {
-  backgroundColor:'rgba(17,24,39,0.92)',
-  cornerRadius:10,
-  borderColor:'rgba(255,255,255,0.1)',
-  borderWidth:1,
-  boxPadding:4,
-  caretSize:6,
-  displayColors:true,
-});
-Chart.defaults.plugins.tooltip.titleFont = {size:12, weight:700};
-Chart.defaults.plugins.tooltip.bodyFont = {size:11};
-Chart.defaults.plugins.tooltip.padding = {x:12, y:8};
-Chart.defaults.animation.duration = 800;
-Chart.defaults.animation.easing = 'easeOutQuart';
+/* ── Chart.js defaults (applied lazily after ensureChartJS) ── */
+let _chartDefaultsApplied = false;
+function _configureChartDefaults() {
+  if (_chartDefaultsApplied || typeof Chart === 'undefined') return;
+  _chartDefaultsApplied = true;
+  Chart.defaults.color='#374151';
+  Chart.defaults.font.family="'Inter',-apple-system,sans-serif";
+  Chart.defaults.font.size=11;
+  Chart.defaults.font.weight=600;
+  Chart.defaults.plugins.legend.labels.boxWidth=12;
+  Chart.defaults.plugins.legend.labels.padding=16;
+  Chart.defaults.plugins.legend.labels.usePointStyle=true;
+  Chart.defaults.plugins.legend.labels.pointStyle='circle';
+  Chart.defaults.elements.bar.borderRadius=6;
+  Chart.defaults.elements.bar.borderSkipped=false;
+  Chart.defaults.elements.line.tension=0.35;
+  Chart.defaults.elements.line.borderWidth=2.5;
+  Chart.defaults.elements.point.radius=0;
+  Chart.defaults.elements.point.hoverRadius=5;
+  Chart.defaults.elements.point.hoverBorderWidth=2;
+  Object.assign(Chart.defaults.scale.grid, {color:'rgba(0,0,0,0.07)', drawBorder:false});
+  if(Chart.defaults.scale.border) Object.assign(Chart.defaults.scale.border, {display:false});
+  Object.assign(Chart.defaults.plugins.tooltip, {
+    backgroundColor:'rgba(17,24,39,0.92)',
+    cornerRadius:10,
+    borderColor:'rgba(255,255,255,0.1)',
+    borderWidth:1,
+    boxPadding:4,
+    caretSize:6,
+    displayColors:true,
+  });
+  Chart.defaults.plugins.tooltip.titleFont = {size:12, weight:700};
+  Chart.defaults.plugins.tooltip.bodyFont = {size:11};
+  Chart.defaults.plugins.tooltip.padding = {x:12, y:8};
+  Chart.defaults.animation.duration = 800;
+  Chart.defaults.animation.easing = 'easeOutQuart';
+}
+// Patch ensureChartJS to also apply defaults
+const _origEnsureChartJS = window.ensureChartJS;
+window.ensureChartJS = async function() { await _origEnsureChartJS(); _configureChartDefaults(); };
 
 const $=id=>document.getElementById(id);
 const fmt={m:v=>'$'+Math.round(v).toLocaleString('es-MX'),mk:v=>'$'+(v/1000).toFixed(0)+'K',p:v=>(v*100).toFixed(1)+'%',pi:v=>Math.round(v*100)+'%',mo:v=>v?v+' m':'∞'};
