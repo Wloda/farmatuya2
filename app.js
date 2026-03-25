@@ -167,6 +167,7 @@ function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => showToast('📋 Copiado', 'success')).catch(() => showToast('Error al copiar', 'error'));
 }
 function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function destroyAllCharts(){Object.keys(charts).forEach(dc); if(window._locRadarChart){window._locRadarChart.destroy();window._locRadarChart=null;}}
 function kc(l,v,d,s,tip){const t=tip||KPI_TIPS[l]||'';return `<div class="kpi-card" data-status="${s}"${t?` title="${esc(t)}"`:''} style="cursor:${t?'help':'default'}"><div class="kpi-label">${l}</div><div class="kpi-value" data-animate>${v}</div><div class="kpi-detail">${d}</div></div>`;}
 
 /* ── Shared KPI aggregation helper (eliminates redundancy across Home/L2/Portfolio) ── */
@@ -384,6 +385,7 @@ function initNav(){
 }
 
 function renderCurrentView() {
+  destroyAllCharts();
   const isBW2Home = state.view === 'bw2home';
   const mainNav=$('main-nav');
   const mainContent=$('main-content');
@@ -1634,9 +1636,10 @@ function updateConsolMarketIndicator(empresa) {
 }
 
 /* ═══ BRANCH DETAIL VIEW (preserves all existing visualizations) ═══ */
-function renderBranchDetail(empresa){
+async function renderBranchDetail(empresa){
   const branch=getBranch(state.activeBranchId);
   if(!branch){state.view='portfolio';renderCurrentView();return;}
+  await ensureChartJS();
 
   const overrides={...branch.overrides};
   const sc=SCENARIOS[branch.scenarioId]||SCENARIOS.base;
@@ -2086,7 +2089,7 @@ function renderAlerts(alerts,id){
 }
 
 /* ─── BRANCH RESUMEN ─── */
-function renderBranchResumen(r){
+async function renderBranchResumen(r){
   const cl=generateChecklist(r);
   const passed = cl.filter(c=>c.pass).length;
   const total = cl.length;
@@ -2157,17 +2160,16 @@ function renderMarketStudyPanel(branch) {
           circles: [500, 1000],
         });
       } catch(e) { console.warn('[BW2] Mini-map render failed:', e); miniMapEl.style.display = 'none'; }
-    } else if (typeof L !== 'undefined') {
-      // Leaflet mini-map fallback
+    } else {
+      // Leaflet mini-map fallback (lazy load)
       try {
+        await ensureLeaflet();
         const mm = L.map(miniMapEl, { zoomControl: false, attributionControl: false }).setView([study.coordinates.lat, study.coordinates.lng], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mm);
         L.marker([study.coordinates.lat, study.coordinates.lng]).addTo(mm);
         [500, 1000].forEach((r, i) => L.circle([study.coordinates.lat, study.coordinates.lng], { radius: r, color: '#6B7A2E', fillOpacity: 0.05, weight: 1 }).addTo(mm));
         setTimeout(() => mm.invalidateSize(), 200);
       } catch(e) { miniMapEl.style.display = 'none'; }
-    } else {
-      miniMapEl.style.display = 'none';
     }
   } else if (miniMapEl) {
     miniMapEl.style.display = 'none';
@@ -2542,11 +2544,8 @@ function renderBranchEditPanel(branch, model) {
         updateEnterpriseHeader(empresa);
 
       }, 300);
-      // Allow full re-render after extended inactivity (rebuilds edit panel)
-      _suppressTimer = setTimeout(() => {
-        _suppressFullRender = false;
-        renderCurrentView();
-      }, 2000);
+      // P3: removed aggressive 2000ms timer that caused full re-renders
+      // The 300ms debounce above handles KPI updates without losing focus
     });
   });
 
@@ -3165,7 +3164,8 @@ function renderLocationExtras(study, c, s, sug) {
 }
 
 /* ═══ CONSOLIDATED VIEW ═══ */
-function renderConsolidated(empresa){
+async function renderConsolidated(empresa){
+  await ensureChartJS();
   updateConsolMarketIndicator(empresa);
   const consol=runConsolidation(empresa);
   const ivaOn = $('toggle-iva')?.checked;
@@ -3258,7 +3258,8 @@ function renderConsolidated(empresa){
 }
 
 /* ═══ COMPARADOR VIEW ═══ */
-function renderComparador(empresa){
+async function renderComparador(empresa){
+  await ensureChartJS();
   const activeBranches=empresa.branches.filter(b=>b.status!=='paused');
   const results=activeBranches.map(b=>({branch:b,result:runBranchProjection(b,empresa)}));
   const metrics=[

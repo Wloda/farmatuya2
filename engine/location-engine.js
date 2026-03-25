@@ -179,24 +179,31 @@ export async function queryMultiRadius(lat, lng) {
     out center body;
   `;
 
-  // Try primary + mirror Overpass servers with retry
+  // P6: Race all Overpass servers in parallel (fastest wins)
   let data = null;
   let lastError = null;
-  for (const url of OVERPASS_URLS) {
-    try {
-      const resp = await fetch(url, {
-        method: 'POST',
-        body: 'data=' + encodeURIComponent(query),
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      });
-      if (resp.ok) {
-        data = await resp.json();
-        break;
+  const TIMEOUT_MS = 8000;
+  try {
+    data = await Promise.any(OVERPASS_URLS.map(async url => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          body: 'data=' + encodeURIComponent(query),
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return await resp.json();
+      } catch (e) {
+        clearTimeout(timer);
+        throw e;
       }
-      lastError = `Overpass ${url}: HTTP ${resp.status}`;
-    } catch (e) {
-      lastError = `Overpass ${url}: ${e.message}`;
-    }
+    }));
+  } catch (e) {
+    lastError = `All Overpass servers failed: ${e.message}`;
   }
   if (!data) throw new Error(lastError || 'All Overpass servers failed');
   const elements = data.elements || [];

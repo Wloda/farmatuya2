@@ -7,8 +7,20 @@ import { MODELS, SCENARIOS } from '../data/model-registry.js?v=bw4';
 import { runProjection } from './financial-model.js?v=bw4';
 import { calcCombinedMarketFactor } from './location-engine.js?v=bw5';
 
+/* ── Projection Cache (P5 — avoid redundant M1-M60 recalculations) ── */
+const _projectionCache = new Map();
+const MAX_CACHE_SIZE = 20;
+
+function _cacheKey(branch, empresa) {
+  return branch.id + '|' + branch.scenarioId + '|' + JSON.stringify(branch.overrides || {}) + '|' +
+    (branch.locationStudy?.scores?.total ?? '') + '|' + (empresa.socios?.length ?? 0);
+}
+
 /* ── Single Branch Projection ── */
 export function runBranchProjection(branch, empresa) {
+  const key = _cacheKey(branch, empresa);
+  if (_projectionCache.has(key)) return _projectionCache.get(key);
+
   const sc = SCENARIOS[branch.scenarioId] || SCENARIOS.base;
   const model = MODELS[branch.format];
   if (!model) throw new Error('Unknown format: ' + branch.format);
@@ -48,7 +60,16 @@ export function runBranchProjection(branch, empresa) {
     overrides.variableCosts.regalia = 0;
   }
 
-  return runProjection(branch.format, overrides);
+  const result = runProjection(branch.format, overrides);
+
+  // Store in cache (LRU eviction)
+  if (_projectionCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = _projectionCache.keys().next().value;
+    _projectionCache.delete(firstKey);
+  }
+  _projectionCache.set(key, result);
+
+  return result;
 }
 
 /* ── Enterprise Consolidation ── */

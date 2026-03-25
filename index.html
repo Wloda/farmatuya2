@@ -9,13 +9,46 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <!-- Libraries loaded ON DEMAND by app.js helpers (ensureChartJS, ensureLeaflet, ensurePDFLibs) -->
   <!-- Google Maps loaded dynamically by engine/google-places.js -->
-  <!-- Leaflet kept as fallback if Google API key not configured -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+    /* ── Lazy Library Loader ── */
+    window._libCache = {};
+    window.loadLib = function(id, src, type) {
+      if (window._libCache[id]) return window._libCache[id];
+      window._libCache[id] = new Promise((resolve, reject) => {
+        if (type === 'css') {
+          const link = document.createElement('link');
+          link.rel = 'stylesheet'; link.href = src;
+          link.onload = resolve; link.onerror = reject;
+          document.head.appendChild(link);
+        } else {
+          const s = document.createElement('script');
+          s.src = src; s.async = true;
+          s.onload = resolve; s.onerror = reject;
+          document.head.appendChild(s);
+        }
+      });
+      return window._libCache[id];
+    };
+    window.ensureChartJS = function() {
+      if (window.Chart) return Promise.resolve();
+      return loadLib('chartjs', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js');
+    };
+    window.ensureLeaflet = function() {
+      if (window.L) return Promise.resolve();
+      return Promise.all([
+        loadLib('leaflet-css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'css'),
+        loadLib('leaflet-js', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js')
+      ]);
+    };
+    window.ensurePDFLibs = function() {
+      const promises = [];
+      if (!window.jspdf) promises.push(loadLib('jspdf', 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js'));
+      if (!window.html2canvas) promises.push(loadLib('html2canvas', 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'));
+      return Promise.all(promises);
+    };
+  </script>
   <link rel="stylesheet" href="styles.css?v=bw58">
   <script>
     window.addEventListener('error',e=>document.title='ERR:'+e.message);
