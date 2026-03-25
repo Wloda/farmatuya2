@@ -4026,4 +4026,70 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     $('login-error') && ($('login-error').style.display = 'none');
   });
+
+  /* ── Platform Logo (BW header logo upload) ── */
+  const PLATFORM_LOGO_KEY = 'bw2_platform_logo';
+  const platformLogoInput = $('bw2-platform-logo-input');
+  const customLogoImg = $('bw2-custom-logo');
+  const defaultLogoSvg = $('bw2-default-logo');
+  const homeBtn = $('btn-bw2-home');
+
+  function loadPlatformLogo() {
+    const saved = localStorage.getItem(PLATFORM_LOGO_KEY);
+    if (saved && customLogoImg && defaultLogoSvg) {
+      customLogoImg.src = saved;
+      customLogoImg.style.display = '';
+      defaultLogoSvg.style.display = 'none';
+    } else if (customLogoImg && defaultLogoSvg) {
+      customLogoImg.style.display = 'none';
+      defaultLogoSvg.style.display = '';
+    }
+  }
+
+  // Load on init
+  loadPlatformLogo();
+
+  // Double-click BW logo → upload custom platform logo
+  if (homeBtn) {
+    homeBtn.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (platformLogoInput) platformLogoInput.click();
+    });
+  }
+
+  // Also allow clicking the custom logo image to change it
+  if (customLogoImg) {
+    customLogoImg.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (platformLogoInput) platformLogoInput.click();
+    });
+    // Right-click to remove
+    customLogoImg.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (confirm('¿Eliminar logo personalizado?')) {
+        localStorage.removeItem(PLATFORM_LOGO_KEY);
+        loadPlatformLogo();
+        showToast('Logo eliminado', 'success');
+      }
+    });
+  }
+
+  if (platformLogoInput) {
+    platformLogoInput.addEventListener('change', () => {
+      const file = platformLogoInput.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) { showToast('Solo imágenes', 'error'); return; }
+      if (file.size > 2 * 1024 * 1024) { showToast('Logo muy grande (máx 2MB)', 'error'); return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        localStorage.setItem(PLATFORM_LOGO_KEY, reader.result);
+        loadPlatformLogo();
+        showToast('Logo actualizado', 'success');
+      };
+      reader.readAsDataURL(file);
+      platformLogoInput.value = '';
+    });
+  }
 });

@@ -157,7 +157,8 @@
   <!-- ═══ ENTERPRISE HEADER ═══ -->
   <header id="app-header">
     <div class="header-left">
-      <button class="header-home-btn" id="btn-bw2-home" title="Inicio BW²"><svg class="header-bw2-logo" viewBox="0 0 48 32" width="48" height="32"><text x="2" y="24" font-family="Inter,sans-serif" font-weight="900" font-size="22" fill="#1A1A1A">BW</text><text x="36" y="16" font-family="Inter,sans-serif" font-weight="700" font-size="10" fill="#6B7A2E">²</text></svg></button>
+      <button class="header-home-btn" id="btn-bw2-home" title="Inicio BW²"><svg class="header-bw2-logo" id="bw2-default-logo" viewBox="0 0 48 32" width="48" height="32"><text x="2" y="24" font-family="Inter,sans-serif" font-weight="900" font-size="22" fill="#1A1A1A">BW</text><text x="36" y="16" font-family="Inter,sans-serif" font-weight="700" font-size="10" fill="#6B7A2E">²</text></svg><img id="bw2-custom-logo" src="" alt="Logo" style="display:none;height:28px;max-width:120px;object-fit:contain;cursor:pointer"></button>
+      <input type="file" id="bw2-platform-logo-input" accept="image/jpeg,image/png,image/webp,image/svg+xml" style="display:none">
       <img src="" alt="" class="header-logo" style="display:none">
       <nav class="header-breadcrumb" id="header-breadcrumb"></nav>
     </div>
@@ -887,6 +888,6 @@
   </div>
 
   <footer id="app-footer"><p>BW² — Dashboard de Inversión · v8.0 · Multi-Empresa</p></footer>
-  <script type="module" src="app.js?v=bw18"></script>
+  <script type="module" src="app.js?v=bw19"></script>
 </body>
 </html>
