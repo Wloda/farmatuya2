@@ -2161,15 +2161,16 @@ function renderMarketStudyPanel(branch) {
         });
       } catch(e) { console.warn('[BW2] Mini-map render failed:', e); miniMapEl.style.display = 'none'; }
     } else {
-      // Leaflet mini-map fallback (lazy load)
-      try {
-        await ensureLeaflet();
-        const mm = L.map(miniMapEl, { zoomControl: false, attributionControl: false }).setView([study.coordinates.lat, study.coordinates.lng], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mm);
-        L.marker([study.coordinates.lat, study.coordinates.lng]).addTo(mm);
-        [500, 1000].forEach((r, i) => L.circle([study.coordinates.lat, study.coordinates.lng], { radius: r, color: '#6B7A2E', fillOpacity: 0.05, weight: 1 }).addTo(mm));
-        setTimeout(() => mm.invalidateSize(), 200);
-      } catch(e) { miniMapEl.style.display = 'none'; }
+      // Leaflet mini-map fallback (lazy load via .then — this fn is not async)
+      ensureLeaflet().then(() => {
+        try {
+          const mm = L.map(miniMapEl, { zoomControl: false, attributionControl: false }).setView([study.coordinates.lat, study.coordinates.lng], 14);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mm);
+          L.marker([study.coordinates.lat, study.coordinates.lng]).addTo(mm);
+          [500, 1000].forEach((r, i) => L.circle([study.coordinates.lat, study.coordinates.lng], { radius: r, color: '#6B7A2E', fillOpacity: 0.05, weight: 1 }).addTo(mm));
+          setTimeout(() => mm.invalidateSize(), 200);
+        } catch(e) { miniMapEl.style.display = 'none'; }
+      }).catch(() => { miniMapEl.style.display = 'none'; });
     }
   } else if (miniMapEl) {
     miniMapEl.style.display = 'none';
@@ -2983,7 +2984,10 @@ async function renderLocationResults(study) {
 
 /** Leaflet map fallback for when Google Maps is not available */
 function _renderLeafletMap(study, c, s) {
-  if (typeof L === 'undefined') return;
+  // Lazy-load Leaflet if not already available
+  ensureLeaflet().then(() => _renderLeafletMapInner(study, c, s)).catch(e => console.warn('[BW2] Leaflet load failed:', e));
+}
+function _renderLeafletMapInner(study, c, s) {
 
   const container = document.getElementById('loc-map');
   if (!container) return;
