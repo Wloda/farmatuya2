@@ -45,12 +45,15 @@ export function calcFixedCostBreakdown(fc) {
 }
 
 /* ── Variable Cost Rate ── */
-export function calcVarRate(vc, royaltyMode, month) {
+export function calcVarRate(vc, royaltyMode, month, preOpeningMonths=0, waiverFromOpening=false) {
   let r = vc.cogs + vc.comVenta + vc.merma + vc.pubDir + vc.bancario;
   // Omisiones y Errores: 1% of sales in documented Súper format (variable, not fixed)
   r += (vc.omisiones || 0);
   if (!royaltyMode || royaltyMode==='variable_2_5') r += vc.regalia;
-  else if (royaltyMode==='condonacion_6m' && month>6) r += vc.regalia;
+  else if (royaltyMode==='condonacion_6m') {
+    const startWaiverAt = waiverFromOpening ? preOpeningMonths : 0;
+    if (month > startWaiverAt + 6) r += vc.regalia;
+  }
   // pago_unico: no royalty added
   return r;
 }
@@ -62,11 +65,20 @@ export function runProjection(modelId, overrides={}) {
 
   const fc = { ...model.fixedCosts, ...(overrides.fixedCosts||{}) };
   const vc = { ...model.variableCosts, ...(overrides.variableCosts||{}) };
-  const scenarioFactor = overrides.scenarioFactor || 1.0;
+  
+  // Market Factor check
+  const applyMarketFactor = overrides.applyMarketFactor !== false; // Default true
+  let scenarioFactor = overrides.scenarioFactor || 1.0;
+  if (!applyMarketFactor) {
+    scenarioFactor = overrides.baseScenarioFactor || 1.0;
+  }
+
   const royaltyMode = overrides.royaltyMode || (model.royaltyPromo ? model.royaltyPromo.default : 'variable_2_5');
   const horizonMonths = overrides.horizonMonths || 60;
   const taxRate = overrides.taxRate ?? model.taxRate ?? 0.30;
   const discountRate = overrides.discountRate || 0.12;
+  const preOpeningMonths = overrides.preOpenMonths || 0; // Renamed from preOpenMonths to preOpeningMonths for consistency with new param
+  const waiverFromOpening = overrides.waiverFromOpening || false;
 
   // Investment — uses per-branch override (worst case default)
   let totalInv;
@@ -100,15 +112,14 @@ export function runProjection(modelId, overrides={}) {
   const fcWithRent = { ...fc, rent: rentOverride };
 
   // Pre-opening months (capital deployed but store not yet open)
-  const preOpenMonths = overrides.preOpenMonths || 0;
-  const totalMonths = preOpenMonths + horizonMonths;
+  const totalMonths = preOpeningMonths + horizonMonths;
 
   const months = [];
   let cumCF = -totalInv, pbMonth = null;
   let taxLossPool = 0;  // Accumulated losses carried forward (tax shield)
 
   // Pre-opening phase: rent + partial costs, zero revenue
-  for (let p = 0; p < preOpenMonths; p++) {
+  for (let p = 0; p < preOpeningMonths; p++) {
     const m = p + 1;
     // During pre-opening: rent, services (m1-level), but no payroll/operations yet
     const preOpenCost = rentOverride + (fcWithRent.servPap?.m1 || 0);

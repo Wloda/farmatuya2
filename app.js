@@ -745,6 +745,14 @@ function renderEmpresaDashboard(empresa){
       </div>`;
   }
 
+  // Sync empresa dinamismo selects
+  const ov = empresa.overrides || {};
+  const erSel=$('empresa-royalty-select'); if(erSel) erSel.value = ov.royaltyMode || 'variable_2_5';
+  const ewSel=$('empresa-waiver-select');  if(ewSel) ewSel.value = (ov.waiverFromOpening||false).toString();
+  const epSel=$('empresa-preopen-select'); if(epSel) epSel.value = (ov.preOpenMonths||0).toString();
+  const emSel=$('empresa-market-toggle');  if(emSel) emSel.value = (ov.applyMarketFactor!==false).toString();
+  const esSel=$('empresa-scenario-select');if(esSel) esSel.value = (ov.baseScenarioFactor||1).toString();
+
   // Render project cards
   let html = '';
   (empresa.proyectos||[]).forEach(proj => {
@@ -1722,7 +1730,9 @@ async function renderBranchDetail(empresa){
         royaltySel.value = currentRoyalty;
         royaltySel.onchange = () => {
           if (!state.activeBranchId) return;
+          _suppressFullRender = true;
           updateBranchOverrides(state.activeBranchId, { royaltyMode: royaltySel.value });
+          _suppressFullRender = false;
           if (descEl) descEl.textContent = royaltyDescs[royaltySel.value] || '';
           renderBranchDetail(getEmpresa());
         };
@@ -1773,7 +1783,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   const scenarioSelect = $('branch-scenario-select');
   if(scenarioSelect) scenarioSelect.addEventListener('change',()=>{
     if(!state.activeBranchId)return;
+    _suppressFullRender = true;
     updateBranch(state.activeBranchId,{scenarioId:scenarioSelect.value});
+    _suppressFullRender = false;
+    renderBranchDetail(getEmpresa());
   });
   // Internal Branch Tabs
   document.querySelectorAll('#branch-tabs-header .tab-btn').forEach(btn=>{
@@ -1840,7 +1853,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(!branch) return;
     const preOpen = parseInt(timelineSelect.value) || 0;
     const ov = { ...(branch.overrides || {}), preOpenMonths: preOpen };
+    _suppressFullRender = true;
     updateBranch(state.activeBranchId, { overrides: ov });
+    _suppressFullRender = false;
     renderBranchDetail(getEmpresa());
   });
   // Colonia autocomplete — geocoding suggestions
@@ -1861,7 +1876,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('#branch-royalty-selector .seg-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
       if(!state.activeBranchId)return;
+      _suppressFullRender = true;
       updateBranchOverrides(state.activeBranchId,{royaltyMode:btn.dataset.royalty});
+      _suppressFullRender = false;
       renderBranchDetail(getEmpresa());
     });
   });
@@ -2703,7 +2720,10 @@ function renderBranchLocation(branch) {
       statusEl.innerHTML = '<span class="loc-loading">Geocodificando → Buscando establecimientos → Calculando scores...</span>';
       try {
         const result = await runLocationStudy(query);
+        _suppressFullRender = true;
         updateBranchLocation(branch.id, result);
+        _suppressFullRender = false;
+        
         renderLocationResults(result);
         // Update market indicators and panels without full re-render
         const freshBranch = getBranch(branch.id);
@@ -3091,7 +3111,9 @@ function _renderLeafletMapInner(study, c, s) {
           _suppressFullRender = false;
 
           const result = await runLocationStudy(name, { lat, lng, display_name: full, colonia: name, municipio: addr.city || addr.town || addr.state || '' });
+          _suppressFullRender = true;
           updateBranchLocation(state.activeBranchId, result);
+          _suppressFullRender = false;
 
           const freshBranch = getBranch(state.activeBranchId);
           if (freshBranch) {
@@ -3195,6 +3217,14 @@ async function renderConsolidated(empresa){
     tog._wired = true;
     tog.addEventListener('change', () => renderConsolidated(getEmpresa()));
   }
+
+  // Sync global dinamismo selects
+  const ov = empresa.overrides || {};
+  const grSel=$('global-royalty-select'); if(grSel) grSel.value = ov.royaltyMode || 'variable_2_5';
+  const gwSel=$('global-waiver-select');  if(gwSel) gwSel.value = (ov.waiverFromOpening||false).toString();
+  const gpSel=$('global-preopen-select'); if(gpSel) gpSel.value = (ov.preOpenMonths||0).toString();
+  const gmSel=$('global-market-toggle');  if(gmSel) gmSel.value = (ov.applyMarketFactor!==false).toString();
+  const gsSel=$('global-scenario-select');if(gsSel) gsSel.value = (ov.baseScenarioFactor||1).toString();
 
   // Enterprise KPI Strip (compact, matching Resultados style)
   const kpiStrip = $('consol-kpi-strip');
@@ -3486,6 +3516,97 @@ window._removePartner = (id) => {
       }
     });
   }
+
+  // ═══ GLOBAL DINAMISMO CONTROLS ═══
+  const syncAndApplyGlobalDinamismo = () => {
+    const proj = getEmpresa();
+    if (!proj) return;
+    proj.overrides = proj.overrides || {};
+
+    // Determine context (which view is active to grab the right select values)
+    const isEmpresa = state.view === 'empresa-dashboard';
+    const prefix = isEmpresa ? 'empresa' : 'global';
+
+    const royaltyEl = $(`${prefix}-royalty-select`);
+    const waiverEl = $(`${prefix}-waiver-select`);
+    const preopenEl = $(`${prefix}-preopen-select`);
+    const marketEl = $(`${prefix}-market-toggle`);
+    const scenarioEl = $(`${prefix}-scenario-select`);
+
+    if(!royaltyEl) return;
+
+    const dynValues = {
+      royaltyMode: royaltyEl.value,
+      waiverFromOpening: waiverEl.value === 'true',
+      preOpenMonths: parseInt(preopenEl.value, 10) || 0,
+      applyMarketFactor: marketEl.value === 'true',
+      baseScenarioFactor: parseFloat(scenarioEl.value) || 1.0
+    };
+
+    updateEmpresa({ overrides: { ...proj.overrides, ...dynValues } });
+    
+    // Cascade to all branches in this project
+    (proj.branches || []).forEach(b => {
+      updateBranchOverrides(b.id, dynValues);
+    });
+
+    // Make sure both views are synced in DOM so switching doesn't show old values
+    const otherPrefix = isEmpresa ? 'global' : 'empresa';
+    const orEl = $(`${otherPrefix}-royalty-select`);
+    const owEl = $(`${otherPrefix}-waiver-select`);
+    const opEl = $(`${otherPrefix}-preopen-select`);
+    const omEl = $(`${otherPrefix}-market-toggle`);
+    const osEl = $(`${otherPrefix}-scenario-select`);
+
+    if(orEl) orEl.value = dynValues.royaltyMode;
+    if(owEl) owEl.value = dynValues.waiverFromOpening.toString();
+    if(opEl) opEl.value = dynValues.preOpenMonths.toString();
+    if(omEl) omEl.value = dynValues.applyMarketFactor.toString();
+    if(osEl) osEl.value = dynValues.baseScenarioFactor.toString();
+
+    renderCurrentView();
+  };
+
+  ['empresa-royalty-select', 'empresa-waiver-select', 'empresa-preopen-select', 'empresa-market-toggle', 'empresa-scenario-select',
+   'global-royalty-select', 'global-waiver-select', 'global-preopen-select', 'global-market-toggle', 'global-scenario-select']
+   .forEach(id => {
+     const el = $(id);
+     if(el) el.addEventListener('change', syncAndApplyGlobalDinamismo);
+   });
+
+  // ═══ RECALCULAR ESTUDIOS DE MERCADO EN MASA ═══
+  const massRecalculateMarket = async () => {
+    const proj = getEmpresa();
+    if (!proj) return;
+    const branches = proj.branches || [];
+    let updated = 0;
+    
+    // Show loading state
+    const btnId = state.view === 'empresa-dashboard' ? 'btn-empresa-recalc' : 'btn-global-recalc';
+    const btn = $(btnId);
+    if(btn) btn.innerHTML = '⏳ Recalculando...';
+
+    for (const b of branches) {
+      if (b.colonia && (b.locationStudy?.nearby || b.locationStudy?.rezago)) {
+        // Just trigger standard market fetch wrapper but in background without UI flashes
+        try {
+          const res = await processAddressForMarket(b.colonia, b.id, false);
+          if (res) updated++;
+        } catch(e) { console.error('Failed mass recalc for', b.name, e); }
+      }
+    }
+    
+    if(btn) btn.innerHTML = `✅ ${updated} Actualizados`;
+    setTimeout(() => {
+      if($(btnId)) $(btnId).innerHTML = '📍 Recalcular Estudios';
+    }, 2500);
+    renderCurrentView();
+  };
+
+  const btnEmpRec = $('btn-empresa-recalc');
+  if(btnEmpRec) btnEmpRec.addEventListener('click', massRecalculateMarket);
+  const btnGlbRec = $('btn-global-recalc');
+  if(btnGlbRec) btnGlbRec.addEventListener('click', massRecalculateMarket);
 }
 
 /* ═══ GLOSARIO / DICTIONARY ═══ */
