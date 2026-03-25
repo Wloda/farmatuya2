@@ -1247,8 +1247,9 @@ function updateNav() {
     html += `<div class="nav-divider"></div>`;
     html += `<div class="nav-section">Corporativo</div>`;
     html += `<button class="nav-btn" data-action="empresa-settings"><span class="nav-icon">⚖️</span><span class="nav-text">Sociedad y Configuración</span></button>`;
-    html += `<div class="nav-spacer"></div>`;
+    html += `<div style="margin-top:1.5rem">`;
     html += `<button class="btn-add" id="btn-add-proyecto-nav"><span class="nav-icon">+</span> <span class="nav-text">Nuevo Proyecto</span></button>`;
+    html += `</div>`;
   } else if (isBranch && branch) {
     // Level 4: Branch Details
     html += `<div class="nav-section">Análisis Operativo</div>`;
@@ -1256,7 +1257,7 @@ function updateNav() {
     html += `<button class="nav-btn ${state.activeTab === 'marketing' ? 'active' : ''}" data-branch-tab="marketing"><span class="nav-icon">🚀</span><span class="nav-text">Growth & Marketing</span></button>`;
     html += `<button class="nav-btn ${state.activeTab === 'config' ? 'active' : ''}" data-branch-tab="config"><span class="nav-icon">⚙️</span><span class="nav-text">Configuración Capex</span></button>`;
     html += `<button class="nav-btn ${state.activeTab === 'socioeconomico' ? 'active' : ''}" data-branch-tab="socioeconomico"><span class="nav-icon">🗺</span><span class="nav-text">Estudio de Mercado</span></button>`;
-    html += `<div style="margin-top:auto;border-top:1px solid var(--border);padding-top:1rem">`;
+    html += `<div style="margin-top:1.5rem">`;
     html += `<button class="btn-add" id="nav-export-pdf" style="width:100%;box-sizing:border-box;justify-content:flex-start;background:var(--surface);color:var(--text-2);box-shadow:var(--shadow-card)"><span class="nav-icon">📄</span><span class="nav-text">Generar Reporte PDF</span></button>`;
     html += `</div>`;
   } else {
@@ -1265,8 +1266,9 @@ function updateNav() {
     html += `<button class="nav-btn ${state.view === 'portfolio' ? 'active' : ''}" data-view="portfolio"><span class="nav-icon">📍</span><span class="nav-text">Sucursales</span></button>`;
     html += `<button class="nav-btn ${state.view === 'consolidated' ? 'active' : ''}" data-view="consolidated"><span class="nav-icon">📊</span><span class="nav-text">P&L Consolidado</span></button>`;
     html += `<button class="nav-btn ${state.view === 'comparador' ? 'active' : ''}" data-view="comparador"><span class="nav-icon">⚖️</span><span class="nav-text">Comparar Red</span></button>`;
-    html += `<div class="nav-spacer"></div>`;
+    html += `<div style="margin-top:1.5rem">`;
     html += `<button class="btn-add" id="btn-add-branch"><span class="nav-icon">+</span> <span class="nav-text">Nueva Unidad</span></button>`;
+    html += `</div>`;
   }
 
   nav.innerHTML = html;
