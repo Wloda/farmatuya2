@@ -27,17 +27,18 @@ export function runBranchProjection(branch, empresa) {
   }
 
   // Apply market study adjustments (if study exists and is enabled)
-  if (branch.locationStudy?.scores?.factors && overrides.marketStudyEnabled !== false) {
+  const globalMarketEnabled = empresa?.settings?.applyMarketFactor !== false;
+  if (globalMarketEnabled && branch.locationStudy?.scores?.factors && overrides.marketStudyEnabled !== false) {
     const toggles = overrides.marketStudyToggles || {};
     const { combinedFactor } = calcCombinedMarketFactor(branch.locationStudy.scores.factors, toggles);
     overrides.scenarioFactor *= combinedFactor;
   }
 
   // Partners come from empresa, not from branch
-  overrides.partners = empresa.partners;
+  overrides.partners = empresa?.partners || [];
 
   // Enforce 0 royalty if the project is not a franchise
-  const proj = empresa.proyectos?.find(p => p.id === branch.proyectoId);
+  const proj = empresa?.proyectos?.find(p => p.id === branch.proyectoId);
   if (proj && proj.isFranchise === false) {
     overrides.variableCosts = { ...(overrides.variableCosts || model.variableCosts) };
     overrides.variableCosts.regalia = 0;

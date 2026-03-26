@@ -1,14 +1,45 @@
 /**
  * BW² — Multi-Empresa Multi-Proyecto Dashboard v8
  */
-import { MODELS, SCENARIOS, LOCATIONS, BENCHMARKS } from './data/model-registry.js?v=bw4';
-import { runProjection, runSensitivity, generateHeatmap, calcStress, generateChecklist, evaluateAlerts } from './engine/financial-model.js?v=bw5';
-import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated, updateUserProfile, updateUserEmail, changePassword } from './auth.js';
+import { MODELS, SCENARIOS } from './data/model-registry.js?v=bw5';
+import { runProjection, runSensitivity, calcStress, generateChecklist, evaluateAlerts } from './engine/financial-model.js?v=bw5';
 import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw4';
 import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw4';
 import { runLocationStudy, calcCombinedMarketFactor, geocodeAddress } from './engine/location-engine.js?v=bw6';
 import { generateBranchPDF } from './pdf-export.js?v=bw4';
 import { setGoogleApiKey, loadGoogleMaps, attachPlacesAutocomplete, createGoogleMap, buildStudyMarkers, isGoogleMapsLoaded, getGoogleApiKey } from './engine/google-places.js';
+import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated, updateUserProfile, updateUserEmail, changePassword } from './auth.js';
+
+/* ═══ SVG ICON SYSTEM (Lucide-style stroked icons) ═══ */
+const _ICO = {
+  trash:      '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+  edit:       '<path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>',
+  building:   '<path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/>',
+  folder:     '<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>',
+  chart:      '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+  trending:   '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+  rocket:     '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/>',
+  settings:   '<circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>',
+  gear:       '<path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  map:        '<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>',
+  mapPin:     '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>',
+  scale:      '<path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 00-1.172-2.828L3 3"/><path d="m15 9 6-6"/>',
+  wallet:     '<path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 100 4h4v-4z"/>',
+  shield:     '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  download:   '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  upload:     '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+  refresh:    '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>',
+  check:      '<polyline points="20 6 9 17 4 12"/>',
+  clipboard:  '<path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>',
+  copy:       '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>',
+  file:       '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+  dollar:     '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>',
+  store:      '<path d="M3 9l1-4h16l1 4"/><path d="M3 9v11a1 1 0 001 1h16a1 1 0 001-1V9"/><path d="M9 21V13h6v8"/>',
+  eye:        '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+};
+function ico(name, size = 16) {
+  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${_ICO[name] || ''}</svg>`;
+}
 
 /* ═══ GOOGLE API CONFIGURATION ═══ */
 // Set your Google Cloud API key here (requires Maps JS, Places, Geocoding APIs)
@@ -19,90 +50,16 @@ if (GOOGLE_API_KEY) {
 }
 
 /* ═══ GLOBALS & STATE ═══ */
-const STORE_KEY = 'bw2_store';
-let ws = {
-  version: 3,
-  empresas: [],
-  activeEmpresaId: null
-};
-
 // State view: dashboard, bw2home, comparador, etc.
-let state = { view: 'bw2home', activeBranchId: null, showInactive: false, activeTab: 'resultados' };
-
-/* ═══ WIDGET LAYOUT MANAGER ═══ */
-const WidgetManager = {
-  isEditing: false,
-  sortables: [],
-  
-  init() {
-    this.hookButtons();
-    this.loadLayout('branch-resultados');
-    this.loadLayout('consolidated');
-  },
-
-  hookButtons() {
-    // Handled by Apple-style widget system (IIFE at bottom of file)
-  },
-
-  getGrids(target) {
-    if (target === 'branch-resultados') return ['branch-resultados-grid', 'branch-an-grid'];
-    return ['consol-widget-grid'];
-  },
-
-  getAllWidgets(target) {
-    const grids = this.getGrids(target);
-    const selectors = grids.map(g => `#${g} > .widget`).join(', ');
-    return Array.from(document.querySelectorAll(selectors));
-  },
-
-  toggleEditMode(target, active) {
-    // Handled by Apple-style widget system (IIFE at bottom of file)
-  },
-
-  resizeWidget(widgetEl, target, direction) {
-    // Handled by Apple-style context menu
-  },
-
-  saveLayout(target) {
-    const widgets = this.getAllWidgets(target);
-    const layout = widgets.map(w => {
-      const sizes = ['wg-3', 'wg-4', 'wg-6', 'wg-8', 'wg-12'];
-      return {
-        id: w.dataset.widgetId,
-        size: sizes.find(s => w.classList.contains(s)) || 'wg-4'
-      };
-    });
-    const key = `bw2_layout_v2_${target}`;
-    localStorage.setItem(key, JSON.stringify(layout));
-  },
-
-  loadLayout(target) {
-    const saved = localStorage.getItem(`bw2_layout_v2_${target}`);
-    if(!saved) return;
-    try {
-      const layout = JSON.parse(saved);
-      const grids = this.getGrids(target);
-      // Determine final grid host to append to (last configured parent or fallback to first grid)
-      
-      layout.forEach(conf => {
-        if(!conf.id) return;
-        const w = document.querySelector(`[data-widget-id="${conf.id}"]`);
-        if(w) {
-          // Keep it in its current parent grid if we aren't saving exact grid-parent state,
-          // or properly append it sequentially back to its parent. Since we didn't save parentGridId,
-          // we'll just append it to the grid it is currently in to re-order it, or first grid.
-          const currentParent = w.parentElement;
-          if (currentParent) currentParent.appendChild(w);
-          
-          const sizes = ['wg-3', 'wg-4', 'wg-6', 'wg-8', 'wg-12'];
-          w.classList.remove(...sizes);
-          w.classList.add(conf.size);
-          w.style.display = '';
-        }
-      });
-    } catch(e) { console.warn('Layout load error', e); }
+const defaultState = { view: 'bw2home', activeBranchId: null, showInactive: false, activeTab: 'resultados' };
+const savedState = JSON.parse(localStorage.getItem('bw2_ui_state') || 'null') || defaultState;
+let state = new Proxy(savedState, {
+  set(target, prop, value) {
+    target[prop] = value;
+    localStorage.setItem('bw2_ui_state', JSON.stringify(target));
+    return true;
   }
-};
+});
 
 /* ═══ LOCALSTORAGE MIGRATION ═══ */
 let charts = {};
@@ -146,39 +103,46 @@ function resizeImageToDataURL(file, maxSize = 256) {
   });
 }
 
-Chart.defaults.color='#6B7280';
-Chart.defaults.font.family="'Inter',-apple-system,sans-serif";
-Chart.defaults.font.size=11;
-Chart.defaults.font.weight=500;
-Chart.defaults.plugins.legend.labels.boxWidth=12;
-Chart.defaults.plugins.legend.labels.padding=16;
-Chart.defaults.plugins.legend.labels.usePointStyle=true;
-Chart.defaults.plugins.legend.labels.pointStyle='circle';
-Chart.defaults.elements.bar.borderRadius=6;
-Chart.defaults.elements.bar.borderSkipped=false;
-Chart.defaults.elements.line.tension=0.35;
-Chart.defaults.elements.line.borderWidth=2.5;
-Chart.defaults.elements.point.radius=0;
-Chart.defaults.elements.point.hoverRadius=5;
-Chart.defaults.elements.point.hoverBorderWidth=2;
-// Scale defaults — merge, don't replace
-Object.assign(Chart.defaults.scale.grid, {color:'rgba(0,0,0,0.04)', drawBorder:false});
-if(Chart.defaults.scale.border) Object.assign(Chart.defaults.scale.border, {display:false});
-// Tooltip — merge into existing defaults (replacing entire object breaks Chart.js)
-Object.assign(Chart.defaults.plugins.tooltip, {
-  backgroundColor:'rgba(17,24,39,0.92)',
-  cornerRadius:10,
-  borderColor:'rgba(255,255,255,0.1)',
-  borderWidth:1,
-  boxPadding:4,
-  caretSize:6,
-  displayColors:true,
-});
-Chart.defaults.plugins.tooltip.titleFont = {size:12, weight:700};
-Chart.defaults.plugins.tooltip.bodyFont = {size:11};
-Chart.defaults.plugins.tooltip.padding = {x:12, y:8};
-Chart.defaults.animation.duration = 800;
-Chart.defaults.animation.easing = 'easeOutQuart';
+/* ── Chart.js defaults (applied lazily after ensureChartJS) ── */
+let _chartDefaultsApplied = false;
+function _configureChartDefaults() {
+  if (_chartDefaultsApplied || typeof Chart === 'undefined') return;
+  _chartDefaultsApplied = true;
+  Chart.defaults.color='#374151';
+  Chart.defaults.font.family="'Inter',-apple-system,sans-serif";
+  Chart.defaults.font.size=11;
+  Chart.defaults.font.weight=600;
+  Chart.defaults.plugins.legend.labels.boxWidth=12;
+  Chart.defaults.plugins.legend.labels.padding=16;
+  Chart.defaults.plugins.legend.labels.usePointStyle=true;
+  Chart.defaults.plugins.legend.labels.pointStyle='circle';
+  Chart.defaults.elements.bar.borderRadius=6;
+  Chart.defaults.elements.bar.borderSkipped=false;
+  Chart.defaults.elements.line.tension=0.35;
+  Chart.defaults.elements.line.borderWidth=2.5;
+  Chart.defaults.elements.point.radius=0;
+  Chart.defaults.elements.point.hoverRadius=5;
+  Chart.defaults.elements.point.hoverBorderWidth=2;
+  Object.assign(Chart.defaults.scale.grid, {color:'rgba(0,0,0,0.07)', drawBorder:false});
+  if(Chart.defaults.scale.border) Object.assign(Chart.defaults.scale.border, {display:false});
+  Object.assign(Chart.defaults.plugins.tooltip, {
+    backgroundColor:'rgba(17,24,39,0.92)',
+    cornerRadius:10,
+    borderColor:'rgba(255,255,255,0.1)',
+    borderWidth:1,
+    boxPadding:4,
+    caretSize:6,
+    displayColors:true,
+  });
+  Chart.defaults.plugins.tooltip.titleFont = {size:12, weight:700};
+  Chart.defaults.plugins.tooltip.bodyFont = {size:11};
+  Chart.defaults.plugins.tooltip.padding = {x:12, y:8};
+  Chart.defaults.animation.duration = 800;
+  Chart.defaults.animation.easing = 'easeOutQuart';
+}
+// Patch ensureChartJS to also apply defaults
+const _origEnsureChartJS = window.ensureChartJS;
+window.ensureChartJS = async function() { await _origEnsureChartJS(); _configureChartDefaults(); };
 
 const $=id=>document.getElementById(id);
 const fmt={m:v=>'$'+Math.round(v).toLocaleString('es-MX'),mk:v=>'$'+(v/1000).toFixed(0)+'K',p:v=>(v*100).toFixed(1)+'%',pi:v=>Math.round(v*100)+'%',mo:v=>v?v+' m':'∞'};
@@ -189,7 +153,7 @@ let _projCacheGen = 0;
 function cachedProjection(branch, empresa) {
   const key = `${_projCacheGen}:${branch.id}:${branch.scenarioId||'base'}`;
   if (_projCache.has(key)) return _projCache.get(key);
-  const r = runBranchProjection(branch, empresa);
+  const r = runBranchProjection(branch, getActiveEmpresa());
   _projCache.set(key, r);
   return r;
 }
@@ -217,7 +181,7 @@ const KPI_TIPS = {
   'Recuperación': 'Meses estimados para recuperar la inversión total. Menor es mejor. Óptimo: <24 meses.',
   'Score': 'Puntuación de viabilidad 0-100. Combina payback, ROI, EBITDA y riesgo. ≥ 80 = Excelente.',
   'Capital Total': 'Suma del capital de todos los proyectos en esta empresa.',
-  'Comprometido': 'Capital ya asignado a inversiones en sucursales activas y planificadas.',
+  'Inv. Prop.': 'Inversión total de sucursales × % de participación del socio. Si excede su capital, necesita más fondos.',
   'Capital Libre': 'Capital disponible para nuevas inversiones. Debe ser > 20% del total.',
   'ROI 12m': 'Retorno sobre inversión en los primeros 12 meses. Positivo = ganancia en año 1.',
   'ROI 36m': 'Retorno acumulado a 3 años. > 60% se considera bueno.',
@@ -243,13 +207,15 @@ function screenshotChart(chartId) {
   a.href = url; a.download = `bw2_${chartId}_${Date.now()}.png`; a.click();
   showToast('📸 Captura guardada', 'success');
 }
+window.screenshotChart = screenshotChart;
 
 /* ── Clipboard Copy ── */
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => showToast('📋 Copiado', 'success')).catch(() => showToast('Error al copiar', 'error'));
 }
 function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
-function kc(l,v,d,s,tip){const t=tip||KPI_TIPS[l]||'';return `<div class="kpi-card" data-status="${s}"${t?` title="${esc(t)}"`:''} style="cursor:${t?'help':'default'}"><div class="kpi-label">${l}</div><div class="kpi-value" data-animate>${v}</div><div class="kpi-detail">${d}</div></div>`;}
+function destroyAllCharts(){Object.keys(charts).forEach(dc); if(window._locRadarChart){window._locRadarChart.destroy();window._locRadarChart=null;}}
+function kc(l,v,d,s,tip){const t=tip||KPI_TIPS[l]||'';const helpHtml=t?`<span class="kpi-help">?<span class="kpi-tip">${esc(t)}</span></span>`:'';return `<div class="kpi-card" data-status="${s}"><div class="kpi-label">${l}${helpHtml}</div><div class="kpi-value" data-animate>${v}</div><div class="kpi-detail">${d}</div></div>`;}
 
 /* ── Shared KPI aggregation helper (eliminates redundancy across Home/L2/Portfolio) ── */
 function computeAggregate(branches, empresa) {
@@ -257,7 +223,7 @@ function computeAggregate(branches, empresa) {
   branches.forEach(b => {
     if (b.status === 'archived') return;
     try {
-      const r = runBranchProjection(b, empresa);
+      const r = runBranchProjection(b, getActiveEmpresa());
       if (r) {
         totalInv += r.totalInvestment || 0;
         ebitda += r.avgMonthlyEBITDA || 0;
@@ -279,7 +245,7 @@ document.addEventListener('keydown', (e) => {
   const overlay = document.querySelector('.bw2-modal-overlay');
   if (overlay) { overlay.remove(); return; }
   // Close static modals
-  ['modal-add-branch', 'modal-confirm', 'modal-profile'].forEach(id => {
+  ['modal-wizard', 'modal-confirm', 'modal-profile'].forEach(id => {
     const m = document.getElementById(id);
     if (m && m.style.display !== 'none' && m.style.display !== '') {
       m.style.display = 'none';
@@ -336,7 +302,7 @@ function generateAlerts() {
       (proj.branches||[]).forEach(b => {
         if (b.status === 'archived') return;
         try {
-          const r = runBranchProjection(b, proj);
+          const r = runBranchProjection(b, getActiveEmpresa());
           if (r && r.avgMonthlyEBITDA < 0) {
             alerts.push({ type: 'danger', icon: '📉', text: `${esc(b.name)}: EBITDA negativo` });
           }
@@ -370,9 +336,9 @@ function openCommandPalette() {
   empresas.forEach(emp => {
     items.push({ icon: '🏢', label: emp.name, path: 'Empresa', action: () => { setActiveEmpresa(emp.id); state.view = 'empresa'; renderCurrentView(); }});
     (emp.proyectos||[]).forEach(proj => {
-      items.push({ icon: '📁', label: proj.name || proj.projectName || 'Proyecto', path: emp.name, action: () => { setActiveEmpresa(emp.id); setActiveProyecto(proj.id); state.view = 'proyecto'; renderCurrentView(); }});
+      items.push({ icon: '📁', label: proj.name || proj.projectName || 'Proyecto', path: emp.name, action: () => { setActiveEmpresa(emp.id); setActiveProyecto(emp.id, proj.id); state.view = 'proyecto'; renderCurrentView(); }});
       (proj.branches||[]).forEach(b => {
-        items.push({ icon: '📍', label: b.name, path: `${emp.name} › ${proj.name||'Proyecto'}`, action: () => { setActiveEmpresa(emp.id); setActiveProyecto(proj.id); state.view = 'branch'; state.activeBranchId = b.id; state.activeTab = 'resultados'; renderCurrentView(); }});
+        items.push({ icon: '📍', label: b.name, path: `${emp.name} › ${proj.name||'Proyecto'}`, action: () => { setActiveEmpresa(emp.id); setActiveProyecto(emp.id, proj.id); state.view = 'branch'; state.activeBranchId = b.id; state.activeTab = 'resultados'; renderCurrentView(); }});
       });
     });
   });
@@ -448,8 +414,7 @@ document.addEventListener('DOMContentLoaded',async ()=>{
   if (GOOGLE_API_KEY) {
     try { await loadGoogleMaps(); } catch(e) { console.warn('[BW2] Google Maps load failed, using Nominatim fallback:', e.message); }
   }
-  initNav(); 
-  WidgetManager.init();
+  initNav();
   renderCurrentView();
   onEmpresaChange(()=>{ if(!_suppressFullRender) renderCurrentView(); });
 });
@@ -463,10 +428,24 @@ function initNav(){
     state.activeBranchId=null;
     renderCurrentView();
   });
+
+  const marketToggle = $('global-market-toggle');
+  if (marketToggle) {
+    marketToggle.addEventListener('change', (e) => {
+      const emp = getActiveEmpresa();
+      if (emp) {
+        if (!emp.settings) emp.settings = {};
+        emp.settings.applyMarketFactor = e.target.checked;
+        saveData();
+        renderCurrentView();
+      }
+    });
+  }
   // Nav is now built dynamically by updateNav() called from renderCurrentView()
 }
 
 function renderCurrentView() {
+  destroyAllCharts();
   const isBW2Home = state.view === 'bw2home';
   const mainNav=$('main-nav');
   const mainContent=$('main-content');
@@ -533,21 +512,16 @@ function renderCurrentView() {
   // Update contextual sidebar and breadcrumb
   updateNav();
   updateBreadcrumb();
+
 }
 
 function updateEnterpriseHeader(empresa){
-  const consol = runConsolidation(empresa);
   const emp = getActiveEmpresa();
   const empName = emp ? emp.name : 'Sin Empresa';
   const projName = empresa.name || 'Proyecto';
+  // Header is navigation-only — no financial data
   const el=$('enterprise-header-info');
-  const scoreColor = consol.avgScore >= 80 ? 'green' : consol.avgScore >= 60 ? 'yellow' : 'red';
-  if(el) el.innerHTML=`<span class="ent-stat project-badge">📁 ${projName}</span>
-    <span class="ent-stat">Capital: ${fmt.m(empresa.totalCapital)}</span>
-    <span class="ent-stat">Comprometido: ${fmt.m(consol.capitalCommitted)}</span>
-    <span class="ent-stat ${consol.capitalFree<0?'danger':''}">Libre: ${fmt.m(consol.capitalFree)}</span>
-    <span class="ent-stat">Sucursales: ${consol.branchCount} (${consol.branchCountActive} activa${consol.branchCountActive!==1?'s':''}, ${consol.branchCountPlanned} plan.)</span>
-    <span class="ent-stat"><span class="sem-dot ${scoreColor}"></span> Score: ${consol.avgScore}</span>`;
+  if(el) el.innerHTML='';
   // Update brand
   const brandName=$('header-brand-name');
   const brandSub=$('header-brand-subtitle');
@@ -559,10 +533,19 @@ function updateEnterpriseHeader(empresa){
     if(emp && emp.logo) {
       headerLogo.src = emp.logo;
       headerLogo.alt = empName;
+      headerLogo.style.display = '';
     } else {
-      headerLogo.src = 'assets/nojom-bird.png';
-      headerLogo.alt = 'Logo';
+      headerLogo.src = '';
+      headerLogo.alt = '';
+      headerLogo.style.display = 'none';
     }
+  }
+  
+  const marketToggle = $('global-market-toggle');
+  if (marketToggle) {
+    marketToggle.checked = emp?.settings?.applyMarketFactor !== false;
+    const toggleContainer = marketToggle.closest('.header-market-toggle');
+    if (toggleContainer) toggleContainer.style.display = emp ? 'flex' : 'none';
   }
 }
 
@@ -591,7 +574,7 @@ function renderBW2Home(){
         if(b.status==='archived') return;
         gBranches++;
         try {
-          const r = runBranchProjection(b, proj);
+          const r = runBranchProjection(b, getActiveEmpresa());
           if(r){
             gComm += r.totalInvestment||0;
             gEBITDA += r.avgMonthlyEBITDA||0;
@@ -611,8 +594,8 @@ function renderBW2Home(){
   h += `<div class="bw2-global-summary">
     <div class="global-summary-grid">
       <div class="global-summary-card"><span class="global-summary-label">Capital Total</span><span class="global-summary-value">${fmt.m(gCap)}</span></div>
-      <div class="global-summary-card"><span class="global-summary-label">Comprometido</span><span class="global-summary-value" style="color:var(--yellow)">${fmt.m(gComm)}</span><span class="global-summary-sub">${gCap?((gComm/gCap)*100).toFixed(0):'0'}%</span></div>
-      <div class="global-summary-card"><span class="global-summary-label">Capital Libre</span><span class="global-summary-value" style="color:${gFree>=0?'var(--green)':'var(--red)'}">${fmt.m(gFree)}</span></div>
+      <div class="global-summary-card"><span class="global-summary-label">Inv. Requerida</span><span class="global-summary-value" style="color:var(--yellow)">${fmt.m(gComm)}</span><span class="global-summary-sub">${gCap?((gComm/gCap)*100).toFixed(0):'0'}%</span></div>
+      <div class="global-summary-card"><span class="global-summary-label">Libre / Faltante</span><span class="global-summary-value" style="color:${gFree>=0?'var(--green)':'var(--red)'}">${fmt.m(gFree)}</span></div>
       <div class="global-summary-card"><span class="global-summary-label">Sucursales</span><span class="global-summary-value">${gBranches}</span><span class="global-summary-sub">${empresas.length} empresa${empresas.length!==1?'s':''}</span></div>
       <div class="global-summary-card"><span class="global-summary-label">EBITDA/mes</span><span class="global-summary-value" style="color:${gEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(gEBITDA)}</span></div>
       <div class="global-summary-card"><span class="global-summary-label">Score</span><span class="global-summary-value">${scoreRing(gAvg, 40)}</span></div>
@@ -633,8 +616,8 @@ function renderBW2Home(){
       <button class="empty-state-cta" id="btn-empty-create">+ Crear Empresa</button>
     </div>`;
     container.innerHTML = h;
-    $('btn-create-empresa').onclick = ()=>showBW2Modal('crear-empresa');
-    $('btn-empty-create').onclick = ()=>showBW2Modal('crear-empresa');
+    $('btn-create-empresa').onclick = ()=>WizardManager.open('empresa');
+    $('btn-empty-create').onclick = ()=>WizardManager.open('empresa');
     return;
   }
 
@@ -648,7 +631,7 @@ function renderBW2Home(){
         if(b.status==='archived') return;
         bCount++;
         try {
-          const r = runBranchProjection(b, proj);
+          const r = runBranchProjection(b, getActiveEmpresa());
           if(r){
             ebitda += r.avgMonthlyEBITDA||0;
             if(r.paybackMonth > payback) payback = r.paybackMonth;
@@ -669,7 +652,7 @@ function renderBW2Home(){
       (proj.branches||[]).forEach(b => {
         if (b.status === 'archived') return;
         try {
-          const r = runBranchProjection(b, proj);
+          const r = runBranchProjection(b, getActiveEmpresa());
           if (r && r.months) {
             const last12 = r.months.slice(-12);
             last12.forEach((m,i) => { sparkData[i] = (sparkData[i]||0) + (m.ebitda||0); });
@@ -715,12 +698,12 @@ function renderBW2Home(){
   bindBW2Events();
   renderAlertStrip(container);
   const cardBtn = $('btn-create-empresa-card');
-  if(cardBtn) cardBtn.onclick = ()=>showBW2Modal('crear-empresa');
+  if(cardBtn) cardBtn.onclick = ()=>WizardManager.open('empresa');
 }
 
 function bindBW2Events(){
   const createBtn = $('btn-create-empresa');
-  if(createBtn) createBtn.onclick = ()=>showBW2Modal('crear-empresa');
+  if(createBtn) createBtn.onclick = ()=>WizardManager.open('empresa');
 
   document.querySelectorAll('.btn-edit-empresa').forEach(btn=>{
     btn.onclick = (e)=>{ e.stopPropagation(); showBW2Modal('editar-empresa', btn.dataset.empId); };
@@ -746,23 +729,33 @@ function bindBW2Events(){
 function renderPortfolioSummary(empresa){
   const el=$('portfolio-summary'); if(!el) return;
   if(!empresa){ el.style.display='none'; return; }
+  const proj = empresa.proyectos?.find(p => p.id === state.activeProyectoId);
+  if(!proj){ el.style.display='none'; return; }
 
-  const consol = runConsolidation(empresa);
+  const pseudoEmpresa = {
+    ...empresa,
+    branches: proj.branches || [],
+    totalCapital: proj.totalCapital || 2e6,
+    corporateReserve: proj.corporateReserve || 0,
+    corporateExpenses: proj.corporateExpenses || 0
+  };
+  const consol = runConsolidation(pseudoEmpresa);
+  
   el.style.display='';
   el.innerHTML=`
-    <div class="global-summary-title">📁 ${esc(empresa.name)} — Resumen</div>
+    <div class="global-summary-title">📁 ${esc(proj.name)} — Resumen</div>
     <div class="global-summary-grid">
       <div class="global-summary-card">
         <span class="global-summary-label">Capital</span>
-        <span class="global-summary-value">${fmt.m(empresa.totalCapital)}</span>
+        <span class="global-summary-value">${fmt.m(pseudoEmpresa.totalCapital)}</span>
       </div>
       <div class="global-summary-card">
-        <span class="global-summary-label">Comprometido</span>
+        <span class="global-summary-label">Inv. Requerida</span>
         <span class="global-summary-value" style="color:var(--yellow)">${fmt.m(consol.capitalCommitted)}</span>
-        <span class="global-summary-sub">${empresa.totalCapital?((consol.capitalCommitted/empresa.totalCapital)*100).toFixed(0):'0'}%</span>
+        <span class="global-summary-sub">${pseudoEmpresa.totalCapital?((consol.capitalCommitted/pseudoEmpresa.totalCapital)*100).toFixed(0):'0'}%</span>
       </div>
       <div class="global-summary-card">
-        <span class="global-summary-label">Libre</span>
+        <span class="global-summary-label">Libre / Faltante</span>
         <span class="global-summary-value" style="color:${consol.capitalFree>=0?'var(--green)':'var(--red)'}">${fmt.m(consol.capitalFree)}</span>
       </div>
       <div class="global-summary-card">
@@ -797,7 +790,7 @@ function renderEmpresaDashboard(empresa){
       if(b.status==='archived') return;
       totalBranches++;
       try {
-        const r = runBranchProjection(b, proj);
+        const r = runBranchProjection(b, getActiveEmpresa());
         if(r) {
           totalComm += r.totalInvestment||0;
           totalEBITDA += r.avgMonthlyEBITDA||0;
@@ -814,13 +807,21 @@ function renderEmpresaDashboard(empresa){
       <div class="global-summary-title">🏢 ${esc(empresa.name)} — Resumen General</div>
       <div class="global-summary-grid">
         <div class="global-summary-card"><span class="global-summary-label">Capital Total</span><span class="global-summary-value">${fmt.m(totalCap)}</span></div>
-        <div class="global-summary-card"><span class="global-summary-label">Comprometido</span><span class="global-summary-value" style="color:var(--yellow)">${fmt.m(totalComm)}</span><span class="global-summary-sub">${totalCap?((totalComm/totalCap)*100).toFixed(0):'0'}%</span></div>
-        <div class="global-summary-card"><span class="global-summary-label">Capital Libre</span><span class="global-summary-value" style="color:${totalFree>=0?'var(--green)':'var(--red)'}">${fmt.m(totalFree)}</span></div>
+        <div class="global-summary-card"><span class="global-summary-label">Inv. Requerida</span><span class="global-summary-value" style="color:var(--yellow)">${fmt.m(totalComm)}</span><span class="global-summary-sub">${totalCap?((totalComm/totalCap)*100).toFixed(0):'0'}%</span></div>
+        <div class="global-summary-card"><span class="global-summary-label">Libre / Faltante</span><span class="global-summary-value" style="color:${totalFree>=0?'var(--green)':'var(--red)'}">${fmt.m(totalFree)}</span></div>
         <div class="global-summary-card"><span class="global-summary-label">Sucursales</span><span class="global-summary-value">${totalBranches}</span><span class="global-summary-sub">${empresa.proyectos.length} proyecto${empresa.proyectos.length!==1?'s':''}</span></div>
         <div class="global-summary-card"><span class="global-summary-label">EBITDA/mes</span><span class="global-summary-value" style="color:${totalEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(totalEBITDA)}</span></div>
         <div class="global-summary-card"><span class="global-summary-label">Score</span><span class="global-summary-value">${scoreRing(avgScore, 40)}</span></div>
       </div>`;
   }
+
+  // Sync empresa dinamismo selects
+  const ov = empresa.overrides || {};
+  const erSel=$('empresa-royalty-select'); if(erSel) erSel.value = ov.royaltyMode || 'variable_2_5';
+  const ewSel=$('empresa-waiver-select');  if(ewSel) ewSel.value = (ov.waiverFromOpening||false).toString();
+  const epSel=$('empresa-preopen-select'); if(epSel) epSel.value = (ov.preOpenMonths||0).toString();
+  const emSel=$('empresa-market-toggle');  if(emSel) emSel.value = (ov.applyMarketFactor!==false).toString();
+  const esSel=$('empresa-scenario-select');if(esSel) esSel.value = (ov.baseScenarioFactor||1).toString();
 
   // Render project cards
   let html = '';
@@ -829,7 +830,7 @@ function renderEmpresaDashboard(empresa){
     let projEBITDA=0, projScore=0, projScored=0, projPayback=0;
     activeBranches.forEach(b => {
       try {
-        const r = runBranchProjection(b, proj);
+        const r = runBranchProjection(b, getActiveEmpresa());
         if(r) {
           projEBITDA += r.avgMonthlyEBITDA||0;
           if(r.paybackMonth > projPayback) projPayback = r.paybackMonth;
@@ -884,7 +885,7 @@ function renderEmpresaDashboard(empresa){
   });
   gridEl.querySelectorAll('.btn-add-proyecto-dash').forEach(btn => {
     btn.addEventListener('click', () => {
-      showBW2Modal('crear-proyecto', btn.dataset.empId);
+      WizardManager.open('proyecto', btn.dataset.empId);
     });
   });
   gridEl.querySelectorAll('.btn-edit-proyecto').forEach(btn => {
@@ -944,6 +945,10 @@ function showBW2Modal(type, empId, projId){
       <label>Nombre de la Empresa</label>
       <input type="text" id="bw2-input-name" class="input-text" placeholder="Ej: Mi Empresa S.A. de C.V." autofocus>
     </div>
+    <div class="bw2-form-group">
+      <label>Capital Inicial ($)</label>
+      <input type="number" id="bw2-input-capital" class="input-text" value="2000000" step="100000">
+    </div>
     ${logoField('Logo de la Empresa', null)}`;
     submitLabel='Crear Empresa';
   } else if(type==='editar-empresa'){
@@ -951,7 +956,11 @@ function showBW2Modal(type, empId, projId){
     title='Editar Empresa';
     fields=`<div class="bw2-form-group">
       <label>Nombre de la Empresa</label>
-      <input type="text" id="bw2-input-name" class="input-text" value="${emp?.name||''}" autofocus>
+      <input type="text" id="bw2-input-name" class="input-text" value="${emp?.nombre||emp?.name||''}" autofocus>
+    </div>
+    <div class="bw2-form-group">
+      <label>Capital Inicial ($)</label>
+      <input type="number" id="bw2-input-capital" class="input-text" value="${emp?.capitalInicial||2000000}" step="100000">
     </div>
     ${logoField('Logo de la Empresa', emp?.logo || null)}`;
   } else if(type==='crear-proyecto'){
@@ -979,7 +988,7 @@ function showBW2Modal(type, empId, projId){
     title='Editar Proyecto';
     fields=`<div class="bw2-form-group">
       <label>Nombre del Proyecto</label>
-      <input type="text" id="bw2-input-name" class="input-text" value="${proj?.name||''}" autofocus>
+      <input type="text" id="bw2-input-name" class="input-text" value="${proj?.nombre||proj?.name||''}" autofocus>
     </div>
     <div class="bw2-form-group">
       <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
@@ -1076,11 +1085,13 @@ function showBW2Modal(type, empId, projId){
     if(nameVal.length > 100){showToast('El nombre es demasiado largo (máx 100 caracteres)','error');return;}
 
     if(type==='crear-empresa'){
+      const cap = parseFloat($('bw2-input-capital')?.value)||2000000;
       const newEmp = addEmpresa(nameVal);
-      if(pendingLogoDataURL) updateEmpresaData(newEmp.id, {logo: pendingLogoDataURL});
+      if(pendingLogoDataURL || cap !== 2000000) updateEmpresaData(newEmp.id, {logo: pendingLogoDataURL, capitalInicial: cap});
       showToast(`Empresa "${nameVal}" creada`,'success');
     } else if(type==='editar-empresa'){
-      updateEmpresaData(empId, {name:nameVal, logo: pendingLogoDataURL});
+      const cap = parseFloat($('bw2-input-capital')?.value)||2000000;
+      updateEmpresaData(empId, {nombre:nameVal, logo: pendingLogoDataURL, capitalInicial: cap});
       showToast('Empresa actualizada','success');
     } else if(type==='crear-proyecto'){
       const cap = parseFloat($('bw2-input-capital')?.value)||2000000;
@@ -1097,7 +1108,11 @@ function showBW2Modal(type, empId, projId){
     }
 
     overlay.remove();
-    renderBW2Home();
+    if (type === 'crear-empresa' || type === 'editar-empresa') {
+      renderBW2Home();
+    } else {
+      renderCurrentView();
+    }
   };
 
   // Enter key submit
@@ -1107,11 +1122,13 @@ function showBW2Modal(type, empId, projId){
 /* ═══ PORTFOLIO VIEW ═══ */
 function renderPortfolio(empresa){
   const container=$('portfolio-grid');if(!container)return;
-  const proj = empresa.proyectos?.find(p => p.id === state.activeProyectoId);
+  // In the compatibility wrapper, `empresa` IS the active proyecto natively
+  const proj = empresa;
   const titleEl = $('portfolio-title');
   if (titleEl) titleEl.textContent = `Sucursales de ${proj ? proj.name : 'Proyecto'}`;
-  const branchResults = empresa.branches.map(b=>{
-    try { return {branch:b, result:runBranchProjection(b,empresa)}; }
+  const branchList = proj ? (proj.branches || []) : [];
+  const branchResults = branchList.map(b=>{
+    try { return {branch:b, result:runBranchProjection(b, getActiveEmpresa())}; }
     catch(e) { return {branch:b, result:null}; }
   });
   container.innerHTML = branchResults.map(({branch:b,result:r})=>{
@@ -1120,10 +1137,10 @@ function renderPortfolio(empresa){
     const label=score>=80?'EXCELENTE':score>=60?'VIABLE':score>=40?'FRÁGIL':'—';
     const emoji=MODELS[b.format]?.emoji||'📍';
     const statusMap = {
-      active:   '<span class="branch-status active">✅ Activa</span>',
-      planned:  '<span class="branch-status planned">📋 Planeada</span>',
-      archived: '<span class="branch-status archived">📦 Archivada</span>',
-      paused:   '<span class="branch-status archived">📦 Archivada</span>'
+      active:   `<span class="branch-status active"><span class="sec-icon" style="width:14px;height:14px;background:var(--green)">${ico('check',10)}</span> Activa</span>`,
+      planned:  `<span class="branch-status planned"><span class="sec-icon" style="width:14px;height:14px">${ico('clipboard',10)}</span> Planeada</span>`,
+      archived: `<span class="branch-status archived"><span class="sec-icon" style="width:14px;height:14px;background:var(--text-3)">${ico('folder',10)}</span> Archivada</span>`,
+      paused:   `<span class="branch-status archived"><span class="sec-icon" style="width:14px;height:14px;background:var(--text-3)">${ico('folder',10)}</span> Archivada</span>`
     };
     const statusBadge = statusMap[b.status] || statusMap.planned;
     const isArchived = b.status === 'archived' || b.status === 'paused';
@@ -1131,24 +1148,26 @@ function renderPortfolio(empresa){
     const isActive = b.status === 'active';
 
     // Build action buttons — using data attributes for event delegation (no inline onclick)
-    let actionBtns = `<button class="btn-sm" data-action="open" data-bid="${b.id}">📊 Ver</button>`;
-    actionBtns += `<button class="btn-sm" data-action="dup" data-bid="${b.id}">📋 Duplicar</button>`;
+    let actionBtns = `<button class="btn-sm" data-action="open" data-bid="${b.id}">${ico('eye',14)} Ver</button>`;
+    actionBtns += `<button class="btn-sm" data-action="rename" data-bid="${b.id}">${ico('edit',14)} Renombrar</button>`;
+    actionBtns += `<button class="btn-sm" data-action="dup" data-bid="${b.id}">${ico('copy',14)} Duplicar</button>`;
 
     if (isPlanned) {
-      actionBtns += `<button class="btn-sm success" data-action="activate" data-bid="${b.id}">✅ Activar</button>`;
-      actionBtns += `<button class="btn-sm warn" data-action="delete" data-bid="${b.id}">🗑 Eliminar</button>`;
+      actionBtns += `<button class="btn-sm success" data-action="activate" data-bid="${b.id}">${ico('check',14)} Activar</button>`;
     } else if (isActive) {
-      actionBtns += `<button class="btn-sm warn" data-action="archive" data-bid="${b.id}">📦 Archivar</button>`;
+      actionBtns += `<button class="btn-sm warn" data-action="archive" data-bid="${b.id}">${ico('folder',14)} Archivar</button>`;
     } else if (isArchived) {
-      actionBtns += `<button class="btn-sm success" data-action="restore" data-bid="${b.id}">▶ Restaurar</button>`;
-      actionBtns += `<button class="btn-sm danger" data-action="delete" data-bid="${b.id}">🗑 Eliminar</button>`;
+      actionBtns += `<button class="btn-sm success" data-action="restore" data-bid="${b.id}">${ico('refresh',14)} Restaurar</button>`;
     }
 
     return `<div class="branch-card ${isArchived?'archived':''}" data-branch="${b.id}">
       <div class="branch-card-header">
         <span class="branch-emoji">${emoji}</span>
         <div class="branch-info"><div class="branch-name">${b.name}</div><div class="branch-meta">${MODELS[b.format]?.label||b.format} · ${b.colonia||'Sin colonia'}</div></div>
-        ${statusBadge}
+        <div class="branch-header-actions">
+          ${statusBadge}
+          <button class="btn-icon-delete" data-action="delete" data-bid="${b.id}" style="display:inline-flex;align-items:center;justify-content:center;color:var(--text-3);background:none;border:none;cursor:pointer;opacity:0.6;transition:all 0.2s" onmouseover="this.style.opacity=1;this.style.color='var(--red)'" onmouseout="this.style.opacity=0.6;this.style.color='var(--text-3)'" title="Eliminar sucursal">${ico('trash', 16)}</button>
+        </div>
       </div>
       ${r?`<div class="branch-kpis">
         <div class="branch-kpi"><span class="bk-label" title="Ganancia mensual antes de impuestos">Ganancia/mes</span><span class="bk-value" style="color:${r.avgMonthlyEBITDA>=0?'var(--green)':'var(--red)'}">${fmt.m(r.avgMonthlyEBITDA)}</span></div>
@@ -1167,6 +1186,7 @@ function renderPortfolio(empresa){
     const bid = btn.dataset.bid;
     const action = btn.dataset.action;
     if (action === 'open') window._openBranch(bid);
+    else if (action === 'rename') window._renameBranch(bid);
     else if (action === 'dup') window._dupBranch(bid);
     else if (action === 'activate') window._activateBranch(bid);
     else if (action === 'delete') window._deleteBranch(bid);
@@ -1179,6 +1199,40 @@ function renderPortfolio(empresa){
 window._openBranch = (id)=>{ const b=getBranch(id); state.view='branch'; state.activeBranchId=id; state.activeTab='resultados'; state.branchOverrides={}; renderCurrentView(); };
 window._activateBranch = (id)=>{ activateBranch(id); };
 window._restoreBranch = (id)=>{ restoreBranch(id); };
+window._renameBranch = (id)=>{
+  const b = getBranch(id);
+  if(!b) return;
+  // Use the BW2 modal system for consistent UX
+  const old = document.querySelector('.bw2-modal-overlay:not([id])');
+  if(old) old.remove();
+  const overlay = document.createElement('div');
+  overlay.className='bw2-modal-overlay';
+  overlay.innerHTML=`<div class="bw2-modal">
+    <div class="bw2-modal-header"><h3>Renombrar Sucursal</h3><button class="bw2-modal-close">✕</button></div>
+    <div class="bw2-modal-body">
+      <div class="bw2-form-group"><label>Nombre de la Sucursal</label>
+      <input type="text" id="bw2-input-branch-name" class="input-text" value="${esc(b.name)}" autofocus></div>
+    </div>
+    <div class="bw2-modal-footer">
+      <button class="btn-secondary bw2-modal-cancel">Cancelar</button>
+      <button class="btn-primary bw2-modal-submit">Guardar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(()=>{const inp=document.getElementById('bw2-input-branch-name');if(inp){inp.focus();inp.select();}},100);
+  overlay.querySelector('.bw2-modal-close').onclick=()=>overlay.remove();
+  overlay.querySelector('.bw2-modal-cancel').onclick=()=>overlay.remove();
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  overlay.querySelector('.bw2-modal-submit').onclick=()=>{
+    const newName = document.getElementById('bw2-input-branch-name')?.value.trim();
+    if(!newName){showToast('El nombre es requerido','error');return;}
+    updateBranch(id, {name: newName});
+    showToast(`Sucursal renombrada: "${newName}"`,'success');
+    overlay.remove();
+    renderCurrentView();
+  };
+  overlay.addEventListener('keydown',e=>{if(e.key==='Enter')overlay.querySelector('.bw2-modal-submit').click();});
+};
 
 /* ── Custom confirm modal (replaces native confirm) ── */
 function showConfirm(title, bodyHtml, dangerLabel, onConfirm) {
@@ -1217,7 +1271,7 @@ window._deleteBranch = (id)=>{
     `<ul style="text-align:left;color:var(--text-2);line-height:1.8">
       <li>Se quitará del consolidado</li>
       <li>Se quitará del conteo total</li>
-      <li>Su inversión se liberará del capital comprometido</li>
+      <li>Su inversión se restará de la inversión requerida</li>
       <li>Su utilidad y flujo se quitarán del consolidado</li>
       <li>Se quitará de comparativos</li>
     </ul>
@@ -1225,7 +1279,11 @@ window._deleteBranch = (id)=>{
     '🗑 Eliminar definitivamente',
     () => {
       removeBranch(id);
-      if (state.activeBranchId === id) { state.view = 'portfolio'; state.activeBranchId = null; }
+      if (state.activeBranchId === id) { 
+        state.view = 'empresa-dashboard'; 
+        state.activeBranchId = null; 
+      }
+      renderCurrentView();
     }
   );
 };
@@ -1242,125 +1300,157 @@ function updateNav() {
   const nav = $('main-nav');
   if (!nav) return;
 
-  const empresa = getEmpresa();
-  const activeEmp = getActiveEmpresa();
   const isHome = state.view === 'bw2home';
   const isEmpresaDash = state.view === 'empresa-dashboard';
   const isBranch = state.view === 'branch' && state.activeBranchId;
   const branch = isBranch ? getBranch(state.activeBranchId) : null;
+  const activeEmp = getActiveEmpresa();
 
   nav.className = '';
   let html = '';
 
+  nav.style.display = 'flex';
+
   if (isHome) {
-    // Level 1: Home — minimal sidebar for consistency
-    nav.style.display = 'flex';
-    html += `<div class="nav-section">Panel de Control</div>`;
-    html += `<button class="nav-btn active"><span class="nav-icon">🏢</span><span class="nav-text">Empresas</span></button>`;
-    html += `<div class="nav-divider"></div>`;
-    html += `<div class="nav-spacer"></div>`;
-    html += `<button class="nav-btn" id="nav-open-profile"><span class="nav-icon">👤</span><span class="nav-text">Mi Perfil</span></button>`;
+    // Level 1: Home (Workspace)
+    html += `<div class="nav-section">Mi Workspace</div>`;
+    html += `<button class="nav-btn active"><span class="nav-icon">${ico('building')}</span><span class="nav-text">Mis Empresas</span></button>`;
+    html += `<div style="margin-top:1.5rem; display:flex; flex-direction:column; gap:0.6rem">`;
+    html += `<button class="btn-add" id="btn-nav-crear-empresa"><span class="nav-icon">+</span> <span class="nav-text">Nueva Empresa</span></button>`;
+    html += `<div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.4rem">`;
+    html += `<button class="nav-action-btn" id="btn-nav-export-data"><span class="nav-icon">${ico('download')}</span> <span class="nav-text" style="flex:1">Respaldar Datos</span></button>`;
+    html += `<button class="nav-action-btn" id="btn-nav-import-data"><span class="nav-icon">${ico('upload')}</span> <span class="nav-text" style="flex:1">Cargar Respaldo</span></button>`;
+    html += `<input type="file" id="import-data-file" accept=".json" style="display:none">`;
+    html += `</div></div>`;
+    
     nav.innerHTML = html;
-    const profBtn = nav.querySelector('#nav-open-profile');
-    if(profBtn) profBtn.addEventListener('click', () => {
-      const profileBtn = $('btn-open-profile');
-      if(profileBtn) profileBtn.click();
-    });
+    
+    const navEmpBtn = nav.querySelector('#btn-nav-crear-empresa');
+    if (navEmpBtn) navEmpBtn.addEventListener('click', () => showBW2Modal('config-empresa'));
+
+    const btnExport = nav.querySelector('#btn-nav-export-data');
+    if (btnExport) {
+      btnExport.addEventListener('click', () => {
+        const exportData = { version: 3, timestamp: new Date().toISOString() };
+        let foundKeys = false;
+        
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('bw2_')) {
+            try {
+              exportData[key] = JSON.parse(localStorage.getItem(key));
+              foundKeys = true;
+            } catch(e) {
+              exportData[key] = localStorage.getItem(key);
+            }
+          }
+        }
+        
+        if(!foundKeys) return alert('No hay datos BW² estructurados para respaldar.');
+        
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bw2_respaldo_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+      });
+    }
+
+    const btnImport = nav.querySelector('#btn-nav-import-data');
+    const fileImport = nav.querySelector('#import-data-file');
+    if (btnImport && fileImport) {
+      btnImport.addEventListener('click', () => fileImport.click());
+      fileImport.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const parsed = JSON.parse(evt.target.result);
+            if(parsed.version >= 3 || parsed.bw2_store) { 
+              // Loop through parsed keys and restore anything starting with bw2_
+              for (const [k, v] of Object.entries(parsed)) {
+                if (k.startsWith('bw2_')) {
+                  const valStr = typeof v === 'string' ? v : JSON.stringify(v);
+                  localStorage.setItem(k, valStr);
+                }
+              }
+              alert('Respaldo cargado correctamente. El sistema se reiniciará.');
+              location.reload();
+            } else throw new Error('Formato inválido');
+          } catch(err) {
+            alert('El archivo no es un respaldo válido completo de BW2.');
+          }
+        };
+        reader.readAsText(file);
+      });
+    }
     return;
   }
 
-  nav.style.display = 'flex';
-
   if (isEmpresaDash) {
-    // Level 2: Empresa Dashboard
-    html += `<button class="nav-back" id="nav-back-home"><span class="nav-icon">🏠</span><span class="nav-text">Home</span></button>`;
+    // Level 2: Empresa
+    html += `<div class="nav-section">Portafolio</div>`;
+    html += `<button class="nav-btn active"><span class="nav-icon">${ico('folder')}</span><span class="nav-text">Proyectos</span></button>`;
     html += `<div class="nav-divider"></div>`;
-    html += `<div class="nav-section">Empresa</div>`;
-    html += `<button class="nav-btn active"><span class="nav-icon">📁</span><span class="nav-text">Proyectos</span></button>`;
-    html += `<div class="nav-divider"></div>`;
-    html += `<div class="nav-section">Configuración</div>`;
-    html += `<button class="nav-btn" data-action="empresa-settings"><span class="nav-icon">⚙️</span><span class="nav-text">Sociedad y Socios</span></button>`;
-    html += `<div class="nav-spacer"></div>`;
+    html += `<div class="nav-section">Corporativo</div>`;
+    html += `<button class="nav-btn" data-action="empresa-settings"><span class="nav-icon">${ico('scale')}</span><span class="nav-text">Sociedad y Configuración</span></button>`;
+    html += `<div style="margin-top:1.5rem">`;
     html += `<button class="btn-add" id="btn-add-proyecto-nav"><span class="nav-icon">+</span> <span class="nav-text">Nuevo Proyecto</span></button>`;
+    html += `</div>`;
   } else if (isBranch && branch) {
-    // Level 4: Inside a Branch
-    html += `<button class="nav-back" id="nav-back-project"><span class="nav-icon">←</span><span class="nav-text">Proyecto</span></button>`;
-    html += `<div class="nav-divider"></div>`;
-    html += `<div class="nav-section">Sucursal</div>`;
-    html += `<button class="nav-btn ${state.activeTab === 'resultados' ? 'active' : ''}" data-branch-tab="resultados"><span class="nav-icon">📊</span><span class="nav-text">Resultados</span></button>`;
-    html += `<button class="nav-btn ${state.activeTab === 'config' ? 'active' : ''}" data-branch-tab="config"><span class="nav-icon">⚙️</span><span class="nav-text">Configuración</span></button>`;
-    html += `<button class="nav-btn ${state.activeTab === 'socioeconomico' ? 'active' : ''}" data-branch-tab="socioeconomico"><span class="nav-icon">🌍</span><span class="nav-text">Estudio de Mercado</span></button>`;
-    html += `<div class="nav-divider"></div>`;
-    html += `<div class="nav-spacer"></div>`;
-    html += `<button class="btn-add" id="nav-export-pdf" style="background:var(--surface);color:var(--text-2);box-shadow:var(--shadow-neu-sm)"><span class="nav-icon">📄</span><span class="nav-text">Exportar PDF</span></button>`;
+    // Level 4: Branch Details
+    html += `<div class="nav-section">Análisis Operativo</div>`;
+    html += `<button class="nav-btn ${state.activeTab === 'resultados' ? 'active' : ''}" data-branch-tab="resultados"><span class="nav-icon">${ico('trending')}</span><span class="nav-text">Estado de Resultados</span></button>`;
+    html += `<button class="nav-btn ${state.activeTab === 'marketing' ? 'active' : ''}" data-branch-tab="marketing"><span class="nav-icon">${ico('rocket')}</span><span class="nav-text">Growth & Marketing</span></button>`;
+    html += `<button class="nav-btn ${state.activeTab === 'config' ? 'active' : ''}" data-branch-tab="config"><span class="nav-icon">${ico('gear')}</span><span class="nav-text">Configuración Capex</span></button>`;
+    html += `<button class="nav-btn ${state.activeTab === 'socioeconomico' ? 'active' : ''}" data-branch-tab="socioeconomico"><span class="nav-icon">${ico('map')}</span><span class="nav-text">Estudio de Mercado</span></button>`;
+    html += `<div style="margin-top:1.5rem">`;
+    html += `<button class="btn-add" id="nav-export-pdf" style="width:100%;box-sizing:border-box;justify-content:flex-start;background:var(--surface);color:var(--text-2);box-shadow:var(--shadow-card)"><span class="nav-icon">📄</span><span class="nav-text">Generar Reporte PDF</span></button>`;
+    html += `</div>`;
   } else {
-    // Level 3: Inside a Project
-    html += `<button class="nav-back" id="nav-back-empresa"><span class="nav-icon">←</span><span class="nav-text">Empresa</span></button>`;
-    html += `<div class="nav-divider"></div>`;
-    html += `<div class="nav-section">Proyecto</div>`;
-    html += `<button class="nav-btn ${state.view === 'portfolio' ? 'active' : ''}" data-view="portfolio"><span class="nav-icon">📁</span><span class="nav-text">Sucursales</span></button>`;
-    html += `<button class="nav-btn ${state.view === 'consolidated' ? 'active' : ''}" data-view="consolidated"><span class="nav-icon">📊</span><span class="nav-text">Consolidado</span></button>`;
-    html += `<button class="nav-btn ${state.view === 'comparador' ? 'active' : ''}" data-view="comparador"><span class="nav-icon">⚖️</span><span class="nav-text">Comparar</span></button>`;
-    html += `<div class="nav-divider"></div>`;
-    html += `<div class="nav-section">Configuración</div>`;
-    html += `<button class="nav-btn ${state.view === 'empresa' ? 'active' : ''}" data-view="empresa"><span class="nav-icon">⚙️</span><span class="nav-text">Sociedad y Socios</span></button>`;
-    html += `<div class="nav-spacer"></div>`;
-    html += `<button class="btn-add" id="btn-add-branch"><span class="nav-icon">+</span> <span class="nav-text">Nueva Sucursal</span></button>`;
+    // Level 3: Project Portfolio
+    html += `<div class="nav-section">Unidades de Negocio</div>`;
+    html += `<button class="nav-btn ${state.view === 'portfolio' ? 'active' : ''}" data-view="portfolio"><span class="nav-icon">${ico('mapPin')}</span><span class="nav-text">Sucursales</span></button>`;
+    html += `<button class="nav-btn ${state.view === 'consolidated' ? 'active' : ''}" data-view="consolidated"><span class="nav-icon">${ico('chart')}</span><span class="nav-text">P&L Consolidado</span></button>`;
+    html += `<button class="nav-btn ${state.view === 'comparador' ? 'active' : ''}" data-view="comparador"><span class="nav-icon">${ico('scale')}</span><span class="nav-text">Comparar Red</span></button>`;
+    html += `<div style="margin-top:1.5rem">`;
+    html += `<button class="btn-add" id="btn-add-branch"><span class="nav-icon">+</span> <span class="nav-text">Nueva Unidad</span></button>`;
+    html += `</div>`;
   }
 
   nav.innerHTML = html;
 
   // Wire up events
-  // Home button (available at empresa level)
-  const homeBtn = nav.querySelector('#nav-back-home');
-  if (homeBtn) homeBtn.addEventListener('click', () => {
-    state.view = 'bw2home'; state.activeBranchId = null; renderCurrentView();
-  });
-
   if (isEmpresaDash) {
-    // Empresa-level buttons
     const settingsBtn = nav.querySelector('[data-action="empresa-settings"]');
     if (settingsBtn && activeEmp) {
       settingsBtn.addEventListener('click', () => {
-        // Set the first project as active to access settings
         if(activeEmp.proyectos.length) {
           setActiveProyecto(activeEmp.id, activeEmp.proyectos[0].id);
         }
-        state.view = 'empresa';
+        state.view = 'empresa'; // the UI view for society settings
         renderCurrentView();
       });
     }
     const addProjBtn = nav.querySelector('#btn-add-proyecto-nav');
     if (addProjBtn && activeEmp) {
-      addProjBtn.addEventListener('click', () => {
-        showBW2Modal('crear-proyecto', activeEmp.id);
-      });
+      addProjBtn.addEventListener('click', () => WizardManager.open('proyecto', activeEmp.id));
     }
   } else if (isBranch) {
-    // Back to project
-    const backBtn = nav.querySelector('#nav-back-project');
-    if (backBtn) backBtn.addEventListener('click', () => {
-      state.view = 'portfolio'; state.activeBranchId = null; renderCurrentView();
-    });
-    // Branch tab buttons
     nav.querySelectorAll('[data-branch-tab]').forEach(btn => {
       btn.addEventListener('click', () => {
         switchBranchTab(btn.dataset.branchTab);
         updateNav();
       });
     });
-    // PDF export
     const pdfBtn = nav.querySelector('#nav-export-pdf');
     if (pdfBtn) pdfBtn.addEventListener('click', () => {
       const mainPdfBtn = $('btn-export-pdf');
       if (mainPdfBtn) mainPdfBtn.click();
     });
   } else {
-    // Back to empresa
-    const backEmpBtn = nav.querySelector('#nav-back-empresa');
-    if (backEmpBtn) backEmpBtn.addEventListener('click', () => {
-      state.view = 'empresa-dashboard'; state.activeBranchId = null; renderCurrentView();
-    });
     // Project-level nav buttons
     nav.querySelectorAll('[data-view]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1381,58 +1471,56 @@ function updateBreadcrumb() {
   if (!bc) return;
 
   const isHome = state.view === 'bw2home';
-  const isEmpresaDash = state.view === 'empresa-dashboard';
-
   if (isHome) { bc.innerHTML = ''; return; }
 
   const emp = getActiveEmpresa();
   const proy = getActiveProyecto();
-  const empresa = getEmpresa();
   const isBranch = state.view === 'branch' && state.activeBranchId;
   const branch = isBranch ? getBranch(state.activeBranchId) : null;
 
   let crumbs = [];
 
-  // Empresa name (always first, clickable → empresa-dashboard)
+  // Home Link
+  crumbs.push({ label: 'Mis Empresas', action: 'bw2home' });
+
+  // Level 2: Empresa
   if (emp) {
     crumbs.push({ label: emp.name || 'Empresa', action: 'empresa-dashboard' });
   }
 
-  if (isEmpresaDash) {
-    // Level 2: Just show empresa name — no redundant "Proyectos"
-  } else {
-    // Proyecto name (clickable → portfolio)
-    if (proy) {
-      crumbs.push({ label: proy.name || 'Proyecto', action: 'portfolio' });
-    }
-    // Current view / branch
-    if (isBranch && branch) {
-      crumbs.push({ label: branch.name || 'Sucursal', action: null });
-    } else {
-      const viewLabels = {
-        portfolio: 'Sucursales', consolidated: 'Consolidado',
-        comparador: 'Comparar', empresa: 'Ajustes'
-      };
-      if (viewLabels[state.view]) {
-        crumbs.push({ label: viewLabels[state.view], action: null });
-      }
+  // Level 3: Proyecto
+  if (state.view !== 'empresa-dashboard' && proy) {
+    crumbs.push({ label: proy.name || 'Proyecto', action: 'portfolio' });
+  }
+
+  // Level 4: Current Entity (Branch or Settings view)
+  if (isBranch && branch) {
+    crumbs.push({ label: branch.name || 'Sucursal', action: null });
+  } else if (state.view !== 'empresa-dashboard' && state.view !== 'portfolio' && proy) {
+    const viewLabels = {
+      consolidated: 'Consolidado', comparador: 'Comparar', empresa: 'Sociedad y Socios'
+    };
+    if (viewLabels[state.view]) {
+      crumbs.push({ label: viewLabels[state.view], action: null });
     }
   }
 
   bc.innerHTML = crumbs.map((c, i) => {
     const isLast = i === crumbs.length - 1;
-    const sep = i > 0 ? '<span class="breadcrumb-sep">›</span>' : '';
+    const sep = i > 0 ? '<span class="breadcrumb-sep" style="margin:0 8px;color:var(--text-3)">/</span>' : '';
     if (isLast) {
-      return `${sep}<span class="breadcrumb-item current">${esc(c.label)}</span>`;
+      return `${sep}<span class="breadcrumb-item current" style="font-weight:700;color:var(--text-1)">${esc(c.label)}</span>`;
     }
-    return `${sep}<button class="breadcrumb-item" data-bc-action="${c.action}">${esc(c.label)}</button>`;
+    return `${sep}<button class="breadcrumb-item" data-bc-action="${c.action}" style="background:transparent;border:none;color:var(--text-2);cursor:pointer;font-family:inherit;font-size:inherit;padding:0;transition:color 0.2s" onmouseover="this.style.color='var(--text-1)'" onmouseout="this.style.color='var(--text-2)'">${esc(c.label)}</button>`;
   }).join('');
 
   // Wire breadcrumb clicks
   bc.querySelectorAll('[data-bc-action]').forEach(btn => {
     btn.addEventListener('click', () => {
       const action = btn.dataset.bcAction;
-      if (action === 'empresa-dashboard') {
+      if (action === 'bw2home') {
+        state.view = 'bw2home'; state.activeEmpresaId = null; state.activeProyectoId = null; state.activeBranchId = null;
+      } else if (action === 'empresa-dashboard') {
         state.view = 'empresa-dashboard'; state.activeBranchId = null;
       } else if (action === 'portfolio') {
         state.view = 'portfolio'; state.activeBranchId = null;
@@ -1453,6 +1541,26 @@ function switchBranchTab(tabName) {
     if (b.dataset.branchTab === tabName) b.classList.add('active');
     else b.classList.remove('active');
   });
+  // When switching to socioeconomico tab, fix/init the Leaflet map
+  if (tabName === 'socioeconomico') {
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        if (window._pendingMapData && !locMap) {
+          const { study, c, s } = window._pendingMapData;
+          _renderLeafletMap(study, c, s);
+        } else if (locMap) {
+          const container = document.getElementById('loc-map');
+          if (container) {
+            const rect = container.getBoundingClientRect();
+            if (rect.width > 0 && locMap._size && Math.abs(rect.width - locMap._size.x) > 10) {
+              locMap.invalidateSize({animate:false});
+              locMap.setView(locMap.getCenter(), locMap.getZoom(), {reset:true, animate:false});
+            }
+          }
+        }
+      }, 100);
+    });
+  }
 }
 
 /* ─── GEOCODING AUTOCOMPLETE HELPER (Google Places + Nominatim fallback) ─── */
@@ -1474,7 +1582,7 @@ async function setupGeocodingAutocomplete(inputId, suggestionsId, statusId, onSe
     attachPlacesAutocomplete(ci, {
       types: ['geocode', 'establishment'],
       onSelect: (place) => {
-        const name = place.colonia || place.name || place.displayName.split(',')[0];
+        const name = place.name || place.displayName.split(',')[0] || place.colonia;
         ci.value = name;
         if (sugBox) sugBox.classList.remove('open');
         if (statusEl) statusEl.innerHTML = `<span class="validated">✅ ${name} <small style="opacity:0.6">(Google)</small></span>`;
@@ -1493,20 +1601,24 @@ async function setupGeocodingAutocomplete(inputId, suggestionsId, statusId, onSe
     if (statusEl) statusEl.innerHTML = '<span class="searching">🔍 Buscando...</span>';
     debounce = setTimeout(async () => {
       try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + ', México')}&format=json&limit=6&addressdetails=1&countrycodes=mx`;
-        const res = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q + ', México')}&limit=6`;
+        const res = await fetch(url);
         const data = await res.json();
-        if (!data.length) {
+        const features = data.features || [];
+        if (!features.length) {
           if (sugBox) { sugBox.innerHTML = '<div class="colonia-suggestion"><span class="sug-main">Sin resultados</span></div>'; sugBox.classList.add('open'); }
           if (statusEl) statusEl.innerHTML = '<span class="no-results">Sin resultados</span>'; return;
         }
         if (sugBox) {
-          sugBox.innerHTML = data.map((r, i) => {
-            const name = r.address?.suburb || r.address?.neighbourhood || r.address?.city || r.display_name.split(',')[0];
-            const detail = [r.address?.city || r.address?.town, r.address?.state].filter(Boolean).join(', ');
-            return `<div class="colonia-suggestion" data-name="${esc(name)}" data-full="${esc(r.display_name)}" data-lat="${r.lat}" data-lon="${r.lon}">
-              <div class="sug-main">${esc(name)}</div>
-              <div class="sug-detail">${esc(detail || r.display_name)}</div>
+          sugBox.innerHTML = features.map((f, i) => {
+            const props = f.properties;
+            const coords = f.geometry.coordinates; // [lng, lat]
+            const rawName = props.name || props.street || props.city || props.district || 'Sin nombre';
+            const detail = [props.city || props.county, props.state].filter(Boolean).join(', ');
+            const fullName = [props.name, props.street, props.city, props.state].filter(Boolean).join(', ');
+            return `<div class="colonia-suggestion" data-name="${esc(rawName)}" data-full="${esc(fullName)}" data-lat="${coords[1]}" data-lon="${coords[0]}">
+              <div class="sug-main">${esc(rawName)} <small style="opacity:0.5;font-weight:400;margin-left:4px">${props.osm_value ? '('+props.osm_value+')' : ''}</small></div>
+              <div class="sug-detail">${esc(detail || fullName)}</div>
             </div>`;
           }).join('');
           sugBox.classList.add('open');
@@ -1528,40 +1640,264 @@ async function setupGeocodingAutocomplete(inputId, suggestionsId, statusId, onSe
   document.addEventListener('click', (e) => { if (sugBox && !e.target.closest('.colonia-autocomplete')) sugBox.classList.remove('open'); });
 }
 
-/* ═══ ADD BRANCH MODAL ═══ */
-function showAddBranchModal(){
-  const modal=$('modal-add-branch');if(!modal)return;
-  modal.style.display='flex';
-  $('modal-add-format').value='express';
-  $('modal-add-name').value='';
-  $('modal-add-colonia').value='';
-  const sugBox=$('modal-add-suggestions');
-  const statusEl=$('modal-add-colonia-status');
-  if(sugBox){sugBox.classList.remove('open');sugBox.innerHTML='';}
-  if(statusEl) statusEl.innerHTML='';
+/* ═══ STEP-BY-STEP WIZARD ═══ */
+const WizardManager = {
+  activeType: null,
+  currentStep: 0,
+  steps: [],
+  targetEmpId: null,
+  
+  config: {
+    empresa: {
+      title: 'Nueva Empresa',
+      steps: [
+        {
+          title: '1. Identidad Corporativa',
+          render: () => `
+            <div class="modal-field">
+              <label>Nombre Legal / Sociedad</label>
+              <input type="text" id="wiz-emp-name" class="input-text" placeholder="Ej: Grupo Comercial S.A.">
+            </div>
+          `,
+          validate: () => !!$('wiz-emp-name').value.trim()
+        },
+        {
+          title: '2. Capital Inicial',
+          render: () => `
+            <div class="modal-field">
+              <label>Capital Social Total ($)</label>
+              <input type="number" id="wiz-emp-cap" class="input-text" placeholder="Ej: 3000000">
+            </div>
+            <div class="modal-field">
+              <label>Reserva Corporativa ($)</label>
+              <input type="number" id="wiz-emp-res" class="input-text" placeholder="Ej: 200000">
+            </div>
+          `,
+          validate: () => true
+        }
+      ],
+      onFinish: () => {
+        const name = $('wiz-emp-name').value.trim() || 'Mi Empresa';
+        const emp = addEmpresa(name);
+        setActiveEmpresa(emp.id);
+        state.view = 'empresa-dashboard';
+        state.activeEmpresaId = emp.id;
+        renderCurrentView();
+        showToast('🏢 Empresa creada', 'success');
+      }
+    },
+    proyecto: {
+      title: 'Nuevo Proyecto',
+      steps: [
+        {
+          title: '1. Marca y Formato',
+          render: () => `
+            <div class="modal-field">
+              <label>Marca / Enfoque</label>
+              <select id="wiz-proj-brand" class="input-select">
+                <option value="farmatuya">FarmaTuya (Farmacia)</option>
+                <option value="coolpet">CoolPet (Mascotas)</option>
+              </select>
+            </div>
+            <div class="modal-field">
+              <label>Nombre del Proyecto</label>
+              <input type="text" id="wiz-proj-name" class="input-text" placeholder="Ej: Expansión Centro 2026">
+            </div>
+          `,
+          validate: () => !!$('wiz-proj-name').value.trim()
+        },
+        {
+          title: '2. Gestión Corporativa',
+          render: () => `
+            <div class="modal-field">
+              <label>Gastos Fijos Corporativos (Mensual)</label>
+              <input type="number" id="wiz-proj-gastos" class="input-text" placeholder="Ej: 25000">
+              <small class="field-help" style="display:block;margin-top:4px">Estos gastos se prorratearán entre las sucursales del proyecto.</small>
+            </div>
+          `,
+          validate: () => true
+        }
+      ],
+      onFinish: () => {
+        const name = $('wiz-proj-name').value.trim() || 'Nuevo Proyecto';
+        const activeEmp = getActiveEmpresa();
+        if (!activeEmp) { showToast('Error: no hay empresa activa', 'error'); return; }
+        const p = addProyecto(activeEmp.id, name);
+        if (p) {
+          const gastos = parseFloat($('wiz-proj-gastos').value) || 0;
+          if (gastos) updateProyecto(activeEmp.id, p.id, { corporateExpenses: gastos });
+          setActiveProyecto(activeEmp.id, p.id);
+          state.view = 'portfolio';
+          state.activeBranchId = null;
+          renderCurrentView();
+          showToast('📈 Proyecto creado', 'success');
+        }
+      }
+    },
+    sucursal: {
+      title: 'Nueva Sucursal',
+      steps: [
+        {
+          title: '1. Modelo de Negocio',
+          render: () => `
+            <div class="modal-field">
+              <label>Selecciona el Formato</label>
+              <select id="wiz-suc-format" class="input-select">
+                <optgroup label="FarmaTuya">
+                  <option value="express">⚡ Express (Pequeña)</option>
+                  <option value="super">🏪 Súper (Mediana)</option>
+                  <option value="integral">🏥 Integral (Grande)</option>
+                </optgroup>
+                <optgroup label="CoolPet">
+                  <option value="coolpet_estetica">🐾 CoolPet Estética</option>
+                  <option value="coolpet_farmaspot">🐕 CoolPet Farma Spot</option>
+                  <option value="coolpet_farmavet">🏥 CoolPet Farma Vet</option>
+                </optgroup>
+              </select>
+            </div>
+          `,
+          validate: () => true
+        },
+        {
+          title: '2. Identidad y Ubicación',
+          render: () => `
+            <div class="modal-field">
+              <label>Nombre de la Sucursal</label>
+              <input type="text" id="wiz-suc-name" class="input-text" placeholder="Ej: Sucursal Roma Sur">
+            </div>
+            <div class="modal-field">
+              <label>📍 Dirección / Colonia (Opcional)</label>
+              <input type="text" id="wiz-suc-colonia" class="input-text" placeholder="Ej: Col. Roma Sur, CDMX" autocomplete="off">
+              <div class="colonia-suggestions" id="wiz-suc-suggestions"></div>
+              <div id="wiz-suc-colonia-status" class="colonia-status"></div>
+            </div>
+          `,
+          validate: () => true, // Name can fallback, address is optional
+          afterRender: () => {
+             setupGeocodingAutocomplete('wiz-suc-colonia', 'wiz-suc-suggestions', 'wiz-suc-colonia-status', (name, full) => {
+               $('wiz-suc-colonia').dataset.full = full;
+             });
+          }
+        }
+      ],
+      onFinish: () => {
+        const format = $('wiz-suc-format').value;
+        const name = $('wiz-suc-name').value.trim() || `Sucursal ${getEmpresa().branches.length + 1}`;
+        const colonia = $('wiz-suc-colonia').value.trim();
+        
+        if (!colonia) {
+          showConfirm(
+            '📍 Sin dirección',
+            '<p>No ingresaste una dirección. ¿Deseas crear la sucursal sin ubicación?</p><p style="color:var(--text-3);font-size:0.8rem">Podrás agregarla después en el Estudio de Mercado.</p>',
+            '✅ Crear sin dirección',
+            () => { addBranch(format, name, colonia); renderCurrentView(); }
+          );
+          return;
+        }
+        
+        addBranch(format, name, colonia);
+        renderCurrentView();
+        showToast('🏪 Sucursal creada', 'success');
+      }
+    }
+  },
+  
+  open(type, empId = null) {
+    this.activeType = type;
+    this.targetEmpId = empId;
+    this.steps = this.config[type].steps;
+    this.currentStep = 0;
+    
+    $('wizard-title').innerText = this.config[type].title;
+    
+    // Render all steps into DOM once to preserve input values across steps
+    const html = this.steps.map((step, idx) => `
+      <div class="wizard-step" id="wizard-step-container-${idx}">
+        <div class="wizard-step-title">${step.title}</div>
+        ${step.render()}
+      </div>
+    `).join('');
+    
+    $('wizard-body').innerHTML = html;
+    
+    // Call afterRender for all steps
+    this.steps.forEach((step, idx) => {
+      if(step.afterRender) step.afterRender();
+    });
 
-  // Geocoding autocomplete for the modal colonia input
-  setupGeocodingAutocomplete('modal-add-colonia', 'modal-add-suggestions', 'modal-add-colonia-status', (name, full) => {
-    $('modal-add-colonia').dataset.full = full;
-  });
-}
-window._closeModal=()=>{const m=$('modal-add-branch');if(m)m.style.display='none';};
-window._confirmAddBranch=()=>{
-  const format=$('modal-add-format').value;
-  const name=$('modal-add-name').value||`Sucursal ${getEmpresa().branches.length+1}`;
-  const colonia=$('modal-add-colonia').value;
-  if(!colonia){
-    showConfirm(
-      '📍 Sin dirección',
-      '<p>No ingresaste una dirección. ¿Deseas crear la sucursal sin ubicación?</p><p style="color:var(--text-3);font-size:0.8rem">Podrás agregarla después en la pestaña de Estudio de Mercado.</p>',
-      '✅ Crear sin dirección',
-      () => { addBranch(format, name, colonia); window._closeModal(); }
-    );
-    return;
+    $('modal-wizard').style.display = 'flex';
+    this.updateUI();
+  },
+  
+  close() {
+    $('modal-wizard').style.display = 'none';
+  },
+  
+  updateUI() {
+    const dots = this.steps.map((_, i) => `<div class="wizard-dot ${i===this.currentStep?'active':(i<this.currentStep?'completed':'')}"></div>`).join('');
+    $('wizard-progress').innerHTML = dots;
+    
+    // Toggle visibility of steps
+    this.steps.forEach((_, idx) => {
+      const el = $(`wizard-step-container-${idx}`);
+      if(el) {
+        if(idx === this.currentStep) el.classList.add('active');
+        else el.classList.remove('active');
+      }
+    });
+    
+    $('wizard-btn-prev').style.display = this.currentStep > 0 ? 'inline-block' : 'none';
+    
+    const isLast = this.currentStep === this.steps.length - 1;
+    $('wizard-btn-next').style.display = isLast ? 'none' : 'inline-block';
+    $('wizard-btn-finish').style.display = isLast ? 'inline-block' : 'none';
+  },
+  
+  next() {
+    const step = this.steps[this.currentStep];
+    if (step.validate && !step.validate()) {
+      showToast('Por favor completa los campos requeridos', 'error');
+      return;
+    }
+    if (this.currentStep < this.steps.length - 1) {
+      this.currentStep++;
+      this.updateUI();
+    }
+  },
+  
+  prev() {
+    if (this.currentStep > 0) {
+      this.currentStep--;
+      this.updateUI();
+    }
+  },
+  
+  finish() {
+    const step = this.steps[this.currentStep];
+    if (step.validate && !step.validate()) {
+      showToast('Por favor completa los campos requeridos', 'error');
+      return;
+    }
+    this.close();
+    this.config[this.activeType].onFinish();
   }
-  addBranch(format,name,colonia);
-  window._closeModal();
 };
+
+window.WizardManager = WizardManager;
+window._closeModal = () => {
+  const m = $('modal-wizard'); if (m) m.style.display = 'none';
+  const c = $('modal-confirm'); if (c) c.style.display = 'none';
+};
+
+// Bind DOM elements for wizard
+document.addEventListener('DOMContentLoaded', () => {
+  if($('wizard-btn-cancel')) $('wizard-btn-cancel').addEventListener('click', () => WizardManager.close());
+  if($('wizard-btn-next')) $('wizard-btn-next').addEventListener('click', () => WizardManager.next());
+  if($('wizard-btn-prev')) $('wizard-btn-prev').addEventListener('click', () => WizardManager.prev());
+  if($('wizard-btn-finish')) $('wizard-btn-finish').addEventListener('click', () => WizardManager.finish());
+});
+
+window.showAddBranchModal = () => WizardManager.open('sucursal');
 
 // Duplicate with toast reminder
 window._dupBranch = (id)=>{
@@ -1571,68 +1907,77 @@ window._dupBranch = (id)=>{
 
 /* ═══ MARKET INDICATOR UTILS ═══ */
 function updateMarketIndicators(branch) {
+  const emp = getActiveEmpresa();
+  const globalMarketEnabled = emp?.settings?.applyMarketFactor !== false;
   let hasStudy = !!branch.locationStudy;
-  let isActive = true;
+  let isActive = globalMarketEnabled;
   if (branch.overrides && branch.overrides.marketStudyToggles && branch.overrides.marketStudyToggles.master === false) {
     isActive = false;
   }
   
-  let label = '📍 Mercado: --';
+  let labelText = '📍 Mercado: --';
   let color = 'var(--text-3)';
   let bg = 'var(--surface)';
-  let title = '';
+  let tooltipHTML = '';
+  let pctVal = null;
   
   if (hasStudy) {
     if (isActive && branch.locationStudy.scores?.factors) {
-      const { combinedFactor } = calcCombinedMarketFactor(branch.locationStudy.scores.factors, branch.overrides?.marketStudyToggles);
-      const pct = ((combinedFactor - 1)*100).toFixed(1);
-      label = `📍 Impacto Mercado: ${pct > 0 ? '+'+pct : pct}%`;
-      color = pct >= 0 ? '#10b981' : '#ef4444'; // green or red
-      bg = pct >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
-      title = 'El estudio de mercado está ajustando las proyecciones. Clic para ver detalles.';
+      const { combinedFactor, activeImpacts } = calcCombinedMarketFactor(branch.locationStudy.scores.factors, branch.overrides?.marketStudyToggles);
+      pctVal = ((combinedFactor - 1)*100).toFixed(1);
+      labelText = `📍 Impacto Mercado: ${pctVal > 0 ? '+'+pctVal : pctVal}%`;
+      color = pctVal >= 0 ? '#10b981' : '#ef4444';
+      bg = pctVal >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+
+      // Build rich tooltip with top 5 factors by absolute impact
+      const sorted = [...activeImpacts].sort((a,b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 5);
+      tooltipHTML = sorted.map(f => {
+        const sign = f.pct >= 0 ? '+' : '';
+        const cls = f.pct >= 0 ? 'positive' : 'negative';
+        return `<div class="tooltip-factor-row"><span class="tooltip-factor-label">${f.emoji} ${f.label}</span><span class="tooltip-factor-value ${cls}">${sign}${f.pct.toFixed(1)}%</span></div>`;
+      }).join('') + `<div class="tooltip-hint">Clic para ver todos los detalles →</div>`;
     } else if (isActive) {
-      label = '📍 Estudio sin scoring';
-      title = 'El estudio de mercado no tiene datos de scoring. Re-ejecuta la evaluación.';
+      labelText = '📍 Estudio sin scoring';
+      tooltipHTML = `<div class="tooltip-hint">Re-ejecuta la evaluación para obtener datos</div>`;
     } else {
-      label = '📍 Mercado Ignorado';
+      labelText = '📍 Mercado Ignorado';
       color = 'var(--text-2)';
       bg = 'var(--bg-hover)';
-      title = 'El estudio de mercado está desactivado.';
+      tooltipHTML = `<div class="tooltip-hint">El estudio de mercado está desactivado</div>`;
     }
   } else {
-    label = '📍 Sin Estudio de Mercado';
-    title = 'No hay estudio de ubicación para esta sucursal.';
+    labelText = '📍 Sin Estudio';
+    tooltipHTML = `<div class="tooltip-hint">Clic para agregar un estudio de mercado</div>`;
   }
   
   ['branch-market-indicator', 'config-market-indicator'].forEach(id => {
     const el = $(id);
     if (el) {
-      el.style.display = 'inline-block';
-      el.textContent = label;
+      el.style.display = 'inline-flex';
       el.style.color = color;
       el.style.background = bg;
-      el.title = title;
+      el.title = '';
+      el.innerHTML = `<span>${labelText}</span><span class="badge-arrow">→</span>${tooltipHTML ? `<div class="market-badge-tooltip">${tooltipHTML}</div>` : ''}`;
       if (hasStudy) {
-         el.onclick = () => {
+         el.onclick = (e) => {
+             // Don't navigate if hovering tooltip
+             if (e.target.closest('.market-badge-tooltip')) return;
              const panel = $('market-study-panel');
              if (panel && state.view === 'portfolio' && $('btab-resultados').classList.contains('active')) {
                  panel.scrollIntoView({behavior:'smooth', block: 'center'});
              } else {
-                window.switchBranchTab?.('resultados');
+                switchBranchTab('resultados');
+                updateNav();
                 setTimeout(() => $('market-study-panel')?.scrollIntoView({behavior:'smooth', block: 'center'}), 150);
              }
          };
          el.style.cursor = 'pointer';
        } else {
          el.onclick = () => {
-           // Navigate to Estudio Socioeconómico tab
-           document.querySelectorAll('.branch-tab-btn').forEach(b => b.classList.remove('active'));
-           document.querySelectorAll('.branch-tab-panel').forEach(p => p.classList.remove('active'));
-           const socioBtn = document.querySelector('[data-tab="socioeconomico"]');
-           if (socioBtn) socioBtn.classList.add('active');
+           switchBranchTab('socioeconomico');
+           updateNav();
            const socioPanel = $('btab-socioeconomico');
-           if (socioPanel) { socioPanel.classList.add('active'); socioPanel.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-           // Focus the search input
+           if (socioPanel) { socioPanel.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
            setTimeout(() => { const inp = $('loc-address-input'); if (inp) inp.focus(); }, 200);
          };
          el.style.cursor = 'pointer';
@@ -1676,9 +2021,10 @@ function updateConsolMarketIndicator(empresa) {
 }
 
 /* ═══ BRANCH DETAIL VIEW (preserves all existing visualizations) ═══ */
-function renderBranchDetail(empresa){
+async function renderBranchDetail(empresa){
   const branch=getBranch(state.activeBranchId);
   if(!branch){state.view='portfolio';renderCurrentView();return;}
+  await ensureChartJS();
 
   const overrides={...branch.overrides};
   const sc=SCENARIOS[branch.scenarioId]||SCENARIOS.base;
@@ -1691,21 +2037,14 @@ function renderBranchDetail(empresa){
   const r=runProjection(branch.format,overrides);
   const model=MODELS[branch.format];
 
-  // Update branch header
-  $('branch-detail-title').textContent=branch.name;
-  $('branch-detail-subtitle').textContent=`${model.emoji} ${model.label} · ${sc.emoji} ${sc.label}`;
-
-  // Planning banner for non-active branches
-  const resBanner = document.querySelector('#btab-resultados .branch-status-banner');
-  if(resBanner) resBanner.remove();
-  if(branch.status !== 'active'){
-    const bannerDiv = document.createElement('div');
-    bannerDiv.className = 'branch-status-banner';
-    const statusEmoji = branch.status==='planned'?'📋':'📦';
-    const statusText = branch.status==='planned'?'Planeada — los resultados son proyecciones estimadas':'Archivada — resultados históricos';
-    bannerDiv.innerHTML = `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.625rem 1rem;background:var(--yellow-soft);border-radius:var(--r-md);margin-bottom:0.75rem;font-size:0.8125rem;font-weight:600;color:var(--text-1)">${statusEmoji} ${statusText}</div>`;
-    const resPanel = $('btab-resultados');
-    if(resPanel) resPanel.insertBefore(bannerDiv, resPanel.firstChild);
+  // Compact context line
+  const ctxLine = $('branch-context-line');
+  if (ctxLine) {
+    const factorVal = r.marketFactor != null ? r.marketFactor.toFixed(3) : null;
+    const factorPct = factorVal ? ((factorVal - 1) * 100).toFixed(1) : null;
+    const factorBit = factorPct ? ` · <span style="color:${parseFloat(factorPct)>=0?'var(--green)':'var(--red)'}">📍 ${factorPct>0?'+':''}${factorPct}%</span>` : '';
+    const statusBit = branch.status !== 'active' ? ` · <span class="ctx-status">${branch.status==='planned'?'📋 Planeada':'📦 Archivada'}</span>` : '';
+    ctxLine.innerHTML = `<span class="ctx-name">${esc(branch.name)}</span> · <span class="ctx-model">${model.emoji} ${model.label}</span> · <span class="ctx-scenario">${sc.emoji} ${sc.label}</span>${factorBit}${statusBit}`;
   }
 
   // Colonia display (read-only)
@@ -1734,12 +2073,12 @@ function renderBranchDetail(empresa){
   // Format selector
   document.querySelectorAll('#branch-format-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.format===branch.format);});
   // Scenario selector
-  document.querySelectorAll('#branch-scenario-selector-res .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.scenario===branch.scenarioId);});
+  const scenarioSel = $('branch-scenario-select'); if(scenarioSel) scenarioSel.value = branch.scenarioId || 'base';
   // Royalty
   const proj = empresa.proyectos?.find(p => p.id === branch.proyectoId);
   const isFranchise = proj?.isFranchise !== false;
   const rg=$('branch-royalty-group');
-  if(rg) rg.style.display=(branch.format==='super' && isFranchise)?'block':'none';
+  if(rg) rg.style.display=(MODELS[branch.format]?.royaltyPromo && isFranchise)?'block':'none';
   // Royalty active state
   const currentRoyalty = branch.overrides?.royaltyMode || 'variable_2_5';
   document.querySelectorAll('#branch-royalty-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.royalty===currentRoyalty);});
@@ -1747,28 +2086,28 @@ function renderBranchDetail(empresa){
   // ═══ RESULTS-LEVEL ROYALTY PANEL ═══
   const resRoyaltyPanel = $('res-royalty-panel');
   if (resRoyaltyPanel) {
-    if (isFranchise && branch.format === 'super') {
+    if (isFranchise && MODELS[branch.format]?.royaltyPromo) {
       resRoyaltyPanel.style.display = '';
+      const promoConfig = MODELS[branch.format].royaltyPromo;
+      const upfrontAmt = promoConfig.upfront5Y || 125000;
       const royaltyDescs = {
-        variable_2_5: '💳 Pagas 2.5% de ingresos como regalía mensual.',
-        condonacion_6m: '🎁 Los primeros 6 meses se condonan las regalías.',
-        pago_unico: '💰 Pago único de $125,000 — sin regalías futuras.'
+        variable_2_5: '💳 Pagas 2.5% de ingresos como retención mensual.',
+        condonacion_6m: '🎁 Los primeros 6 meses se exentan de retención.',
+        pago_unico: `💰 Pago único de $${upfrontAmt.toLocaleString()} — sin retenciones por 5 años.`
       };
       const descEl = $('res-royalty-desc');
-      document.querySelectorAll('#res-royalty-selector .seg-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.royalty === currentRoyalty);
-        const clone = btn.cloneNode(true);
-        btn.parentNode.replaceChild(clone, btn);
-        clone.classList.toggle('active', clone.dataset.royalty === currentRoyalty);
-        clone.addEventListener('click', () => {
+      const royaltySel = $('res-royalty-select');
+      if(royaltySel) {
+        royaltySel.value = currentRoyalty;
+        royaltySel.onchange = () => {
           if (!state.activeBranchId) return;
-          document.querySelectorAll('#res-royalty-selector .seg-btn').forEach(b => b.classList.remove('active'));
-          clone.classList.add('active');
-          updateBranchOverrides(state.activeBranchId, { royaltyMode: clone.dataset.royalty });
-          if (descEl) descEl.textContent = royaltyDescs[clone.dataset.royalty] || '';
+          _suppressFullRender = true;
+          updateBranchOverrides(state.activeBranchId, { royaltyMode: royaltySel.value });
+          _suppressFullRender = false;
+          if (descEl) descEl.textContent = royaltyDescs[royaltySel.value] || '';
           renderBranchDetail(getEmpresa());
-        });
-      });
+        };
+      }
       if (descEl) descEl.textContent = royaltyDescs[currentRoyalty] || '';
     } else {
       resRoyaltyPanel.style.display = 'none';
@@ -1777,7 +2116,18 @@ function renderBranchDetail(empresa){
 
   // Timeline selector active state
   const currentPreOpen = String(branch.overrides?.preOpenMonths || 0);
-  document.querySelectorAll('#branch-timeline-selector .seg-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.preopen===currentPreOpen);});
+  const timelineSel = $('branch-timeline-select'); if(timelineSel) timelineSel.value = currentPreOpen;
+
+  // --- INJECT GROWTH & MARKETING ---
+  const caf = branch.overrides?.caf || {};
+  const mkt = branch.overrides?.marketing || {};
+  if($('mkt-caf-consultas')) $('mkt-caf-consultas').value = caf.consultas || 0;
+  if($('mkt-caf-conversion')) $('mkt-caf-conversion').value = Math.round((caf.conversion || 0.40)*100);
+  if($('mkt-caf-ticket')) $('mkt-caf-ticket').value = caf.ticket || 350;
+  if($('mkt-seo')) $('mkt-seo').value = mkt.seoLocal || 0;
+  if($('mkt-ads')) $('mkt-ads').value = mkt.ads || 0;
+  if($('mkt-cofepris')) $('mkt-cofepris').value = mkt.cofepris || 0;
+  if($('mkt-loyalty-toggle')) $('mkt-loyalty-toggle').checked = mkt.loyalty || false;
 
   updateBranchKPIBar(r);
   renderMarketStudyPanel(branch);
@@ -1801,11 +2151,13 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   });
   // Scenario selector
-  document.querySelectorAll('#branch-scenario-selector-res .seg-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      if(!state.activeBranchId)return;
-      updateBranch(state.activeBranchId,{scenarioId:btn.dataset.scenario});
-    });
+  const scenarioSelect = $('branch-scenario-select');
+  if(scenarioSelect) scenarioSelect.addEventListener('change',()=>{
+    if(!state.activeBranchId)return;
+    _suppressFullRender = true;
+    updateBranch(state.activeBranchId,{scenarioId:scenarioSelect.value});
+    _suppressFullRender = false;
+    renderBranchDetail(getEmpresa());
   });
   // Internal Branch Tabs
   document.querySelectorAll('#branch-tabs-header .tab-btn').forEach(btn=>{
@@ -1816,6 +2168,34 @@ document.addEventListener('DOMContentLoaded',()=>{
       btn.classList.add('active');
     });
   });
+  
+  // --- GROWTH & MARKETING LISTENERS ---
+  const updateMarketing = () => {
+    if (!state.activeBranchId) return;
+    const branch = getBranch(state.activeBranchId);
+    if (!branch) return;
+    const rawConv = parseInt($('mkt-caf-conversion')?.value || 0);
+    const cafObj = {
+      consultas: parseInt($('mkt-caf-consultas')?.value || 0),
+      conversion: (isNaN(rawConv) ? 0 : rawConv) / 100,
+      ticket: parseInt($('mkt-caf-ticket')?.value || 350)
+    };
+    const mktObj = {
+      seoLocal: parseInt($('mkt-seo')?.value || 0),
+      ads: parseInt($('mkt-ads')?.value || 0),
+      cofepris: parseInt($('mkt-cofepris')?.value || 0),
+      loyalty: $('mkt-loyalty-toggle')?.checked || false
+    };
+    updateBranchOverrides(state.activeBranchId, { caf: cafObj, marketing: mktObj });
+    renderCurrentView();
+  };
+  ['mkt-caf-consultas','mkt-caf-conversion','mkt-caf-ticket','mkt-seo','mkt-ads','mkt-cofepris'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('focusout', updateMarketing);
+    if (el) el.addEventListener('keyup', (e) => { if (e.key === 'Enter') { el.blur(); } });
+  });
+  if($('mkt-loyalty-toggle')) $('mkt-loyalty-toggle').addEventListener('change', updateMarketing);
+
   // P&L Tabs
   document.querySelectorAll('#branch-pnl-tabs-header .tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1837,16 +2217,17 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   });
   // Timeline selector (Desde Apertura / Desde Capital)
-  document.querySelectorAll('#branch-timeline-selector .seg-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      if(!state.activeBranchId)return;
-      const branch = getBranch(state.activeBranchId);
-      if(!branch) return;
-      const preOpen = parseInt(btn.dataset.preopen) || 0;
-      const ov = { ...(branch.overrides || {}), preOpenMonths: preOpen };
-      updateBranch(state.activeBranchId, { overrides: ov });
-      renderBranchDetail(getEmpresa());
-    });
+  const timelineSelect = $('branch-timeline-select');
+  if(timelineSelect) timelineSelect.addEventListener('change',()=>{
+    if(!state.activeBranchId)return;
+    const branch = getBranch(state.activeBranchId);
+    if(!branch) return;
+    const preOpen = parseInt(timelineSelect.value) || 0;
+    const ov = { ...(branch.overrides || {}), preOpenMonths: preOpen };
+    _suppressFullRender = true;
+    updateBranch(state.activeBranchId, { overrides: ov });
+    _suppressFullRender = false;
+    renderBranchDetail(getEmpresa());
   });
   // Colonia autocomplete — geocoding suggestions
   setupGeocodingAutocomplete('branch-colonia-input', 'colonia-suggestions', 'colonia-status', (name, full) => {
@@ -1866,7 +2247,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('#branch-royalty-selector .seg-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
       if(!state.activeBranchId)return;
+      _suppressFullRender = true;
       updateBranchOverrides(state.activeBranchId,{royaltyMode:btn.dataset.royalty});
+      _suppressFullRender = false;
       renderBranchDetail(getEmpresa());
     });
   });
@@ -2020,132 +2403,46 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 function updateBranchKPIBar(r){
-  const be=r.breakEvenPctCapacity, net=r.perPartnerMonthly[0]?.monthlyIncome||0;
-  const pm=r.paybackMetrics;
-  
+  const pm = r.paybackMetrics;
+  const be = r.breakEvenPctCapacity;
+
+  // 1) Pto. Equilibrio
   const elEq = $('branch-kpi-equilibrio');
-  const elProfit = $('branch-kpi-profit');
-  const elPayback = $('branch-kpi-payback');
-
-  // Animated counter helper
-  function animateValue(el, end, prefix='', suffix='', duration=900) {
-    if(!el) return;
-    const start = 0;
-    const startTime = performance.now();
-    const isNeg = end < 0;
-    const absEnd = Math.abs(end);
-    function update(now) {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const current = Math.round(start + (absEnd - start) * eased);
-      el.textContent = prefix + (isNeg?'-':'') + current.toLocaleString('es-MX') + suffix;
-      if (progress < 1) requestAnimationFrame(update);
-    }
-    requestAnimationFrame(update);
-  }
-
-  // 1) Break-Even KPI + mini progress bar
   if(elEq) {
-    animateValue(elEq, Math.round(r.breakEvenRevenue), '$');
+    elEq.textContent = fmt.m(r.breakEvenRevenue);
     elEq.style.color = be<0.5?'var(--green)':be<0.7?'var(--text-1)':'var(--red)';
   }
-  const beBar = document.querySelector('#kpi-be-bar .kpi-mini-bar-fill');
   const bePct = $('kpi-be-pct');
-  if(beBar) {
-    const pct = Math.min(be * 100, 100);
-    setTimeout(() => { beBar.style.width = pct + '%'; }, 50);
-  }
   if(bePct) bePct.textContent = (be*100).toFixed(0) + '% cap.';
 
-  // 2) Profit KPI + sparkline
+  // 2) Profit
+  const elProfit = $('branch-kpi-profit');
   if(elProfit) {
-    animateValue(elProfit, Math.round(r.avgMonthlyEBITDA), '$');
+    elProfit.textContent = fmt.m(r.avgMonthlyEBITDA);
     elProfit.style.color = r.avgMonthlyEBITDA>0?'var(--green)':'var(--red)';
   }
-  const sparkEl = $('kpi-profit-sparkline');
-  if(sparkEl && r.months && r.months.length > 1) {
-    const data = r.months.slice(-12).map(m => m.ebitda);
-    const min = Math.min(...data), max = Math.max(...data);
-    const range = max - min || 1;
-    const w = 100, h = 28, pad = 2;
-    const pts = data.map((v,i) => {
-      const x = pad + (i/(data.length-1))*(w-2*pad);
-      const y = h-pad - ((v-min)/range)*(h-2*pad);
-      return `${x},${y}`;
-    });
-    const col = r.avgMonthlyEBITDA > 0 ? '#34d399' : '#f87171';
-    sparkEl.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-      <defs><linearGradient id="spkGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${col}" stop-opacity="0.3"/><stop offset="100%" stop-color="${col}" stop-opacity="0.02"/></linearGradient></defs>
-      <polygon points="${pts[0].split(',')[0]},${h} ${pts.join(' ')} ${pts[pts.length-1].split(',')[0]},${h}" fill="url(#spkGrad)"/>
-      <polyline points="${pts.join(' ')}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    </svg>`;
-  }
 
-  // 3) Payback KPI + ring gauge
+  // 3) Payback
+  const elPayback = $('branch-kpi-payback');
   const pbVal = pm.rampa.month;
-  const pbColor = pbVal&&pbVal<=36?'#34d399':pbVal&&pbVal<=48?'#fbbf24':'#f87171';
+  const pbColor = pbVal&&pbVal<=36?'var(--green)':pbVal&&pbVal<=48?'var(--yellow)':'var(--red)';
   if(elPayback) {
-    if(pbVal != null) {
-      animateValue(elPayback, pbVal, '', ' m');
-    } else {
-      elPayback.textContent = '∞';
-    }
+    elPayback.textContent = pbVal != null ? pbVal + ' m' : '∞';
     elPayback.style.color = pbColor;
   }
   const pbSub = $('kpi-payback-sub');
   if(pbSub) pbSub.textContent = pm.rampa.extrapolated ? 'estimado' : 'recuperación';
 
-  const ringEl = $('kpi-payback-ring');
-  if(ringEl) {
-    const total = r.months.length || 60;
-    const month = pbVal || total;
-    const pct = Math.min(month / total, 1);
-    const R = 16, cx = 20, cy = 20, sw = 3.5;
-    const circ = 2 * Math.PI * R;
-    const filled = circ * pct;
-    ringEl.innerHTML = `<svg width="40" height="40" viewBox="0 0 40 40">
-      <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface-alt)" stroke-width="${sw}"/>
-      <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${pbColor}" stroke-width="${sw}"
-        stroke-dasharray="${filled} ${circ}" stroke-linecap="round"
-        transform="rotate(-90,${cx},${cy})" style="transition:stroke-dasharray 0.8s ease"/>
-      <text x="${cx}" y="${cy+1}" text-anchor="middle" dominant-baseline="central"
-        font-size="9" font-weight="800" fill="${pbColor}">${pbVal||'∞'}</text>
-    </svg>`;
-  }
-
-  // 4) ROI circular gauge — large, prominent, fills card
-  const roiEl = $('kpi-roi-gauge');
+  // 4) ROI 12m — simple text
+  const roiEl = $('kpi-roi-value');
   if(roiEl) {
     const roi = r.roi12 || 0;
-    const roiClamped = Math.min(Math.max(roi, -50), 100);
-    const pct = (roiClamped + 50) / 150;
-    const R = 44, cx = 56, cy = 54, sw = 7;
-    const circ = 2 * Math.PI * R;
-    const arcLen = circ * 0.75;
-    const filled = arcLen * pct;
-    const color = roi > 20 ? '#34d399' : roi > 0 ? '#fbbf24' : '#f87171';
-    roiEl.innerHTML = `
-      <svg viewBox="0 0 112 104" style="display:block;width:100%;max-width:160px;margin:0 auto">
-        <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface-alt)" stroke-width="${sw}"
-          stroke-dasharray="${arcLen} ${circ}" stroke-linecap="round"
-          transform="rotate(135,${cx},${cy})"/>
-        <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${color}" stroke-width="${sw}"
-          stroke-dasharray="${filled} ${circ}" stroke-linecap="round"
-          transform="rotate(135,${cx},${cy})"
-          style="transition:stroke-dasharray 0.8s ease"/>
-        <text x="${cx}" y="${cy - 2}" text-anchor="middle" dominant-baseline="central"
-          font-size="20" font-weight="900" fill="${color}" font-family="Inter,sans-serif">${roi.toFixed(1)}%</text>
-        <text x="${cx}" y="${cy + 16}" text-anchor="middle"
-          font-size="9" font-weight="800" fill="var(--text-3)" font-family="Inter,sans-serif"
-          letter-spacing="0.5">12 MESES</text>
-      </svg>`;
-    roiEl.style.position = 'relative';
+    roiEl.textContent = roi.toFixed(1) + '%';
+    roiEl.style.color = roi > 20 ? 'var(--green)' : roi > 0 ? 'var(--yellow)' : 'var(--red)';
   }
 
-  // 5) Market Factor KPI
+  // 5) Market Factor
   const factorEl = $('branch-kpi-factor');
-  const factorBar = document.querySelector('#kpi-factor-bar .kpi-mini-bar-fill');
   const factorLabel = $('kpi-factor-label');
   if (factorEl) {
     const branch = getBranch(state.activeBranchId);
@@ -2153,17 +2450,11 @@ function updateBranchKPIBar(r){
     if (study && study.scores && study.scores.factors) {
       try {
         const { combinedFactor } = calcCombinedMarketFactor(study.scores.factors, branch.overrides?.marketStudyToggles);
-        const f = combinedFactor;
-        const delta = ((f - 1) * 100);
+        const delta = ((combinedFactor - 1) * 100);
         const isPositive = delta >= 0;
-        factorEl.textContent = f.toFixed(3) + 'x';
+        factorEl.textContent = combinedFactor.toFixed(3) + 'x';
         factorEl.style.color = isPositive ? 'var(--green)' : 'var(--red)';
-        if (factorBar) {
-          const pct = Math.min(Math.abs(delta), 30) / 30 * 100;
-          setTimeout(() => { factorBar.style.width = pct + '%'; }, 50);
-          factorBar.style.background = isPositive ? 'var(--green)' : 'var(--red)';
-        }
-        if (factorLabel) factorLabel.textContent = (isPositive ? '+' : '') + delta.toFixed(1) + '% ajuste';
+        if (factorLabel) factorLabel.textContent = (isPositive ? '+' : '') + delta.toFixed(1) + '%';
       } catch(e) {
         factorEl.textContent = '—';
         factorEl.style.color = 'var(--text-3)';
@@ -2173,7 +2464,6 @@ function updateBranchKPIBar(r){
       factorEl.textContent = '—';
       factorEl.style.color = 'var(--text-3)';
       if (factorLabel) factorLabel.textContent = 'Sin estudio';
-      if (factorBar) factorBar.style.width = '0%';
     }
   }
 }
@@ -2195,7 +2485,7 @@ function renderAlerts(alerts,id){
 }
 
 /* ─── BRANCH RESUMEN ─── */
-function renderBranchResumen(r){
+async function renderBranchResumen(r){
   const cl=generateChecklist(r);
   const passed = cl.filter(c=>c.pass).length;
   const total = cl.length;
@@ -2266,17 +2556,17 @@ function renderMarketStudyPanel(branch) {
           circles: [500, 1000],
         });
       } catch(e) { console.warn('[BW2] Mini-map render failed:', e); miniMapEl.style.display = 'none'; }
-    } else if (typeof L !== 'undefined') {
-      // Leaflet mini-map fallback
-      try {
-        const mm = L.map(miniMapEl, { zoomControl: false, attributionControl: false }).setView([study.coordinates.lat, study.coordinates.lng], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mm);
-        L.marker([study.coordinates.lat, study.coordinates.lng]).addTo(mm);
-        [500, 1000].forEach((r, i) => L.circle([study.coordinates.lat, study.coordinates.lng], { radius: r, color: '#6B7A2E', fillOpacity: 0.05, weight: 1 }).addTo(mm));
-        setTimeout(() => mm.invalidateSize(), 200);
-      } catch(e) { miniMapEl.style.display = 'none'; }
     } else {
-      miniMapEl.style.display = 'none';
+      // Leaflet mini-map fallback (lazy load via .then — this fn is not async)
+      ensureLeaflet().then(() => {
+        try {
+          const mm = L.map(miniMapEl, { zoomControl: false, attributionControl: false }).setView([study.coordinates.lat, study.coordinates.lng], 14);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mm);
+          L.marker([study.coordinates.lat, study.coordinates.lng]).addTo(mm);
+          [500, 1000].forEach((r, i) => L.circle([study.coordinates.lat, study.coordinates.lng], { radius: r, color: '#6B7A2E', fillOpacity: 0.05, weight: 1 }).addTo(mm));
+          setTimeout(() => mm.invalidateSize(), 200);
+        } catch(e) { miniMapEl.style.display = 'none'; }
+      }).catch(() => { miniMapEl.style.display = 'none'; });
     }
   } else if (miniMapEl) {
     miniMapEl.style.display = 'none';
@@ -2438,7 +2728,7 @@ window._exportComparison = function() {
   const headers = ['Sucursal','Formato','EBITDA/mes','Inversión','Payback','Score','ROI 12m','VPN'];
   const rows = branches.map(b => {
     try {
-      const r = runBranchProjection(b, empresa);
+      const r = runBranchProjection(b, getActiveEmpresa());
       return [b.name, b.format, Math.round(r?.avgMonthlyEBITDA||0), Math.round(r?.totalInvestment||0),
               r?.paybackMonth||'∞', r?.viabilityScore||0, (r?.roi12||0).toFixed(1)+'%', Math.round(r?.npv||0)];
     } catch(e) { return [b.name, b.format, 0, 0, '∞', 0, '0%', 0]; }
@@ -2470,7 +2760,7 @@ function renderBranchScenarios(branch, empresa) {
   const scenarioIds = ['conservative', 'base', 'upside'];
   const results = scenarioIds.map(sid => {
     const clone = { ...branch, scenarioId: sid };
-    return { sid, sc: SCENARIOS[sid], result: runBranchProjection(clone, empresa) };
+    return { sid, sc: SCENARIOS[sid], result: runBranchProjection(clone, getActiveEmpresa()) };
   });
 
   const metrics = [
@@ -2574,13 +2864,15 @@ function renderBranchEditPanel(branch, model) {
   if (fcEl) {
     const nomina = fc.payroll ?? defFC.payroll;
     const cargaSocial = fc.socialCharge ?? defFC.socialCharge ?? (nomina * 0.30);
+    const cargaPct = nomina > 0 ? (cargaSocial / nomina) * 100 : 30;
+    const defCargaPct = defFC.payroll > 0 ? ((defFC.socialCharge ?? defFC.payroll * 0.30) / defFC.payroll) * 100 : 30;
     fcEl.innerHTML = [
-      editField('Renta', 'fc.rent', fc.rent ?? defFC.rent, defFC.rent, 1000, '$', undefined, undefined, 'Costo mensual del local comercial (sin IVA)'),
+      editField('Renta', 'fc.rent', fc.rent ?? defFC.rent, defFC.rent, 1000, '$', undefined, undefined, 'Costo mensual del local comercial (PDF indica +/- 25% según zona)'),
       editField('Nómina', 'fc.payroll', nomina, defFC.payroll, 1000, '$', undefined, undefined, 'Sueldo bruto total del personal (incluye farmacéutico, cajero, repartidor)'),
-      readonlyField('Carga Social', cargaSocial, '$', '= Nómina × 30%', 'IMSS, Infonavit, ISN y prestaciones del personal'),
+      editField('Carga Social (%)', 'fc.socialChargePct', cargaPct, defCargaPct, 0.5, '%', 5, 50, 'PDF doc. = ' + defCargaPct.toFixed(1) + '%. Estándar MX (IMSS+SAR+Infonavit+ISN): 28-35%. Ajustar según régimen real.'),
       editField('Sistemas', 'fc.systems', fc.systems ?? defFC.systems, defFC.systems, 100, '$', undefined, undefined, 'Software POS, inventarios, sistema de facturación y licencias'),
       editField('Contabilidad', 'fc.accounting', fc.accounting ?? defFC.accounting, defFC.accounting, 100, '$', undefined, undefined, 'Honorarios del contador externo o servicio contable'),
-      editField('Serv/Papelería (M3+)', 'fc.servPapM3', fc.servPap?.m3 ?? defFC.servPap.m3, defFC.servPap.m3, 500, '$', undefined, undefined, 'Luz, agua, limpieza, papelería y servicios generales a partir del mes 3'),
+      editField('Serv/Papelería (M3+)', 'fc.servPapM3', fc.servPap?.m3 ?? defFC.servPap.m3, defFC.servPap.m3, 500, '$', undefined, undefined, 'Luz, agua, limpieza, papelería y servicios generales a partir del mes 3 (M1=50%, M2=75% automático)'),
     ].join('');
   }
 
@@ -2592,15 +2884,16 @@ function renderBranchEditPanel(branch, model) {
     const isFranchise = proj?.isFranchise !== false;
 
     let fields = [
-      editField('COGS (Inventario)', 'vc.cogs', (vc.cogs ?? defVC.cogs) * 100, defVC.cogs * 100, 0.5, '%', 40, 80, 'Costo de la mercancía vendida como % de las ventas. ≈59% para farmacia'),
+      editField('COGS (Inventario)', 'vc.cogs', (vc.cogs ?? defVC.cogs) * 100, defVC.cogs * 100, 0.5, '%', 40, 80, 'Costo de la mercancía vendida como % de las ventas. ≈59-65% para farmacia'),
       editField('Comisión Venta', 'vc.comVenta', (vc.comVenta ?? defVC.comVenta) * 100, defVC.comVenta * 100, 0.1, '%', 0, 10, 'Comisión pagada al equipo de ventas sobre ingresos'),
       editField('Merma', 'vc.merma', (vc.merma ?? defVC.merma) * 100, defVC.merma * 100, 0.1, '%', 0, 5, 'Pérdida por caducidad, robo o daño del inventario'),
-      editField('Publicidad', 'vc.pubDir', (vc.pubDir ?? defVC.pubDir) * 100, defVC.pubDir * 100, 0.5, '%', 0, 10, 'Marketing digital, volanteo, señalización y promociones')
+      editField('Publicidad Directa', 'vc.pubDir', (vc.pubDir ?? defVC.pubDir) * 100, defVC.pubDir * 100, 0.5, '%', 0, 10, 'Marketing local en zona: volanteo, señalización, promociones')
     ];
     if (isFranchise) {
-      fields.push(editField('Regalía', 'vc.regalia', (vc.regalia ?? defVC.regalia) * 100, defVC.regalia * 100, 0.1, '%', 0, 10, 'Pago mensual a la franquicia por uso de marca (% sobre ventas)'));
+      fields.push(editField('Regalía FT', 'vc.regalia', (vc.regalia ?? defVC.regalia) * 100, defVC.regalia * 100, 0.1, '%', 0, 10, 'Regalías y publicidad corporativa FarmaTuya (% sobre ventas)'));
     }
     fields.push(editField('Bancario', 'vc.bancario', (vc.bancario ?? defVC.bancario) * 100, defVC.bancario * 100, 0.1, '%', 0, 5, 'Comisión por pagos con tarjeta (terminal bancaria)'));
+    fields.push(editField('Omisiones y Errores', 'vc.omisiones', ((vc.omisiones ?? defVC.omisiones) || 0) * 100, (defVC.omisiones || 0) * 100, 0.1, '%', 0, 5, 'Faltantes de caja, errores administrativos, diferencias de inventario'));
     
     vcEl.innerHTML = fields.join('');
   }
@@ -2634,7 +2927,7 @@ function renderBranchEditPanel(branch, model) {
         const freshBranch = getBranch(branch.id);
         if (!freshBranch) return;
         const empresa = getEmpresa();
-        const r = runBranchProjection(freshBranch, empresa);
+        const r = runBranchProjection(freshBranch, getActiveEmpresa());
         const m = MODELS[freshBranch.format];
         const ov = freshBranch.overrides || {};
         // Update KPI strip + Resumen (gauge, checklist, cashflow chart)
@@ -2648,11 +2941,8 @@ function renderBranchEditPanel(branch, model) {
         updateEnterpriseHeader(empresa);
 
       }, 300);
-      // Allow full re-render after extended inactivity (rebuilds edit panel)
-      _suppressTimer = setTimeout(() => {
-        _suppressFullRender = false;
-        renderCurrentView();
-      }, 2000);
+      // P3: removed aggressive 2000ms timer that caused full re-renders
+      // The 300ms debounce above handles KPI updates without losing focus
     });
   });
 
@@ -2735,6 +3025,13 @@ function applyEditField(branchId, key, val) {
   } else if (key.startsWith('fc.')) {
     const fcKey = key.split('.')[1];
     ov.fixedCosts = { ...(ov.fixedCosts || {}), [fcKey]: val };
+    // Handle socialChargePct: convert % to dollar amount using current payroll
+    if (fcKey === 'socialChargePct') {
+      const model = MODELS[branch.modelId];
+      const payroll = ov.fixedCosts?.payroll ?? model?.fixedCosts?.payroll ?? 18510.52;
+      ov.fixedCosts.socialCharge = payroll * (val / 100);
+      delete ov.fixedCosts.socialChargePct;
+    }
     // Handle servPap specially
     if (fcKey === 'servPapM3') {
       const sp = ov.fixedCosts.servPap || { m1: 0, m2: 0, m3: 0 };
@@ -2794,7 +3091,10 @@ function renderBranchLocation(branch) {
       statusEl.innerHTML = '<span class="loc-loading">Geocodificando → Buscando establecimientos → Calculando scores...</span>';
       try {
         const result = await runLocationStudy(query);
+        _suppressFullRender = true;
         updateBranchLocation(branch.id, result);
+        _suppressFullRender = false;
+        
         renderLocationResults(result);
         // Update market indicators and panels without full re-render
         const freshBranch = getBranch(branch.id);
@@ -2879,6 +3179,55 @@ async function renderLocationResults(study) {
     kc('Salud', apiOk ? (s.healthFacilities ?? 0) : '—', apiOk ? `${s.hospitals ?? 0} hospitales` : 'Sin dato', apiOk ? sc(s.salud || 0) : 'warning'),
     kc('Tráfico', apiOk ? (s.trafficGenerators ? Object.values(s.trafficGenerators).reduce((a,b)=>a+b,0) : 0) : '—', apiOk ? 'generadores' : 'Sin dato', apiOk ? sc(s.factors?.traffic?.score || 0) : 'warning'),
   ].join('');
+
+  // ── CONFIDENCE & INSIGHTS ──
+  const insightsContainer = $('loc-insights-container');
+  if (insightsContainer) {
+      const hasInsights = s.explicability && s.explicability.length > 0;
+      const hasConfidence = s.confidence !== undefined;
+
+      if (hasInsights || hasConfidence) {
+        insightsContainer.style.display = 'block';
+        let confidenceHtml = '';
+        if (hasConfidence) {
+           const confColor = s.confidence >= 80 ? 'var(--success)' : s.confidence >= 50 ? '#ca8a04' : 'var(--danger)';
+           confidenceHtml = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border)">
+             <span style="font-weight:600; font-size:0.9rem; color:var(--text-2)">Nivel de Confianza (Data Quality)</span>
+             <span style="font-weight:700; color:${confColor}; font-size:1.1rem">${s.confidence}%</span>
+           </div>`;
+           if (s.confidenceReasons && s.confidenceReasons.length > 0) {
+             confidenceHtml += `<ul style="font-size:0.8rem; color:var(--text-3); margin-bottom:1rem; padding-left:1.2rem; line-height: 1.4">
+               ${s.confidenceReasons.map(r => `<li style="margin-bottom:0.25rem">${r}</li>`).join('')}
+             </ul>`;
+           }
+        }
+        
+        let insightsHtml = '';
+        if (hasInsights) {
+          insightsHtml = s.explicability.map(ins => {
+             const bg = ins.type === 'danger' ? 'rgba(239, 68, 68, 0.08)' : ins.type === 'warning' ? 'rgba(245, 158, 11, 0.08)' : ins.type === 'success' ? 'rgba(34, 197, 94, 0.08)' : 'rgba(100, 116, 139, 0.08)';
+             const color = ins.type === 'danger' ? 'var(--danger)' : ins.type === 'warning' ? '#ca8a04' : ins.type === 'success' ? 'var(--success)' : 'var(--text-2)';
+             const border = ins.type === 'danger' ? 'border-left: 3px solid var(--danger)' : ins.type === 'warning' ? 'border-left: 3px solid #ca8a04' : ins.type === 'success' ? 'border-left: 3px solid var(--success)' : 'border-left: 3px solid var(--text-3)';
+             return `<div style="padding:0.75rem 1rem; border-radius:0 var(--r-md) var(--r-md) 0; background:${bg}; color:${color}; ${border}; font-size:0.875rem; margin-bottom:0.5rem; line-height:1.4">
+               <strong>${ins.text.split(':')[0]}:</strong>${ins.text.split(':').length > 1 ? ins.text.substring(ins.text.indexOf(':') + 1) : ''}
+             </div>`;
+          }).join('');
+        }
+        
+        insightsContainer.innerHTML = `
+          <div class="neu-card">
+            <h3 class="card-title" style="margin-bottom:1rem">Insights y Análisis IA</h3>
+            ${confidenceHtml}
+            <div style="margin-top:0.75rem">
+              ${insightsHtml}
+            </div>
+          </div>
+        `;
+      } else {
+        insightsContainer.style.display = 'none';
+        insightsContainer.innerHTML = '';
+      }
+  }
 
   // ── RADAR CHART (15 factors) ──
   if (s.factors) {
@@ -3006,6 +3355,8 @@ async function renderLocationResults(study) {
         // ── Google Maps ──
         try {
           const markers = buildStudyMarkers(study);
+          // Defer map init to next frame so container is fully laid out
+          await new Promise(r => requestAnimationFrame(() => setTimeout(r, 50)));
           const gmap = await createGoogleMap(mapContainer, study.coordinates.lat, study.coordinates.lng, {
             zoom: 14,
             markers: markers,
@@ -3014,10 +3365,13 @@ async function renderLocationResults(study) {
           console.log('[BW2] Socioeconomic Google Map rendered ✓');
         } catch (e) {
           console.error('[BW2] Google Map error, falling back to Leaflet:', e);
+          // Defer Leaflet init to ensure container is visible and laid out
+          await new Promise(r => requestAnimationFrame(() => setTimeout(r, 50)));
           _renderLeafletMap(study, c, s);
         }
       } else {
-        // ── Leaflet fallback ──
+        // ── Leaflet fallback — must wait for container to be visible ──
+        await new Promise(r => requestAnimationFrame(() => setTimeout(r, 50)));
         _renderLeafletMap(study, c, s);
       }
     }
@@ -3029,43 +3383,132 @@ async function renderLocationResults(study) {
 
 /** Leaflet map fallback for when Google Maps is not available */
 function _renderLeafletMap(study, c, s) {
-  if (typeof L === 'undefined') return;
-  try {
-    locMap = L.map('loc-map').setView([study.coordinates.lat, study.coordinates.lng], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OSM', maxZoom: 18
-    }).addTo(locMap);
+  // Lazy-load Leaflet if not already available
+  ensureLeaflet().then(() => _renderLeafletMapInner(study, c, s)).catch(e => console.warn('[BW2] Leaflet load failed:', e));
+}
+function _renderLeafletMapInner(study, c, s) {
 
-    L.marker([study.coordinates.lat, study.coordinates.lng]).addTo(locMap)
-      .bindPopup(`<b>${study.colonia || study.address}</b><br>${study.municipio || ''}<br>Score: ${s.total}/100`).openPopup();
+  const container = document.getElementById('loc-map');
+  if (!container) return;
 
-    [500, 1000, 2000].forEach((r, i) => {
-      L.circle([study.coordinates.lat, study.coordinates.lng], {
-        radius: r, color: ['#2563eb', '#3b82f6', '#93c5fd'][i],
-        fillOpacity: [0.04, 0.02, 0.01][i], weight: 1.5, dashArray: r > 500 ? '6 4' : null
+  // If container is hidden (in a non-active tab), defer map init
+  if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+    window._pendingMapData = { study, c, s };
+    console.log('[BW2] Map container hidden, deferring init');
+    return;
+  }
+  window._pendingMapData = null; // clear pending since we're initializing now
+
+  function _initMap() {
+    try {
+      if (locMap) { try { locMap.remove(); } catch(e){} locMap = null; }
+      container.innerHTML = '';
+
+      locMap = L.map('loc-map', { zoomControl: true }).setView([study.coordinates.lat, study.coordinates.lng], 14);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OSM', maxZoom: 18
       }).addTo(locMap);
-    });
 
-    const markerGroups = [
-      { data: c.farmacias || [], color: '#dc2626', emoji: '💊', prefix: 'Farmacia' },
-      { data: c.salud || [],     color: '#16a34a', emoji: '🏥', prefix: 'Salud' },
-      { data: c.escuelas || [],  color: '#7c3aed', emoji: '🎓', prefix: 'Escuela' },
-      { data: c.mercados || [],  color: '#ea580c', emoji: '🛒', prefix: 'Mercado' },
-      { data: c.transporte || [],color: '#0284c7', emoji: '🚌', prefix: 'Transporte' },
-      { data: c.bancos || [],    color: '#ca8a04', emoji: '🏦', prefix: 'Banco' },
-    ];
-    markerGroups.forEach(({ data, color, emoji, prefix }) => {
-      data.forEach(p => {
-        if (p.lat) L.circleMarker([p.lat, p.lng], {
-          radius: prefix === 'Farmacia' ? 7 : 5, color, fillColor: color, fillOpacity: 0.7, weight: 1
-        }).addTo(locMap).bindPopup(`${emoji} <b>${p.name}</b><br>${p.type || prefix}${p.chain ? ' · ' + p.chain : ''}${p.distance ? '<br>' + p.distance + 'm' : ''}`);
+      L.marker([study.coordinates.lat, study.coordinates.lng]).addTo(locMap)
+        .bindPopup(`<b>${study.colonia || study.address}</b><br>${study.municipio || ''}<br>Score: ${s.total}/100`).openPopup();
+
+      [500, 1000, 2000].forEach((r, i) => {
+        L.circle([study.coordinates.lat, study.coordinates.lng], {
+          radius: r, color: ['#2563eb', '#3b82f6', '#93c5fd'][i],
+          fillOpacity: [0.04, 0.02, 0.01][i], weight: 1.5, dashArray: r > 500 ? '6 4' : null
+        }).addTo(locMap);
       });
-    });
 
-    setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 100);
-    setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 400);
-    setTimeout(() => { if(locMap) locMap.invalidateSize(); }, 1000);
-  } catch (e) { console.error('Leaflet map error:', e); }
+      const markerGroups = [
+        { data: c.farmacias || [], color: '#dc2626', emoji: '💊', prefix: 'Farmacia' },
+        { data: c.salud || [],     color: '#16a34a', emoji: '🏥', prefix: 'Salud' },
+        { data: c.escuelas || [],  color: '#7c3aed', emoji: '🎓', prefix: 'Escuela' },
+        { data: c.mercados || [],  color: '#ea580c', emoji: '🛒', prefix: 'Mercado' },
+        { data: c.transporte || [],color: '#0284c7', emoji: '🚌', prefix: 'Transporte' },
+        { data: c.bancos || [],    color: '#ca8a04', emoji: '🏦', prefix: 'Banco' },
+      ];
+      markerGroups.forEach(({ data, color, emoji, prefix }) => {
+        data.forEach(p => {
+          if (p.lat) L.circleMarker([p.lat, p.lng], {
+            radius: prefix === 'Farmacia' ? 7 : 5, color, fillColor: color, fillOpacity: 0.7, weight: 1
+          }).addTo(locMap).bindPopup(`${emoji} <b>${p.name}</b><br>${p.type || prefix}${p.chain ? ' · ' + p.chain : ''}${p.distance ? '<br>' + p.distance + 'm' : ''}`);
+        });
+      });
+
+      // Force tile recalculation after layout stabilizes
+      const _lat = study.coordinates.lat, _lng = study.coordinates.lng;
+      const _fixMapSize = () => {
+        if (!locMap) return;
+        const rect = container.getBoundingClientRect();
+        console.log('[BW2] Map fix: container=', rect.width, 'x', rect.height, 'leaflet=', locMap._size?.x, 'x', locMap._size?.y);
+        locMap.invalidateSize({animate:false, pan:false});
+        // Force Leaflet's internal size to match the container
+        if (locMap._size && rect.width > locMap._size.x + 10) {
+          console.log('[BW2] Map size mismatch! Forcing size to', rect.width, 'x', rect.height);
+          locMap._size = L.point(Math.round(rect.width), Math.round(rect.height));
+          locMap._sizeChanged = true;
+          locMap.fire('resize');
+        }
+        locMap.setView([_lat, _lng], 14, {reset:true, animate:false});
+      };
+      setTimeout(_fixMapSize, 100);
+      setTimeout(_fixMapSize, 500);
+      setTimeout(_fixMapSize, 1500);
+
+      // ── Click-to-select location ──
+      locMap.getContainer().style.cursor = 'crosshair';
+      locMap.on('click', async (e) => {
+        if (!state.activeBranchId) return;
+        const { lat, lng } = e.latlng;
+        const tmpMarker = L.marker([lat, lng], {
+          icon: L.divIcon({ className: 'map-click-marker', html: '📍', iconSize: [24, 24], iconAnchor: [12, 24] })
+        }).addTo(locMap).bindPopup('⏳ Analizando...').openPopup();
+
+        const statusEl = $('loc-status');
+        const addrInput = $('loc-address-input');
+        if (statusEl) statusEl.innerHTML = '<span class="loc-loading">📍 Reverse geocoding → calculando scores...</span>';
+
+        try {
+          const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&accept-language=es`, { headers: { 'User-Agent': 'BW2-Dashboard/1.0' } });
+          const data = await resp.json();
+          const addr = data.address || {};
+          const name = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city_district || data.display_name?.split(',')[0] || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+          const full = data.display_name || name;
+
+          if (addrInput) addrInput.value = name;
+
+          _suppressFullRender = true;
+          updateBranch(state.activeBranchId, { colonia: name, coloniaFull: full });
+          _suppressFullRender = false;
+
+          const result = await runLocationStudy(name, { lat, lng, display_name: full, colonia: name, municipio: addr.city || addr.town || addr.state || '' });
+          _suppressFullRender = true;
+          updateBranchLocation(state.activeBranchId, result);
+          _suppressFullRender = false;
+
+          const freshBranch = getBranch(state.activeBranchId);
+          if (freshBranch) {
+            renderLocationResults(result);
+            renderMarketStudyPanel(freshBranch);
+            updateMarketIndicators(freshBranch);
+          }
+
+          if (result.errors?.length) {
+            if (statusEl) statusEl.innerHTML = '<span class="loc-warning">⚠️ Estudio parcial: ' + result.errors.map(e => e.error).join('; ') + '</span>';
+          } else {
+            if (statusEl) statusEl.innerHTML = '<span class="loc-success">✅ Estudio completo — ' + new Date(result.lastUpdated).toLocaleString('es-MX') + '</span>';
+          }
+        } catch (err) {
+          console.error('[BW2] Map click study error:', err);
+          if (statusEl) statusEl.innerHTML = '<span class="loc-error">❌ Error: ' + err.message + '</span>';
+          tmpMarker.setPopupContent('❌ Error').openPopup();
+        }
+      });
+    } catch (e) { console.error('Leaflet map error:', e); }
+  }
+
+  // Container is visible (checked earlier), init immediately  
+  _initMap();
 }
 
 /** Render demographic indicators, nearby detail table, and sources (called from renderLocationResults) */
@@ -3126,9 +3569,33 @@ function renderLocationExtras(study, c, s, sug) {
 }
 
 /* ═══ CONSOLIDATED VIEW ═══ */
-function renderConsolidated(empresa){
-  updateConsolMarketIndicator(empresa);
-  const consol=runConsolidation(empresa);
+async function renderConsolidated(empresa){
+  await ensureChartJS();
+  const proj = empresa.proyectos?.find(p => p.id === state.activeProyectoId);
+  const pseudoEmpresa = proj ? {
+    ...empresa,
+    proyectos: [proj],
+    branches: proj.branches || [],
+    totalCapital: proj.totalCapital || 2e6,
+    corporateReserve: proj.corporateReserve || 0,
+    corporateExpenses: proj.corporateExpenses || 0
+  } : empresa;
+
+  const h2 = document.querySelector('#view-consolidated h2');
+  if (h2) {
+    Array.from(h2.childNodes).forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim().startsWith('Consolidado')) {
+         node.textContent = `Consolidado ${proj ? esc(proj.name) : esc(empresa.name)} `;
+      }
+    });
+  }
+  const pDesc = document.querySelector('#view-consolidated .view-header p');
+  if (pDesc) {
+    pDesc.textContent = proj ? `Métricas agregadas del proyecto y sus sucursales` : `Métricas agregadas del holding y todas las sucursales`;
+  }
+
+  updateConsolMarketIndicator(pseudoEmpresa);
+  const consol=runConsolidation(pseudoEmpresa);
   const ivaOn = $('toggle-iva')?.checked;
   const f = ivaOn ? 1.16 : 1; // IVA factor
   const fm = v => fmt.m(v * f); // format money with IVA
@@ -3145,26 +3612,34 @@ function renderConsolidated(empresa){
     tog.addEventListener('change', () => renderConsolidated(getEmpresa()));
   }
 
-  // Enterprise KPIs
-  const invEl = $('consol-kpi-inv');
-  const freeEl = $('consol-kpi-free');
-  const profitEl = $('consol-kpi-profit');
-  const scoreEl = $('consol-kpi-score');
+  // Sync global dinamismo selects
+  const ov = empresa.overrides || {};
+  const grSel=$('global-royalty-select'); if(grSel) grSel.value = ov.royaltyMode || 'variable_2_5';
+  const gwSel=$('global-waiver-select');  if(gwSel) gwSel.value = (ov.waiverFromOpening||false).toString();
+  const gpSel=$('global-preopen-select'); if(gpSel) gpSel.value = (ov.preOpenMonths||0).toString();
+  const gmSel=$('global-market-toggle');  if(gmSel) gmSel.value = (ov.applyMarketFactor!==false).toString();
+  const gsSel=$('global-scenario-select');if(gsSel) gsSel.value = (ov.baseScenarioFactor||1).toString();
 
-  if(invEl) {
-    invEl.textContent = fm(consol.totalInvestment);
-  }
-  if(freeEl) {
-    freeEl.textContent = fm(consol.capitalFree);
-    freeEl.style.color = consol.capitalFree>0?'var(--green)':'var(--red)';
-  }
-  if(profitEl) {
-    profitEl.textContent = fm(consol.avgMonthlyEBITDA);
-    profitEl.style.color = consol.avgMonthlyEBITDA>0?'var(--green)':'var(--red)';
-  }
-  if(scoreEl) {
-    scoreEl.textContent = consol.avgScore+'/100';
-    scoreEl.style.color = consol.avgScore>=60?'var(--green)':consol.avgScore>=40?'var(--text-1)':'var(--red)';
+  // Enterprise KPI Strip (compact, matching Resultados style)
+  const kpiStrip = $('consol-kpi-strip');
+  if(kpiStrip) {
+    const freeColor = consol.capitalFree > 0 ? 'var(--sem-positive)' : 'var(--sem-negative)';
+    const profitColor = consol.avgMonthlyEBITDA > 0 ? 'var(--sem-positive)' : 'var(--sem-negative)';
+    const scoreColor = consol.avgScore >= 60 ? 'var(--sem-positive)' : consol.avgScore >= 40 ? 'var(--text-1)' : 'var(--sem-negative)';
+    const kpis = [
+      { label: 'INVERSIÓN TOTAL', value: fm(consol.totalInvestment), detail: consol.branchCount+' sucursales' },
+      { label: 'CAPITAL LIBRE', value: fm(consol.capitalFree), color: freeColor, detail: consol.capitalFree < 0 ? '⚠ sobrepasado' : 'disponible' },
+      { label: 'EBITDA MENSUAL', value: fm(consol.avgMonthlyEBITDA), color: profitColor, detail: 'agregado' },
+      { label: 'SCORE', value: consol.avgScore+'/100', color: scoreColor, detail: 'portafolio' }
+    ];
+    kpiStrip.innerHTML = kpis.map((k, i) =>
+      (i > 0 ? '<div class="kpi-strip-divider"></div>' : '') +
+      `<div class="kpi-strip-item">
+        <span class="kpi-strip-label">${k.label}</span>
+        <span class="kpi-strip-value" style="${k.color ? 'color:' + k.color : ''}">${k.value}</span>
+        <span class="kpi-strip-detail">${k.detail}</span>
+      </div>`
+    ).join('');
   }
 
   // Consolidated cashflow chart
@@ -3172,8 +3647,9 @@ function renderConsolidated(empresa){
     charts['consol-cashflow']=new Chart(ctx,{type:'line',data:{labels:consol.months.map(m=>'M'+m.month),datasets:[{label:'Acumulado Empresa',data:consol.months.map(m=>m.cumulativeCashFlow*f),borderColor:'#4d7cfe',backgroundColor:'rgba(77,124,254,0.1)',fill:true,tension:0.3,pointRadius:0,borderWidth:2.5},{label:'Mensual',data:consol.months.map(m=>m.netIncome*f),type:'bar',backgroundColor:consol.months.map(m=>m.netIncome>=0?'rgba(52,211,153,0.35)':'rgba(248,113,113,0.3)'),borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt.m(c.parsed.y)}`}}},scales:{y:{ticks:{callback:v=>fmk(v/f)}}}}});
   }
 
-  // Partner cards
-  $('consol-partners').innerHTML=`<div class="partner-grid">${consol.perPartner.map(pp=>`<div class="partner-card"><div class="partner-name">👤 ${pp.name}</div>${[['Capital',fm(pp.capital)],['Participación',fmt.pi(pp.equity)],['Comprometido',fm(pp.capitalCommitted)],['Ret./mes',`<span style="color:${pp.monthlyReturn>=0?'var(--green)':'var(--red)'}">${fm(pp.monthlyReturn)}</span>`],['Ret. 5A',fm(pp.totalReturn60)],['ROI 5A',pp.roi60.toFixed(1)+'%']].map(([l,v])=>`<div class="partner-stat"><span class="partner-stat-label">${l}</span><span class="partner-stat-value">${v}</span></div>`).join('')}</div>`).join('')}</div>`;
+  // Partner table (compact horizontal)
+  $('consol-partners').innerHTML=`<table class="data-table partner-table"><thead><tr><th>Socio</th><th class="num">Capital</th><th class="num">Part.</th><th class="num" title="Inversión total de sucursales × % participación del socio">Inv. Prop.</th><th class="num">Ret./mes</th><th class="num">Ret. 5A</th><th class="num">ROI 5A</th></tr></thead><tbody>${consol.perPartner.map(pp=>{const over=pp.capitalCommitted>pp.capital;return`<tr><td><strong>👤 ${pp.name}</strong></td><td class="num">${fm(pp.capital)}</td><td class="num">${fmt.pi(pp.equity)}</td><td class="num" ${over?'style="color:var(--sem-warning)"':''}>${fm(pp.capitalCommitted)}${over?' ⚠':''}
+</td><td class="num" style="color:${pp.monthlyReturn>=0?'var(--sem-positive)':'var(--sem-negative)'}">${fm(pp.monthlyReturn)}</td><td class="num">${fm(pp.totalReturn60)}</td><td class="num">${pp.roi60.toFixed(1)}%</td></tr>`}).join('')}</tbody></table>`;
 
   // Branch breakdown table
   $('consol-branch-table').innerHTML=`<table class="data-table"><thead><tr><th>Sucursal</th><th>Formato</th><th>Colonia</th><th class="num">Inversión</th><th class="num">EBITDA</th><th class="num">PB Simple</th><th class="num">Score</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody>${consol.branchResults.map(({branch:b,result:r})=>{
@@ -3218,12 +3694,15 @@ function renderConsolidated(empresa){
 }
 
 /* ═══ COMPARADOR VIEW ═══ */
-function renderComparador(empresa){
-  const activeBranches=empresa.branches.filter(b=>b.status!=='paused');
-  const results=activeBranches.map(b=>({branch:b,result:runBranchProjection(b,empresa)}));
+async function renderComparador(empresa){
+  await ensureChartJS();
+  const proj = empresa.proyectos?.find(p => p.id === state.activeProyectoId);
+  const branchList = proj ? (proj.branches || []) : [];
+  const activeBranches = branchList.filter(b=>b.status!=='paused' && b.status!=='archived');
+  const results=activeBranches.map(b=>({branch:b,result:runBranchProjection(b, getActiveEmpresa())}));
   const metrics=[
     {l:'EBITDA',f:r=>fmt.m(r.avgMonthlyEBITDA)},
-    {l:'Break-Even',f:r=>fmt.m(r.breakEvenRevenue)},
+    {l:'Pto. Equilibrio',f:r=>fmt.m(r.breakEvenRevenue)},
     {l:'PB Simple',f:r=>{const pm=r.paybackMetrics;return pm.simple.min!=null?`${pm.simple.min.toFixed(0)}–${pm.simple.max.toFixed(0)}m`:'∞';}},
     {l:'PB Rampa',f:r=>r.paybackMetrics?.rampa?.month?r.paybackMetrics.rampa.month+'m':'∞'},
     {l:'BE Operativo',f:r=>r.paybackMetrics?.beOperativo?.month?r.paybackMetrics.beOperativo.month+'m':'∞'},
@@ -3250,9 +3729,9 @@ function renderEmpresaSettings(empresa){
     const capStatus = consol.capitalFree >= 0 ? 'good' : 'bad';
     kpiEl.innerHTML = [
       kc('Capital Total', fmt.m(empresa.totalCapital), `${empresa.partners.length} socios`, 'neutral'),
-      kc('Comprometido', fmt.m(consol.capitalCommitted), fmt.pi(consol.capitalCommitted / empresa.totalCapital) + ' del total', 'neutral'),
-      kc('Libre', fmt.m(consol.capitalFree), capStatus === 'good' ? 'Disponible' : '⚠️ Excedido', capStatus),
-      kc('Ganancia/mes', fmt.m(consol.avgMonthlyNet), `en ${consol.branchCount} suc.`, consol.avgMonthlyNet >= 0 ? 'good' : 'bad'),
+      kc('Inv. Requerida', fmt.m(consol.capitalCommitted), `Sumatoria Capex de ${consol.branchCount || activeBranches?.length || 0} suc+reserva`, 'neutral'),
+      kc('Libre / Faltante', fmt.m(consol.capitalFree), capStatus === 'good' ? 'Capital Disponible' : '⚠️ Presupuesto Excedido', capStatus),
+      kc('Ganancia/mes', fmt.m(consol.avgMonthlyNet), `en ${consol.branchCount || activeBranches?.length || 0} suc.`, consol.avgMonthlyNet >= 0 ? 'good' : 'bad'),
       kc('Recuperación Emp.', consol.paybackMonth ? consol.paybackMonth + ' meses' : '∞', 'Todas las sucursales', consol.paybackMonth && consol.paybackMonth <= 36 ? 'good' : 'warn'),
       kc('Calificación', consol.avgScore + '/100', 'Promedio portafolio', consol.avgScore >= 70 ? 'good' : consol.avgScore >= 50 ? 'warn' : 'bad')
     ].join('');
@@ -3301,7 +3780,7 @@ function renderPartnersTable(partners, consol){
 
   container.innerHTML = `<div class="socios-table-wrap"><table class="data-table socios-table"><thead><tr>
     <th>Nombre</th><th class="num">Capital</th><th class="num">%</th>
-    <th class="num" title="Capital invertido en sucursales activas">Comprometido</th><th class="num" title="Lo que gana cada socio al mes">Ganancia/mes</th><th class="num" title="Retorno en 5 años por cada peso invertido">Retorno 5A</th><th class="num" title="Meses para recuperar la inversión">Recuperación</th><th></th>
+    <th class="num" title="Inversión total × % participación del socio">Inv. Prop.</th><th class="num" title="Lo que gana cada socio al mes">Ganancia/mes</th><th class="num" title="Retorno en 5 años por cada peso invertido">Retorno 5A</th><th class="num" title="Meses para recuperar la inversión">Recuperación</th><th></th>
   </tr></thead><tbody>${partners.map(p => {
     const pp = ppMap[p.id] || {};
     const retColor = (pp.monthlyReturn || 0) >= 0 ? 'var(--green)' : 'var(--red)';
@@ -3363,34 +3842,35 @@ window._removePartner = (id) => {
 
 // Module scripts run after DOM is parsed — no need for DOMContentLoaded
 {
-  const saveBtn=$('btn-save-empresa');
-  if(saveBtn) saveBtn.addEventListener('click',()=>{
-    const fileInp = $('emp-logo-upload');
-    const commit = (logoStr) => {
-      const data = {
+  let _empSaveTimeout = null;
+  const saveEmpresaData = () => {
+    clearTimeout(_empSaveTimeout);
+    _empSaveTimeout = setTimeout(() => {
+      updateEmpresa({
         name:$('emp-name').value,
-        projectName:$('emp-project-name')?.value || 'FarmaTuya',
+        projectName:$('emp-project-name')?.value || '',
         totalCapital:parseFloat($('emp-capital').value)||0,
         corporateReserve:parseFloat($('emp-reserve').value)||0,
         corporateExpenses:parseFloat($('emp-corp-expenses')?.value)||0
-      };
-      if (logoStr !== undefined) data.logo = logoStr;
-      
-      updateEmpresa(data);
-      saveBtn.textContent='✅ Guardado';
-      setTimeout(()=>saveBtn.textContent='Guardar Cambios',1500);
-    };
+      });
+      // Re-render only the KPI strip so we don't lose input focus
+      renderEmpresaSettings(getActiveEmpresa());
+    }, 500);
+  };
 
-    if (fileInp && fileInp.files && fileInp.files[0]) {
-      const fr = new FileReader();
-      fr.onload = (e) => commit(e.target.result);
-      fr.readAsDataURL(fileInp.files[0]);
-    } else {
-      commit(undefined);
-    }
+  ['emp-name', 'emp-project-name', 'emp-capital', 'emp-reserve', 'emp-corp-expenses'].forEach(id => {
+    const el = $(id);
+    if(el) el.addEventListener('input', saveEmpresaData);
+  });
+
+  const saveBtn=$('btn-save-empresa');
+  if(saveBtn) saveBtn.addEventListener('click',()=>{
+    saveEmpresaData();
+    saveBtn.textContent='✅ Guardado';
+    setTimeout(()=>saveBtn.textContent='Guardar Cambios',1500);
   });
   
-  // Live preview when file is selected
+  // Live preview & auto-save when file is selected
   const fileInp = $('emp-logo-upload');
   if(fileInp) fileInp.addEventListener('change', (e) => {
     if(e.target.files && e.target.files[0]) {
@@ -3398,6 +3878,7 @@ window._removePartner = (id) => {
       fr.onload = (ev) => {
          const preview = $('emp-logo-preview');
          if (preview) preview.src = ev.target.result;
+         updateEmpresa({ logo: ev.target.result });
       };
       fr.readAsDataURL(e.target.files[0]);
     }
@@ -3433,6 +3914,117 @@ window._removePartner = (id) => {
       }
     });
   }
+
+  // ═══ GLOBAL DINAMISMO CONTROLS ═══
+  const syncAndApplyGlobalDinamismo = () => {
+    const proj = getEmpresa();
+    if (!proj) return;
+    proj.overrides = proj.overrides || {};
+
+    // Determine context (which view is active to grab the right select values)
+    const isEmpresa = state.view === 'empresa-dashboard';
+    const prefix = isEmpresa ? 'empresa' : 'global';
+
+    const royaltyEl = $(`${prefix}-royalty-select`);
+    const waiverEl = $(`${prefix}-waiver-select`);
+    const preopenEl = $(`${prefix}-preopen-select`);
+    const marketEl = $(`${prefix}-market-toggle`);
+    const scenarioEl = $(`${prefix}-scenario-select`);
+
+    if(!royaltyEl) return;
+
+    const dynValues = {
+      royaltyMode: royaltyEl.value,
+      waiverFromOpening: waiverEl.value === 'true',
+      preOpenMonths: parseInt(preopenEl.value, 10) || 0,
+      applyMarketFactor: marketEl.value === 'true',
+      baseScenarioFactor: parseFloat(scenarioEl.value) || 1.0
+    };
+
+    updateEmpresa({ overrides: { ...proj.overrides, ...dynValues } });
+    
+    // Cascade to all branches in this project
+    (proj.branches || []).forEach(b => {
+      updateBranchOverrides(b.id, dynValues);
+    });
+
+    // Make sure both views are synced in DOM so switching doesn't show old values
+    const otherPrefix = isEmpresa ? 'global' : 'empresa';
+    const orEl = $(`${otherPrefix}-royalty-select`);
+    const owEl = $(`${otherPrefix}-waiver-select`);
+    const opEl = $(`${otherPrefix}-preopen-select`);
+    const omEl = $(`${otherPrefix}-market-toggle`);
+    const osEl = $(`${otherPrefix}-scenario-select`);
+
+    if(orEl) orEl.value = dynValues.royaltyMode;
+    if(owEl) owEl.value = dynValues.waiverFromOpening.toString();
+    if(opEl) opEl.value = dynValues.preOpenMonths.toString();
+    if(omEl) omEl.value = dynValues.applyMarketFactor.toString();
+    if(osEl) osEl.value = dynValues.baseScenarioFactor.toString();
+
+    renderCurrentView();
+  };
+
+  ['empresa-royalty-select', 'empresa-waiver-select', 'empresa-preopen-select', 'empresa-market-toggle', 'empresa-scenario-select',
+   'global-royalty-select', 'global-waiver-select', 'global-preopen-select', 'global-market-toggle', 'global-scenario-select']
+   .forEach(id => {
+     const el = $(id);
+     if(el) el.addEventListener('change', syncAndApplyGlobalDinamismo);
+   });
+
+  // ═══ RECALCULAR ESTUDIOS DE MERCADO EN MASA ═══
+  const massRecalculateMarket = async () => {
+    const emp = getActiveEmpresa();
+    if (!emp) return;
+    let updated = 0;
+    
+    // Show loading state
+    const btns = [$('btn-empresa-recalc'), $('btn-global-recalc'), $('global-refresh-loc-btn')].filter(Boolean);
+    btns.forEach(b => {
+      b._origHtml = b.innerHTML;
+      if (b.id === 'global-refresh-loc-btn') {
+        b.innerHTML = '<span>⏳</span> <span style="font-weight:600">Recalculando...</span>';
+      } else {
+        b.innerHTML = '⏳ Recalculando...';
+      }
+    });
+
+    for (const p of emp.proyectos || []) {
+      for (const b of p.branches || []) {
+        if (b.colonia && (b.locationStudy?.nearby || b.locationStudy?.rezago || b.locationStudy?.scores)) {
+          try {
+            const opts = b.locationStudy?.lat ? { lat: b.locationStudy.lat, lng: b.locationStudy.lng, colonia: b.colonia, display_name: b.locationStudy.address } : undefined;
+            const res = await runLocationStudy(b.colonia, opts);
+            if (res && res.scores) {
+              updateBranch(emp.id, p.id, b.id, { locationStudy: res });
+              updated++;
+            }
+          } catch(e) { console.error('Failed mass recalc for', b.name, e); }
+        }
+      }
+    }
+    
+    btns.forEach(b => {
+      if (b.id === 'global-refresh-loc-btn') {
+        b.innerHTML = `<span>✅</span> <span style="font-weight:600">${updated} Actualizados</span>`;
+      } else {
+        b.innerHTML = `✅ ${updated} Actualizados`;
+      }
+    });
+    setTimeout(() => {
+      btns.forEach(b => {
+        if(b._origHtml) b.innerHTML = b._origHtml;
+      });
+    }, 2500);
+    renderCurrentView();
+  };
+
+  const btnEmpRec = $('btn-empresa-recalc');
+  if(btnEmpRec) btnEmpRec.addEventListener('click', massRecalculateMarket);
+  const btnGlbRec = $('btn-global-recalc');
+  if(btnGlbRec) btnGlbRec.addEventListener('click', massRecalculateMarket);
+  const btnHeadRec = $('global-refresh-loc-btn');
+  if(btnHeadRec) btnHeadRec.addEventListener('click', massRecalculateMarket);
 }
 
 /* ═══ GLOSARIO / DICTIONARY ═══ */
@@ -3444,17 +4036,17 @@ const GLOSSARY = [
   {cat:'📊 Inversión',term:'Payback Simple',def:'¿Cuántos meses tarda en recuperarse la inversión, asumiendo utilidad constante? Se divide inversión total entre utilidad mensual estabilizada.',where:'KPI strip'},
   {cat:'📊 Inversión',term:'Payback Rampa',def:'¿Cuántos meses tarda en recuperarse la inversión usando el flujo real mes a mes (que empieza bajo y sube)? Es más realista que el simple.',where:'KPI strip, cards'},
   {cat:'📊 Inversión',term:'Payback Promedio 5A',def:'Usa la utilidad promedio de 5 años para calcular el retorno. Útil cuando la utilidad varía mucho.',where:'Comparador'},
-  {cat:'📊 Inversión',term:'Break-Even Operativo (BE Op.)',def:'Mes en el que la sucursal empieza a dar utilidad positiva de forma sostenida. Antes de ese mes, opera a pérdida.',where:'KPI strip'},
+  {cat:'📊 Inversión',term:'B/E Operativo (Break-Even Operativo)',def:'Mes en el que la sucursal empieza a dar utilidad positiva de forma sostenida. Antes de ese mes, opera a pérdida.',where:'KPI strip'},
   {cat:'📊 Inversión',term:'VPN (Valor Presente Neto)',def:'Cuánto vale hoy todo el flujo futuro de 5 años, descontado al 12%. Si es positivo, la inversión genera valor real.',where:'Tab P&L'},
   {cat:'📊 Inversión',term:'TIR (Tasa Interna de Retorno)',def:'La tasa de rendimiento anual que genera la inversión. Si supera el costo de oportunidad (~12%), conviene invertir.',where:'Tab P&L'},
-  {cat:'🏪 Operación',term:'Break-Even Revenue',def:'Nivel de ventas mínimo para cubrir todos los costos. Si vendes menos que esto, pierdes dinero.',where:'KPI strip'},
+  {cat:'🏪 Operación',term:'Pto. Equilibrio (Break-Even Revenue)',def:'Nivel de ventas mínimo para cubrir todos los costos. Si vendes menos que esto, pierdes dinero.',where:'KPI strip'},
   {cat:'🏪 Operación',term:'COGS (Costo de Mercancía)',def:'Lo que cuesta comprar los productos que vendes. En farmacia típicamente es 62-65% de la venta.',where:'Tab P&L, donut de costos variables'},
   {cat:'🏪 Operación',term:'Merma',def:'Productos que se pierden (caducos, rotos, robados). Se mide como porcentaje de ventas, típicamente 1-2%.',where:'Sliders avanzados'},
   {cat:'🏪 Operación',term:'Comisión sobre Venta',def:'Porcentaje de ventas destinado a pagar comisiones al personal de mostrador.',where:'Costos variables'},
   {cat:'🏪 Operación',term:'Regalía',def:'Porcentaje que se paga a la franquicia por usar la marca. Solo aplica al modelo Súper (2.5%).',where:'Config de branch'},
   {cat:'🏢 Estructura',term:'Capital Total',def:'Todo el dinero disponible de la sociedad para invertir en sucursales.',where:'Header y Empresa'},
-  {cat:'🏢 Estructura',term:'Capital Comprometido',def:'La suma de las inversiones de todas las sucursales activas y planeadas.',where:'Header'},
-  {cat:'🏢 Estructura',term:'Capital Libre',def:'Capital Total menos el Comprometido. Si es negativo (rojo), la empresa necesita más fondos.',where:'Header'},
+  {cat:'🏢 Estructura',term:'Inv. Proporcional',def:'Inversión total de todas las sucursales × % de participación de cada socio. Muestra cuánto le corresponde cubrir.',where:'Tabla de Socios'},
+  {cat:'🏢 Estructura',term:'Capital Libre',def:'Capital Total menos la Inv. Proporcional. Si es negativo (rojo), la empresa necesita más fondos.',where:'Header'},
   {cat:'🏢 Estructura',term:'Reserva Corporativa',def:'Dinero apartado para imprevistos o gastos corporativos que no se asigna a sucursales.',where:'Empresa settings'},
   {cat:'🏢 Estructura',term:'Participación (%)',def:'El porcentaje de la empresa que le corresponde a cada socio. Determina reparto de utilidades.',where:'Consolidado, Empresa'},
   {cat:'🔬 Riesgo',term:'Score de Viabilidad',def:'Calificación de 0-100 que resume qué tan viable es la sucursal. 60+ es VIABLE, 40-59 es FRÁGIL, <40 NO VIABLE.',where:'Cards, gauge'},
@@ -3545,7 +4137,7 @@ function openProfilePopup() {
   if (apellidoInput) apellidoInput.value = profile.lastName || '';
   
   // Populate email from auth user
-  const authUser = getCurrentUser();
+  const authUser = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
   if (emailInput && authUser) emailInput.value = authUser.email || '';
   
   // Reset password change section
@@ -3596,12 +4188,100 @@ function openProfilePopup() {
 
   async function handleFile(file) {
     if (!file || !file.type.startsWith('image/')) { showToast('Solo se aceptan imágenes', 'error'); return; }
-    if (file.size > 2 * 1024 * 1024) { showToast('Imagen muy grande (máx 2MB)', 'error'); return; }
+    if (file.size > 5 * 1024 * 1024) { showToast('Imagen muy grande (máx 5MB)', 'error'); return; }
     try {
-      const dataURL = await resizeImageToDataURL(file, 256);
-      showPhotoPreview(dataURL);
+      const dataURL = await readFileAsDataURL(file);
+      openCropper(dataURL);
     } catch(e) { showToast('Error al procesar imagen', 'error'); }
   }
+  function readFileAsDataURL(f) {
+    return new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = fail; r.readAsDataURL(f); });
+  }
+
+  /* ── CROPPER ENGINE ── */
+  const cropArea = $('profile-crop-area');
+  const cropCanvas = $('crop-canvas');
+  const cropCtx = cropCanvas ? cropCanvas.getContext('2d') : null;
+  const cropZoom = $('crop-zoom');
+  const cropConfirm = $('btn-crop-confirm');
+  const cropCancel = $('btn-crop-cancel');
+  const cropContainer = $('crop-container');
+  let cropImg = null, cropScale = 1, cropX = 0, cropY = 0, cropDragging = false, cropStartX = 0, cropStartY = 0;
+  const CROP_SIZE = 220;
+
+  function openCropper(dataURL) {
+    cropImg = new Image();
+    cropImg.onload = () => {
+      // Fit image to canvas initially
+      const aspect = cropImg.width / cropImg.height;
+      cropScale = 1;
+      cropX = 0; cropY = 0;
+      if (cropZoom) cropZoom.value = 100;
+      // Show crop area, hide dropzone
+      if (cropArea) cropArea.style.display = '';
+      dropzone.style.display = 'none';
+      drawCrop();
+    };
+    cropImg.src = dataURL;
+  }
+
+  function drawCrop() {
+    if (!cropCtx || !cropImg) return;
+    cropCtx.clearRect(0, 0, CROP_SIZE, CROP_SIZE);
+    const scale = cropScale;
+    const imgW = cropImg.width, imgH = cropImg.height;
+    // Fit the smaller dimension to CROP_SIZE, then apply scale
+    const fitScale = Math.max(CROP_SIZE / imgW, CROP_SIZE / imgH) * scale;
+    const dw = imgW * fitScale, dh = imgH * fitScale;
+    const dx = (CROP_SIZE - dw) / 2 + cropX;
+    const dy = (CROP_SIZE - dh) / 2 + cropY;
+    cropCtx.drawImage(cropImg, dx, dy, dw, dh);
+  }
+
+  function closeCropper() {
+    if (cropArea) cropArea.style.display = 'none';
+    dropzone.style.display = '';
+    cropImg = null;
+  }
+
+  function exportCrop() {
+    if (!cropImg) return;
+    // Draw final 256x256 circular crop
+    const out = document.createElement('canvas');
+    out.width = 256; out.height = 256;
+    const ctx = out.getContext('2d');
+    // Clip to circle
+    ctx.beginPath();
+    ctx.arc(128, 128, 128, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    // Draw image at same position/scale but mapped to 256px
+    const ratio = 256 / CROP_SIZE;
+    const imgW = cropImg.width, imgH = cropImg.height;
+    const fitScale = Math.max(CROP_SIZE / imgW, CROP_SIZE / imgH) * cropScale;
+    const dw = imgW * fitScale * ratio, dh = imgH * fitScale * ratio;
+    const dx = ((CROP_SIZE - imgW * fitScale) / 2 + cropX) * ratio;
+    const dy = ((CROP_SIZE - imgH * fitScale) / 2 + cropY) * ratio;
+    ctx.drawImage(cropImg, dx, dy, dw, dh);
+    const result = out.toDataURL('image/png', 0.92);
+    showPhotoPreview(result);
+    closeCropper();
+  }
+
+  // Crop drag handlers
+  if (cropContainer) {
+    cropContainer.addEventListener('mousedown', (e) => { cropDragging = true; cropStartX = e.clientX - cropX; cropStartY = e.clientY - cropY; });
+    cropContainer.addEventListener('touchstart', (e) => { cropDragging = true; const t = e.touches[0]; cropStartX = t.clientX - cropX; cropStartY = t.clientY - cropY; }, { passive: true });
+    window.addEventListener('mousemove', (e) => { if (!cropDragging) return; cropX = e.clientX - cropStartX; cropY = e.clientY - cropStartY; drawCrop(); });
+    window.addEventListener('touchmove', (e) => { if (!cropDragging) return; const t = e.touches[0]; cropX = t.clientX - cropStartX; cropY = t.clientY - cropStartY; drawCrop(); }, { passive: true });
+    window.addEventListener('mouseup', () => { cropDragging = false; });
+    window.addEventListener('touchend', () => { cropDragging = false; });
+    // Mouse wheel zoom
+    cropContainer.addEventListener('wheel', (e) => { e.preventDefault(); const delta = e.deltaY > 0 ? -10 : 10; const newVal = Math.min(300, Math.max(100, parseInt(cropZoom.value) + delta)); cropZoom.value = newVal; cropScale = newVal / 100; drawCrop(); }, { passive: false });
+  }
+  if (cropZoom) cropZoom.addEventListener('input', () => { cropScale = cropZoom.value / 100; drawCrop(); });
+  if (cropConfirm) cropConfirm.addEventListener('click', exportCrop);
+  if (cropCancel) cropCancel.addEventListener('click', closeCropper);
 
   const onDropzoneClick = (e) => {
     if (e.target === fileInput) return;
@@ -3648,9 +4328,9 @@ function openProfilePopup() {
     const emailErr = $('profile-email-error');
     
     // Validate and update email if changed
-    const authUser = getCurrentUser();
+    const authUser = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
     if (newEmail && authUser && newEmail.toLowerCase() !== authUser.email) {
-      const emailResult = await updateUserEmail(newEmail);
+      const emailResult = typeof updateUserEmail === 'function' ? await updateUserEmail(newEmail) : {success:false, error:'Auth not loaded'};
       if (!emailResult.success) {
         if (emailErr) { emailErr.textContent = emailResult.error; emailErr.style.display = ''; }
         return; // Don't save if email update fails
@@ -3659,8 +4339,8 @@ function openProfilePopup() {
     }
     
     saveProfile({ firstName, lastName, photo: pendingPhoto });
-    // Sync to auth user
-    updateUserProfile({ firstName, lastName, photo: pendingPhoto });
+    // Sync to auth user (only if auth module loaded)
+    if (typeof updateUserProfile === 'function') updateUserProfile({ firstName, lastName, photo: pendingPhoto });
     updateHeaderAvatar();
     closeModal();
     showToast('Perfil guardado', 'success');
@@ -3686,7 +4366,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (appFooter) appFooter.style.display = '';
     updateHeaderAvatar();
     // Sync auth user → old profile format
-    const user = getCurrentUser();
+    const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
     if (user) {
       saveProfile({ firstName: user.firstName, lastName: user.lastName, photo: user.photo });
     }
@@ -3700,7 +4380,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (appFooter) appFooter.style.display = 'none';
   }
 
-  if (isAuthenticated()) {
+  if (typeof isAuthenticated === 'function' ? isAuthenticated() : true) {
     showApp();
   } else {
     showAuth();
@@ -3889,4 +4569,67 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     $('login-error') && ($('login-error').style.display = 'none');
   });
+
+  /* ── Platform Logo (BW header logo upload) ── */
+  const PLATFORM_LOGO_KEY = 'bw2_platform_logo';
+  const platformLogoInput = $('bw2-platform-logo-input');
+  const customLogoImg = $('bw2-custom-logo');
+  const defaultLogoSvg = $('bw2-default-logo');
+  const homeBtn = $('btn-bw2-home');
+  const editLogoBtn = $('btn-edit-platform-logo');
+
+  function loadPlatformLogo() {
+    const saved = localStorage.getItem(PLATFORM_LOGO_KEY);
+    if (saved && customLogoImg && defaultLogoSvg) {
+      customLogoImg.src = saved;
+      customLogoImg.style.display = '';
+      defaultLogoSvg.style.display = 'none';
+      if (editLogoBtn) editLogoBtn.style.opacity = '0.6';
+    } else if (customLogoImg && defaultLogoSvg) {
+      customLogoImg.style.display = 'none';
+      defaultLogoSvg.style.display = '';
+      if (editLogoBtn) editLogoBtn.style.opacity = '';
+    }
+  }
+
+  // Load on init
+  loadPlatformLogo();
+
+  // Click 📷 button → upload custom platform logo
+  if (editLogoBtn) {
+    editLogoBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (platformLogoInput) platformLogoInput.click();
+    });
+  }
+
+  // Right-click custom logo to remove
+  if (customLogoImg) {
+    customLogoImg.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (confirm('¿Eliminar logo personalizado?')) {
+        localStorage.removeItem(PLATFORM_LOGO_KEY);
+        loadPlatformLogo();
+        showToast('Logo eliminado', 'success');
+      }
+    });
+  }
+
+  if (platformLogoInput) {
+    platformLogoInput.addEventListener('change', () => {
+      const file = platformLogoInput.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) { showToast('Solo imágenes', 'error'); return; }
+      if (file.size > 2 * 1024 * 1024) { showToast('Logo muy grande (máx 2MB)', 'error'); return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        localStorage.setItem(PLATFORM_LOGO_KEY, reader.result);
+        loadPlatformLogo();
+        showToast('Logo actualizado', 'success');
+      };
+      reader.readAsDataURL(file);
+      platformLogoInput.value = '';
+    });
+  }
 });

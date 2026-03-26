@@ -346,11 +346,22 @@ export function getEmpresa() {
 }
 
 export function updateEmpresa(updates) {
+  const emp = getActiveEmpresa();
   const proj = getActiveProyecto();
-  if (proj) {
-    Object.assign(proj, updates);
-    _save();
+  
+  if (emp) {
+    if (updates.name !== undefined) emp.name = updates.name;
+    if (updates.logo !== undefined) emp.logo = updates.logo;
   }
+  
+  if (proj) {
+    if (updates.projectName !== undefined) proj.name = updates.projectName;
+    if (updates.totalCapital !== undefined) proj.totalCapital = updates.totalCapital;
+    if (updates.corporateReserve !== undefined) proj.corporateReserve = updates.corporateReserve;
+    if (updates.corporateExpenses !== undefined) proj.corporateExpenses = updates.corporateExpenses;
+  }
+  
+  _save();
 }
 
 export function resetEmpresa() {

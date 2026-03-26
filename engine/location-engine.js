@@ -68,52 +68,50 @@ export async function geocodeAddress(query, returnMultiple = false) {
   return _nominatimGeocode(query, returnMultiple);
 }
 
+const PHOTON_URL = 'https://photon.komoot.io/api/';
+
 /**
- * Nominatim geocoding (fallback)
+ * Photon geocoding (komoot) - Far superior POI search than standard Nominatim
  */
 async function _nominatimGeocode(query, returnMultiple = false) {
-  // Smart query: if it looks like a specific POI (has name-like words), don't force ', México'
-  const poiIndicators = /hospital|centro\s*comercial|plaza|mall|parque|aeropuerto|estadio|mercado|universidad|iglesia|catedral|museo|hotel|walmart|soriana|chedraui|costco|sam's|city\s*market|liverpool/i;
+  // Append Mexico if no explicit reference to help guide the global search
   const hasMexicoRef = /m[eé]xico|mx|cdmx|guadalajara|monterrey|puebla|tijuana|chihuahua|juárez|león|cancún|mérida|querétaro|oaxaca/i;
-  const searchQuery = poiIndicators.test(query) || hasMexicoRef.test(query) ? query : query + ', México';
+  const searchQuery = hasMexicoRef.test(query) ? query : query + ', México';
 
   const params = new URLSearchParams({
     q: searchQuery,
-    format: 'json',
-    addressdetails: '1',
-    limit: returnMultiple ? '8' : '1',
-    countrycodes: 'mx',
-    'accept-language': 'es'
+    limit: returnMultiple ? '8' : '1'
   });
 
-  const resp = await fetch(`${NOMINATIM_URL}?${params}`, {
-    headers: { 'User-Agent': 'FarmaTuya-Dashboard/2.0' }
+  const resp = await fetch(`${PHOTON_URL}?${params}`, {
+    headers: { 'Accept': 'application/json' }
   });
 
   if (!resp.ok) throw new Error(`Geocoding error: ${resp.status}`);
   const data = await resp.json();
-  if (!data.length) throw new Error('No se encontró la dirección');
+  if (!data.features || !data.features.length) throw new Error('No se encontró la ubicación');
 
-  const parseResult = (r) => {
-    const addr = r.address || {};
+  const parseResult = (feature) => {
+    const props = feature.properties;
+    const coords = feature.geometry.coordinates; // [lng, lat]
     return {
-      lat: parseFloat(r.lat),
-      lng: parseFloat(r.lon),
-      displayName: r.display_name,
-      municipio: addr.municipality || addr.county || addr.city || addr.town || null,
-      estado: addr.state || null,
-      colonia: addr.suburb || addr.neighbourhood || null,
-      cp: addr.postcode || null,
-      source: 'Nominatim/OSM',
-      confidence: r.importance > 0.5 ? 'alta' : r.importance > 0.3 ? 'media' : 'baja',
-      importance: r.importance,
-      type: r.type || null,
-      category: r.class || null
+      lat: parseFloat(coords[1]),
+      lng: parseFloat(coords[0]),
+      displayName: [props.name, props.street, props.city, props.state].filter(Boolean).join(', '),
+      municipio: props.city || props.county || null,
+      estado: props.state || null,
+      colonia: props.district || props.locality || null,
+      cp: props.postcode || null,
+      source: 'Photon/OSM',
+      confidence: 'alta', // Photon generally surfaces very high confidence POIs
+      importance: 0.8,
+      type: props.osm_value || null,
+      category: props.osm_key || null
     };
   };
 
-  if (returnMultiple) return data.map(parseResult);
-  return parseResult(data[0]);
+  if (returnMultiple) return data.features.map(parseResult);
+  return parseResult(data.features[0]);
 }
 
 /* ══════════════════════════════════════════

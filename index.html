@@ -8,16 +8,48 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Libraries loaded ON DEMAND by app.js helpers (ensureChartJS, ensureLeaflet, ensurePDFLibs) -->
   <!-- Google Maps loaded dynamically by engine/google-places.js -->
-  <!-- Leaflet kept as fallback if Google API key not configured -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=bw54">
+  <script>
+    /* ── Lazy Library Loader ── */
+    window._libCache = {};
+    window.loadLib = function(id, src, type) {
+      if (window._libCache[id]) return window._libCache[id];
+      window._libCache[id] = new Promise((resolve, reject) => {
+        if (type === 'css') {
+          const link = document.createElement('link');
+          link.rel = 'stylesheet'; link.href = src;
+          link.onload = resolve; link.onerror = reject;
+          document.head.appendChild(link);
+        } else {
+          const s = document.createElement('script');
+          s.src = src; s.async = true;
+          s.onload = resolve; s.onerror = reject;
+          document.head.appendChild(s);
+        }
+      });
+      return window._libCache[id];
+    };
+    window.ensureChartJS = function() {
+      if (window.Chart) return Promise.resolve();
+      return loadLib('chartjs', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js');
+    };
+    window.ensureLeaflet = function() {
+      if (window.L) return Promise.resolve();
+      return Promise.all([
+        loadLib('leaflet-css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'css'),
+        loadLib('leaflet-js', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js')
+      ]);
+    };
+    window.ensurePDFLibs = function() {
+      const promises = [];
+      if (!window.jspdf) promises.push(loadLib('jspdf', 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js'));
+      if (!window.html2canvas) promises.push(loadLib('html2canvas', 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'));
+      return Promise.all(promises);
+    };
+  </script>
+  <link rel="stylesheet" href="styles.css?v=bw23">
   <script>
     window.addEventListener('error',e=>document.title='ERR:'+e.message);
     window.addEventListener('unhandledrejection',e=>document.title='REJ:'+e.reason);
@@ -47,12 +79,12 @@
         <form id="auth-login-form" autocomplete="on">
           <div class="auth-field">
             <label for="login-email">Correo electrónico</label>
-            <input type="email" id="login-email" placeholder="tu@correo.com" autocomplete="email" required>
+            <input type="email" id="login-email" name="email" placeholder="tu@correo.com" autocomplete="email" required>
           </div>
           <div class="auth-field">
             <label for="login-password">Contraseña</label>
             <div class="auth-password-wrap">
-              <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" required>
+              <input type="password" id="login-password" name="password" placeholder="••••••••" autocomplete="current-password" required>
               <button type="button" class="auth-toggle-pwd" data-target="login-password" tabindex="-1">👁</button>
             </div>
           </div>
@@ -82,21 +114,21 @@
           <div class="auth-row">
             <div class="auth-field">
               <label for="reg-firstName">Nombre</label>
-              <input type="text" id="reg-firstName" placeholder="Juan" autocomplete="given-name" required>
+              <input type="text" id="reg-firstName" name="firstName" placeholder="Juan" autocomplete="given-name" required>
             </div>
             <div class="auth-field">
               <label for="reg-lastName">Apellido</label>
-              <input type="text" id="reg-lastName" placeholder="Pérez" autocomplete="family-name">
+              <input type="text" id="reg-lastName" name="lastName" placeholder="Pérez" autocomplete="family-name">
             </div>
           </div>
           <div class="auth-field">
             <label for="reg-email">Correo electrónico</label>
-            <input type="email" id="reg-email" placeholder="tu@correo.com" autocomplete="email" required>
+            <input type="email" id="reg-email" name="email" placeholder="tu@correo.com" autocomplete="email" required>
           </div>
           <div class="auth-field">
             <label for="reg-password">Contraseña</label>
             <div class="auth-password-wrap">
-              <input type="password" id="reg-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" required minlength="6">
+              <input type="password" id="reg-password" name="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" required minlength="6">
               <button type="button" class="auth-toggle-pwd" data-target="reg-password" tabindex="-1">👁</button>
             </div>
             <div class="auth-pwd-strength" id="pwd-strength">
@@ -125,12 +157,23 @@
   <!-- ═══ ENTERPRISE HEADER ═══ -->
   <header id="app-header">
     <div class="header-left">
-      <button class="header-home-btn" id="btn-bw2-home" title="Inicio BW²"><svg class="header-bw2-logo" viewBox="0 0 48 32" width="48" height="32"><text x="2" y="24" font-family="Inter,sans-serif" font-weight="900" font-size="22" fill="#1A1A1A">BW</text><text x="36" y="16" font-family="Inter,sans-serif" font-weight="700" font-size="10" fill="#6B7A2E">²</text></svg></button>
-      <img src="assets/nojom-bird.png" alt="NOJOM" class="header-logo">
+      <button class="header-home-btn" id="btn-bw2-home" title="Inicio BW²"><svg class="header-bw2-logo" id="bw2-default-logo" viewBox="0 0 48 32" width="48" height="32"><text x="2" y="24" font-family="Inter,sans-serif" font-weight="900" font-size="22" fill="#1A1A1A">BW</text><text x="36" y="16" font-family="Inter,sans-serif" font-weight="700" font-size="10" fill="#6B7A2E">²</text></svg><img id="bw2-custom-logo" src="" alt="Logo" style="display:none;height:28px;max-width:120px;object-fit:contain"></button>
+      <img src="" alt="" class="header-logo" style="display:none">
       <nav class="header-breadcrumb" id="header-breadcrumb"></nav>
     </div>
     <div class="header-center" id="enterprise-header-info"></div>
-    <div class="header-right">
+    <div class="header-right" style="display:flex;align-items:center;gap:1rem;">
+      <div class="header-market-toggle" style="display:flex;align-items:center;gap:0.4rem;font-size:0.75rem;color:var(--text-2);font-weight:600;" title="Aplicar Factor de Mercado en Proyecciones">
+        <span>F. Mercado</span>
+        <label class="header-toggle">
+          <input type="checkbox" id="global-market-toggle" checked>
+          <div class="header-toggle-track"><span class="header-toggle-thumb"></span></div>
+        </label>
+      </div>
+      <button class="btn-sm" title="Actualizar Estudio de Mercado" id="global-refresh-loc-btn" style="background:var(--surface);border:1px solid var(--border);color:var(--text-1);cursor:pointer;display:flex;align-items:center;gap:0.4rem;padding:0.4rem 0.8rem;border-radius:20px;font-size:0.8rem;transition:all 0.2s">
+        <span>📍</span> <span style="font-weight:600">Actualizar Mercado</span>
+
+      </button>
       <button class="profile-avatar-btn" id="btn-open-profile" title="Mi Perfil">
         <span class="profile-avatar-initials" id="profile-avatar-initials">👤</span>
         <img class="profile-avatar-img" id="profile-avatar-img" src="" alt="" style="display:none">
@@ -155,15 +198,17 @@
     <!-- ═══ EMPRESA DASHBOARD VIEW (Level 2: Empresa) ═══ -->
     <section id="view-empresa-dashboard" style="display:none">
       <div id="empresa-dash-summary" class="bw2-global-summary" style="margin-bottom:0.75rem"></div>
-      <div class="view-header">
-        <h2 id="empresa-dash-title">Empresa</h2>
-        <p>Selecciona un proyecto para ver las sucursales</p>
+      <div class="view-header" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1.5rem">
+        <div>
+          <h2 id="empresa-dash-title">Empresa</h2>
+          <p>Selecciona un proyecto para ver las sucursales</p>
+        </div>
       </div>
       <div id="empresa-dash-proyectos" class="empresa-proyectos-grid"></div>
     </section>
 
     <!-- ═══ PORTFOLIO VIEW (Level 3: Proyecto) ═══ -->
-    <section id="view-portfolio">
+    <section id="view-portfolio" style="display:none">
       <div id="portfolio-summary" class="bw2-global-summary" style="display:none;margin-bottom:0.75rem"></div>
       <div class="view-header"><h2 id="portfolio-title">Sucursales de Proyecto</h2><p>Haz clic en 📊 <strong>Ver</strong> para explorar los detalles de cada sucursal</p></div>
       <div class="portfolio-grid" id="portfolio-grid"></div>
@@ -171,10 +216,9 @@
 
     <!-- ═══ BRANCH DETAIL VIEW ═══ -->
     <section id="view-branch" style="display:none">
-      <div class="view-header">
-        <button class="btn-back" id="btn-back-portfolio">← Proyecto</button>
-        <div><h2 id="branch-detail-title">Sucursal</h2><p id="branch-detail-subtitle">—</p></div>
-        <button class="btn-export-pdf" id="btn-export-pdf" title="Generar reporte PDF de inversión" style="display:none">📄 Exportar PDF</button>
+      <!-- ═══ COMPACT CONTEXT LINE ═══ -->
+      <div class="branch-context-line" id="branch-context-line">
+        <!-- JS fills: Sucursal 1 · 🏪 Súper · 🟡 Base · 📍 -1.3% -->
       </div>
 
       <!-- Branch tabs are now in the sidebar, no horizontal tab nav needed -->
@@ -234,7 +278,8 @@
           <div class="edit-section">
             <h4 class="edit-section-title" data-toggle="edit-sales">Ventas <span class="toggle-arrow">▼</span></h4>
             <div class="edit-grid" id="edit-sales"></div>
-  <div class="edit-section" id="branch-royalty-group" style="display:none">
+          </div>
+          <div class="edit-section" id="branch-royalty-group" style="display:none">
             <h4 class="edit-section-title">Modo Regalía (Súper)</h4>
             <div class="neu-segmented small" id="branch-royalty-selector">
               <button class="seg-btn active" data-royalty="variable_2_5">Variable 2.5%</button>
@@ -248,33 +293,31 @@
 
       <!-- ═══ TAB 2: RESULTADOS (default active) ═══ -->
       <div id="btab-resultados" class="branch-tab-panel active">
-        <!-- ═══ UNIFIED CONTROLS BAR ═══ -->
-        <div class="resultados-controls-bar">
-          <div class="resultados-controls-row">
-            <h2 class="resultados-title">Métricas de Resultados</h2>
-            <button id="branch-market-indicator" class="branch-market-badge" style="display:none" title="Clic para ver detalles">📍 Mercado: --</button>
+        <!-- ═══ THIN FILTER BAR (subordinated to KPIs) ═══ -->
+        <div class="filter-bar">
+          <div class="filter-bar-group">
+            <select class="filter-select" id="branch-scenario-select">
+              <option value="conservative">🔴 Conservador</option>
+              <option value="base" selected>🟡 Base</option>
+              <option value="upside">🟢 Upside</option>
+            </select>
           </div>
-          <div class="resultados-controls-row">
-            <div class="neu-segmented small" id="branch-scenario-selector-res">
-              <button class="seg-btn" data-scenario="conservative">🔴 Cons.</button>
-              <button class="seg-btn" data-scenario="base">🟡 Base</button>
-              <button class="seg-btn" data-scenario="upside">🟢 Upside</button>
-            </div>
-            <div class="neu-segmented small" id="branch-timeline-selector">
-              <button class="seg-btn active" data-preopen="0">📊 Desde Apertura</button>
-              <button class="seg-btn" data-preopen="2">💰 Desde Capital</button>
-            </div>
-            <div class="res-royalty-inline" id="res-royalty-panel" style="display:none">
-              <span class="res-royalty-label">Regalía:</span>
-              <div class="neu-segmented small" id="res-royalty-selector">
-                <button class="seg-btn active" data-royalty="variable_2_5">💳 2.5%</button>
-                <button class="seg-btn" data-royalty="condonacion_6m">🎁 Cond.</button>
-                <button class="seg-btn" data-royalty="pago_unico">💰 Único</button>
-              </div>
-            </div>
-            <button class="btn-sm btn-edit-layout" data-target="branch-resultados" style="background:var(--surface);border:none;border-radius:var(--r-sm);color:var(--text-2);font-weight:600;padding:0.35rem 0.6rem;cursor:pointer;display:flex;align-items:center;gap:0.3rem;box-shadow:var(--shadow-neu-sm);transition:all 0.2s;font-size:0.7rem"><span style="font-size:0.8rem">✨</span> Editar Layout</button>
+          <div class="filter-bar-group">
+            <select class="filter-select" id="branch-timeline-select">
+              <option value="0" selected>📊 Desde Apertura</option>
+              <option value="2">💰 Desde Capital</option>
+            </select>
           </div>
-          <p class="res-royalty-desc" id="res-royalty-desc" style="display:none"></p>
+          <div class="filter-bar-group" id="res-royalty-panel" style="display:none">
+            <select class="filter-select" id="res-royalty-select">
+              <option value="variable_2_5" selected>💳 Variable 2.5%</option>
+              <option value="condonacion_6m">🎁 Condonación 6m</option>
+              <option value="pago_unico">💰 Pago Único</option>
+            </select>
+          </div>
+          <div class="filter-bar-group" style="margin-left:auto">
+            <button class="btn-sm" title="Descargar flujo completo a 60 meses en formato CSV" style="background:var(--surface);border:1px solid var(--border);color:var(--text-2);cursor:pointer;display:flex;align-items:center;gap:0.4rem;height:32px;transition:all 0.2s;font-weight:600" onclick="if(window._exportPnL) window._exportPnL()"><span>📥</span> P&L 60m (CSV)</button>
+          </div>
         </div>
         <div class="edit-layout-toolbar" id="toolbar-branch-resultados" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:1rem">
@@ -286,185 +329,136 @@
           </div>
         </div>
 
-        <div class="widget-grid" id="branch-resultados-grid">
-          <!-- Fila 1: 4 KPIs con formas variadas y personalidad única -->
-          <div class="widget wg-3 kpi-card kpi-card--bar" data-widget-id="wg-branch-eq">
-            <div class="kpi-card-header">
-              <span class="kpi-card-icon">📊</span>
-              <span class="kpi-card-label">Pto. Equilibrio</span>
-            </div>
-            <h3 class="kpi-card-value" id="branch-kpi-equilibrio">-</h3>
-            <div class="kpi-mini-bar" id="kpi-be-bar"><div class="kpi-mini-bar-fill"></div></div>
-            <span class="kpi-mini-label" id="kpi-be-pct"></span>
+        <div class="kpi-strip" id="branch-kpi-strip">
+          <div class="kpi-strip-item">
+            <span class="kpi-strip-label">Pto. Equilibrio <span class="kpi-help">?<span class="kpi-tip">Ventas mínimas mensuales para no perder dinero. Si vendes menos que esto, la sucursal opera a pérdida.</span></span></span>
+            <span class="kpi-strip-value" id="branch-kpi-equilibrio">-</span>
+            <span class="kpi-strip-detail" id="kpi-be-pct"></span>
           </div>
-
-          <div class="widget wg-3 kpi-card kpi-card--spark" data-widget-id="wg-branch-profit">
-            <div class="kpi-card-header">
-              <span class="kpi-card-icon">💰</span>
-              <span class="kpi-card-label">Ganancia / Mes</span>
-            </div>
-            <h3 class="kpi-card-value" id="branch-kpi-profit">-</h3>
-            <div class="kpi-sparkline" id="kpi-profit-sparkline"></div>
+          <div class="kpi-strip-divider"></div>
+          <div class="kpi-strip-item">
+            <span class="kpi-strip-label">Ganancia / Mes <span class="kpi-help">?<span class="kpi-tip">Lo que gana la sucursal cada mes después de pagar todos los costos operativos (EBITDA). Es tu utilidad real mensual.</span></span></span>
+            <span class="kpi-strip-value" id="branch-kpi-profit">-</span>
           </div>
-
-          <div class="widget wg-3 kpi-card kpi-card--ring" data-widget-id="wg-branch-payback">
-            <div class="kpi-card-header">
-              <span class="kpi-card-icon">⏱</span>
-              <span class="kpi-card-label">Recuperación</span>
-            </div>
-            <div class="kpi-ring-layout">
-              <div class="kpi-ring-svg" id="kpi-payback-ring"></div>
-              <div class="kpi-ring-text">
-                <h3 class="kpi-card-value" id="branch-kpi-payback">-</h3>
-                <span class="kpi-ring-sub" id="kpi-payback-sub"></span>
-              </div>
-            </div>
+          <div class="kpi-strip-divider"></div>
+          <div class="kpi-strip-item">
+            <span class="kpi-strip-label">Recuperación <span class="kpi-help">?<span class="kpi-tip">Cuántos meses necesitas para recuperar toda tu inversión inicial. Menor es mejor. Óptimo: menos de 24 meses.</span></span></span>
+            <span class="kpi-strip-value" id="branch-kpi-payback">-</span>
+            <span class="kpi-strip-detail" id="kpi-payback-sub"></span>
           </div>
-
-          <div class="widget wg-3 kpi-card kpi-card--gauge" data-widget-id="wg-branch-roi-gauge">
-            <div class="kpi-card-header">
-              <span class="kpi-card-icon">🎯</span>
-              <span class="kpi-card-label">ROI Anual</span>
-            </div>
-            <div class="kpi-gauge-wrap" id="kpi-roi-gauge"></div>
+          <div class="kpi-strip-divider"></div>
+          <div class="kpi-strip-item">
+            <span class="kpi-strip-label">ROI 12m <span class="kpi-help">?<span class="kpi-tip">Porcentaje de tu dinero que recuperas en el primer año. Si es positivo, ya estás ganando desde el año 1.</span></span></span>
+            <span class="kpi-strip-value" id="kpi-roi-value">-</span>
           </div>
-
-          <div class="widget wg-3 kpi-card kpi-card--bar" data-widget-id="wg-branch-factor">
-            <div class="kpi-card-header">
-              <span class="kpi-card-icon">📍</span>
-              <span class="kpi-card-label">Factor Mercado</span>
-            </div>
-            <h3 class="kpi-card-value" id="branch-kpi-factor" style="color:var(--text-2)">—</h3>
-            <div class="kpi-mini-bar" id="kpi-factor-bar"><div class="kpi-mini-bar-fill"></div></div>
-            <span class="kpi-mini-label" id="kpi-factor-label"></span>
+          <div class="kpi-strip-divider"></div>
+          <div class="kpi-strip-item">
+            <span class="kpi-strip-label">Factor Mercado <span class="kpi-help">?<span class="kpi-tip">Multiplicador basado en la ubicación real. Analiza competencia, densidad poblacional y tráfico. 1.0 = sin ajuste.</span></span></span>
+            <span class="kpi-strip-value" id="branch-kpi-factor" style="color:var(--text-2)">—</span>
+            <span class="kpi-strip-detail" id="kpi-factor-label"></span>
           </div>
         </div>
 
         <!-- ═══ COLLAPSIBLE SECTION: Flujo de Caja ═══ -->
         <details class="res-section" open>
           <summary class="res-section-header">
-            <span class="res-section-icon">💰</span>
+            <span class="res-section-icon" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:var(--accent)"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 100 4h4v-4z"/></svg></span>
             <span class="res-section-title">Flujo de Caja</span>
             <span class="res-section-chevron">▾</span>
           </summary>
-          <div class="widget-grid res-section-body">
-            <div class="widget wg-8" data-widget-id="wg-branch-cashflow">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Flujo de Caja Acumulado (ROI)</h3>
-              <div class="chart-box"><canvas id="chart-branch-cashflow"></canvas></div>
+          <div class="consol-main-row res-section-body">
+            <div class="consol-chart-col">
+              <div class="dash-card visible">
+                <h3 class="section-title" style="margin-bottom:0.5rem">Flujo de Caja Acumulado (ROI)</h3>
+                <div class="chart-box"><canvas id="chart-branch-cashflow"></canvas></div>
+              </div>
             </div>
-            <div class="widget wg-4" data-widget-id="wg-branch-cost-donut">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Estructura de Costos</h3>
-              <div class="chart-box" style="height:200px"><canvas id="chart-branch-costs-main"></canvas></div>
-              <div id="cost-donut-legend" class="donut-legend"></div>
+            <div class="consol-table-col">
+              <div class="dash-card visible">
+                <h3 class="section-title" style="margin-bottom:0.5rem">Estructura de Costos</h3>
+                <div class="chart-box"><canvas id="chart-branch-costs-main"></canvas></div>
+                <div id="cost-donut-legend" class="donut-legend"></div>
+              </div>
             </div>
           </div>
         </details>
 
-        <!-- ═══ COLLAPSIBLE SECTION: Perfil de Mercado ═══ -->
-        <details class="res-section" open>
-          <summary class="res-section-header">
-            <span class="res-section-icon">📍</span>
-            <span class="res-section-title">Perfil de Mercado</span>
-            <span class="res-section-chevron">▾</span>
-          </summary>
-          <div class="widget-grid res-section-body">
-            <div class="widget wg-6" id="market-radar-panel" data-widget-id="wg-branch-market-radar" style="display:none">
-              <h3 class="widget-title" style="margin-bottom:0.25rem">Perfil de Mercado</h3>
-              <div class="chart-box" style="height:200px"><canvas id="chart-market-radar-main"></canvas></div>
-            </div>
-            <div class="widget wg-8" id="market-study-panel" data-widget-id="wg-branch-market" style="display:none">
-              <h3 class="widget-title" style="margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
-                Variables del Mercado
-                <div style="display:flex;align-items:center;gap:0.5rem;flex:1;min-width:200px;max-width:400px">
-                  <input type="text" id="market-inline-address" class="input-text" placeholder="Cambiar dirección..." style="flex:1;font-size:0.7rem;padding:0.3rem 0.5rem;border-radius:6px;min-width:0">
-                  <button id="market-inline-refresh" class="btn-sm" title="Re-evaluar estudio" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:0.3rem 0.5rem;cursor:pointer;font-size:0.7rem;white-space:nowrap;box-shadow:var(--shadow-neu-sm);transition:all 0.2s">🔄</button>
-                </div>
-                <div style="display:flex;align-items:center;gap:0.5rem">
-                  <label class="mvar-toggle"><input type="checkbox" id="market-master-switch"><span class="mvar-slider"></span></label>
-                  <span id="market-combined-factor" style="font-size:0.85rem;color:var(--text-1);font-weight:500"></span>
-                </div>
-              </h3>
-              <p class="loc-subtitle">Factores que impactan las ventas en esta ubicación base.</p>
-              <div id="market-mini-map" style="height:180px;border-radius:var(--r-md);overflow:hidden;margin-bottom:0.75rem;display:none;border:1px solid var(--border)"></div>
-              <div id="market-study-body" style="margin-top:1rem;max-height:350px;overflow-y:auto"></div>
-            </div>
-          </div>
-        </details>
+        <!-- Market profile removed — full data available in Estudio de Mercado tab -->
 
         <!-- Royalty panel moved to controls bar -->
 
         <!-- ═══ COLLAPSIBLE SECTION: Checklist & Alertas ═══ -->
-        <details class="res-section">
+        <details class="res-section" open>
           <summary class="res-section-header">
-            <span class="res-section-icon">✅</span>
+            <span class="res-section-icon" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:var(--green)"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
             <span class="res-section-title">Checklist y Alertas</span>
             <span class="res-section-chevron">▾</span>
           </summary>
-          <div class="widget-grid res-section-body">
-            <div class="widget wg-8" data-widget-id="wg-branch-checklist">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Checklist de Cierre</h3>
+          <div class="dash-grid res-section-body">
+            <div class="dash-card dash-8">
+              <h3 class="section-title" style="margin-bottom:0.5rem">Checklist de Cierre</h3>
               <div id="branch-checklist" style="display:grid;grid-template-columns:1fr 1fr;gap:0.25rem 0.75rem"></div>
             </div>
-            <div class="widget wg-4" data-widget-id="wg-branch-alerts" style="align-self:start">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Alertas y Sugerencias</h3>
+            <div class="dash-card dash-4" style="align-self:start">
+              <h3 class="section-title" style="margin-bottom:0.5rem">Alertas y Sugerencias</h3>
               <div id="branch-alerts" style="display:flex;flex-direction:column;gap:0.5rem"></div>
             </div>
           </div>
         </details>
 
         <!-- Collapsible Sub-sections for Detailed Results -->
-        <details class="res-section">
+        <details class="res-section" open>
           <summary class="res-section-header">
-            <span class="res-section-icon">📊</span>
+            <span class="res-section-icon" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:var(--accent)"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
             <span class="res-section-title">Análisis Detallado</span>
             <span class="res-section-chevron">▾</span>
           </summary>
           <div class="res-section-body">
-          <div class="widget-grid" id="branch-an-grid">
+          <div class="dash-grid" id="branch-an-grid">
             <!-- P&L Chart -->
-            <div class="widget wg-8" data-widget-id="wg-branch-pnlchart">
+            <div class="dash-card dash-8">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-                <h3 class="widget-title" style="margin:0">Ingresos vs EBITDA</h3>
+                <h3 class="section-title" style="margin:0">Ingresos vs EBITDA</h3>
                 <button class="btn-sm" onclick="screenshotChart('chart-branch-pnl')">📸</button>
               </div>
               <div class="chart-box"><canvas id="chart-branch-pnl"></canvas></div>
             </div>
 
             <!-- Fixed Costs Donut -->
-            <div class="widget wg-4" data-widget-id="wg-branch-donut">
+            <div class="dash-card dash-4">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-                <h3 class="widget-title" style="margin:0">Costos fijos</h3>
+                <h3 class="section-title" style="margin:0">Costos fijos</h3>
                 <button class="btn-sm" onclick="screenshotChart('chart-branch-donut')">📸</button>
               </div>
               <div class="chart-box" style="height:180px"><canvas id="chart-branch-donut"></canvas></div>
             </div>
 
             <!-- Annual P&L -->
-            <div class="widget wg-12" data-widget-id="wg-branch-annual">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Resumen Anual (Proyectado)</h3>
+            <div class="dash-card dash-12">
+              <h3 class="section-title" style="margin-bottom:0.5rem">Resumen Anual (Proyectado)</h3>
               <div class="table-scroll" id="branch-annual-table"></div>
             </div>
 
             <!-- Escenarios Chart -->
-            <div class="widget wg-8" data-widget-id="wg-branch-scenchart">
-              <h3 class="widget-title" style="margin-bottom:0.5rem">Flujo por Escenario</h3>
+            <div class="dash-card dash-8">
+              <h3 class="section-title" style="margin-bottom:0.5rem">Flujo por Escenario</h3>
               <div class="chart-box"><canvas id="chart-scenarios-cf"></canvas></div>
               <div class="table-scroll" id="scenarios-comparison-table" style="margin-top:1rem"></div>
             </div>
 
             <!-- Tornado de Sensibilidad -->
-            <div class="widget wg-4" data-widget-id="wg-branch-tornado">
+            <div class="dash-card dash-4">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-                <h3 class="widget-title" style="margin:0">Tornado de Sensibilidad (EBITDA)</h3>
+                <h3 class="section-title" style="margin:0">Tornado de Sensibilidad (EBITDA)</h3>
                 <button class="btn-sm" onclick="screenshotChart('chart-branch-tornado')">📸</button>
               </div>
               <div class="chart-box" style="height:220px"><canvas id="chart-branch-tornado"></canvas></div>
             </div>
 
             <!-- Full P&L Table -->
-            <div class="widget wg-12" data-widget-id="wg-branch-fulltable">
+            <div class="dash-card dash-12">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-                <h3 class="widget-title" style="margin:0">P&L Detallado Mensual</h3>
+                <h3 class="section-title" style="margin:0">P&L Detallado Mensual</h3>
                 <button class="expand-btn" id="branch-toggle-pnl" style="font-weight:600;background:none;border:none;color:var(--text-2);cursor:pointer;display:flex;align-items:center;gap:0.5rem">Ver Desglose <span style="font-size:0.7rem">▼</span></button>
               </div>
               <div class="table-scroll collapsible collapsed" id="branch-pnl-table-full"></div>
@@ -472,6 +466,64 @@
           </div>
           </div>
         </details>
+      </div>
+
+      <!-- ═══ TAB X: GROWTH & MARKETING ═══ -->
+      <div id="btab-marketing" class="branch-tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+           <h2 style="margin:0;font-size:1.25rem;display:flex;align-items:center;gap:0.75rem">Growth & Marketing Operativo</h2>
+        </div>
+
+        <div class="neu-card">
+          <h3 class="card-title">Consultorio Adyacente (CAF)</h3>
+          <p class="section-desc" style="margin-bottom:1rem;color:var(--text-light);font-size:0.875rem">Proyecta el tráfico de pacientes y su conversión a ventas en la farmacia (ticket cruzado).</p>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Consultas Mensuales (Max)</label>
+              <input type="number" class="input-text" id="mkt-caf-consultas" placeholder="0" step="50">
+            </div>
+            <div class="form-group">
+              <label>Conversión a Farmacia (%)</label>
+              <input type="number" class="input-text" id="mkt-caf-conversion" placeholder="40" step="5" min="0" max="100">
+            </div>
+            <div class="form-group">
+              <label>Ticket Promedio Receta ($)</label>
+              <input type="number" class="input-text" id="mkt-caf-ticket" placeholder="350" step="10">
+            </div>
+          </div>
+        </div>
+
+        <div class="neu-card" style="margin-top:0.75rem">
+          <h3 class="card-title">Omnicanalidad & Compliance</h3>
+          <p class="section-desc" style="margin-bottom:1rem;color:var(--text-light);font-size:0.875rem">Presupuestos fijos mensuales de captación digital y costos de riesgo regulatorio (Avisos COFEPRIS).</p>
+          <div class="form-row">
+            <div class="form-group">
+              <label>SEO Local / Google Maps ($/Mes)</label>
+              <input type="number" class="input-text" id="mkt-seo" placeholder="0" step="500">
+            </div>
+            <div class="form-group">
+              <label>Pauta Digital / Ads ($/Mes)</label>
+              <input type="number" class="input-text" id="mkt-ads" placeholder="0" step="1000">
+            </div>
+            <div class="form-group">
+              <label>Compliance COFEPRIS ($/Mes)</label>
+              <input type="number" class="input-text" id="mkt-cofepris" placeholder="1500" step="500">
+            </div>
+          </div>
+        </div>
+
+        <div class="neu-card" style="margin-top:0.75rem; display:flex; justify-content:space-between; align-items:center">
+          <div>
+            <h3 class="card-title" style="margin-bottom:0.25rem">Programa de Lealtad (Fidelización)</h3>
+            <p class="section-desc" style="color:var(--text-light);font-size:0.875rem;margin:0">Proyecta un <b>+10% de ventas</b> globales, con un costo incremental del <b>2%</b> sobre ingresos.</p>
+          </div>
+          <div>
+            <label class="iva-toggle">
+              <input type="checkbox" id="mkt-loyalty-toggle">
+              <span class="iva-slider" style="background:var(--success)"></span>
+            </label>
+          </div>
+        </div>
       </div>
 
       <!-- ═══ TAB 3: ESTUDIO SOCIOECONÓMICO ═══ -->
@@ -497,20 +549,18 @@
         </div>
         <div id="loc-results" style="display:none">
           <div class="kpi-grid" id="loc-score-cards"></div>
-          <div class="row-2col">
-            <div class="neu-card">
-              <h3 class="card-title">Mapa</h3>
-              <div id="loc-map" style="height:280px;border-radius:var(--r-md);overflow:hidden"></div>
-            </div>
-            <div class="neu-card">
-              <h3 class="card-title">Indicadores Territoriales</h3>
-              <div id="loc-indicators"></div>
-            </div>
+          
+          <div id="loc-insights-container" style="display:none; margin-bottom:0.75rem"></div>
+
+          <div class="neu-card map-card" style="margin-bottom:0.75rem">
+            <h3 class="card-title">Mapa</h3>
+            <div id="loc-map" style="width:100%;height:420px;border-radius:var(--r-md)"></div>
           </div>
-          <div class="neu-card">
-            <h3 class="card-title">Establecimientos Cercanos (1 km) <button class="expand-btn" id="loc-toggle-detail">Expandir ▼</button></h3>
-            <div class="table-scroll collapsible collapsed" id="loc-nearby-detail"></div>
+          <div class="neu-card" style="margin-bottom:0.75rem">
+            <h3 class="card-title">Indicadores Territoriales</h3>
+            <div id="loc-indicators"></div>
           </div>
+          <div class="neu-card" style="margin-bottom:0.75rem">
           <div class="neu-card loc-meta">
             <div id="loc-sources"></div>
           </div>
@@ -520,17 +570,17 @@
 
     <!-- ═══ CONSOLIDATED VIEW ═══ -->
     <section id="view-consolidated" style="display:none">
-      <div class="view-header" style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div style="display:flex;align-items:center;gap:1.5rem">
-          <div>
-            <h2 style="display:flex;align-items:center;gap:0.75rem">Consolidado Empresa 
-              <button id="consol-market-indicator" class="btn-sm" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text-3);font-size:0.75rem;padding:0.25rem 0.6rem;font-weight:600;cursor:default;white-space:nowrap;transition:all 0.2s">📍 Mercado: --</button>
-            </h2>
-            <p>Métricas agregadas del holding y todas las sucursales</p>
-          </div>
-          <label class="iva-toggle" title="Multiplicar los montos por 1.16 para ver con IVA incluido"><input type="checkbox" id="toggle-iva"><span class="iva-slider"></span><span class="iva-label" id="iva-label">Sin IVA</span></label>
+      <div class="view-header" style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+        <div>
+          <h2 style="font-size:1.5rem;font-weight:800;color:var(--text-1);letter-spacing:-0.03em;display:flex;align-items:center;gap:0.75rem">
+            <span>Consolidado FarmaTuya</span>
+            <button id="consol-market-indicator" class="btn-sm" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text-3);font-size:0.75rem;padding:0.25rem 0.6rem;font-weight:600;cursor:default;white-space:nowrap;transition:all 0.2s">📍 Mercado: --</button>
+          </h2>
+          <p>Métricas agregadas del holding y todas las sucursales</p>
         </div>
-        <button class="btn-sm btn-edit-layout" data-target="consolidated" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text-2);font-weight:600;padding:0.4rem 0.75rem;cursor:pointer;display:flex;align-items:center;gap:0.4rem;box-shadow:var(--shadow-sm);transition:all 0.2s"><span style="font-size:0.9rem">🛠️</span> Editar Layout</button>
+        <div style="display:flex;align-items:center;gap:1rem">
+          <label class="iva-toggle" title="Multiplicar los montos por 1.16 para ver con IVA"><input type="checkbox" id="toggle-iva"><span class="iva-slider"></span><span class="iva-label" id="iva-label">Sin IVA</span></label>
+        </div>
       </div>
       
       <div class="edit-layout-toolbar" id="toolbar-consolidated" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
@@ -543,103 +593,104 @@
         </div>
       </div>
 
-      <div class="widget-grid" id="consol-widget-grid">
-        <!-- Fila 1: KPIs -->
-        <div class="widget wg-3" data-widget-id="wg-consol-inv">
-          <span class="widget-subtitle">Inversión Total</span>
-          <h3 class="widget-title" id="consol-kpi-inv" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
-        </div>
-        <div class="widget wg-3" data-widget-id="wg-consol-free">
-          <span class="widget-subtitle">Capital Libre</span>
-          <h3 class="widget-title" id="consol-kpi-free" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
-        </div>
-        <div class="widget wg-3" data-widget-id="wg-consol-profit">
-          <span class="widget-subtitle">EBITDA Mensual</span>
-          <h3 class="widget-title" id="consol-kpi-profit" style="font-size:1.25rem;color:var(--accent);margin-top:0.25rem">-</h3>
-        </div>
-        <div class="widget wg-3" data-widget-id="wg-consol-score">
-          <span class="widget-subtitle">Score del Portafolio</span>
-          <h3 class="widget-title" id="consol-kpi-score" style="font-size:1.25rem;margin-top:0.25rem">-</h3>
-        </div>
+      <!-- KPI Strip (compact, like Resultados) -->
+      <div class="kpi-strip" id="consol-kpi-strip"></div>
 
-        <!-- Fila 2: Chart & Partners -->
-        <div class="widget wg-8" data-widget-id="wg-consol-cashflow">
-          <h3 class="widget-title" style="margin-bottom:1rem">Flujo de Caja Consolidado (60 meses)</h3>
-          <div class="chart-box"><canvas id="chart-consol-cashflow"></canvas></div>
+      <!-- Row 2: Chart (7col) + Branch Table (5col) — independent heights -->
+      <div class="consol-main-row">
+        <div class="consol-chart-col">
+          <div class="dash-card visible">
+            <h3 class="section-title" style="margin-bottom:0.5rem">Flujo de Caja Consolidado (60 meses)</h3>
+            <div class="chart-box"><canvas id="chart-consol-cashflow"></canvas></div>
+          </div>
         </div>
-        <div class="widget wg-4" data-widget-id="wg-consol-partners">
-          <h3 class="widget-title" style="margin-bottom:1rem">Retorno por Socio</h3>
-          <div id="consol-partners" style="display:flex;flex-direction:column;gap:1rem;max-height:400px;overflow-y:auto"></div>
-        </div>
-
-        <!-- Fila 3: Branches Data Table -->
-        <div class="widget wg-12" data-widget-id="wg-consol-table">
-           <h3 class="widget-title" style="margin-bottom:1rem">Detalle por Sucursal</h3>
-           <div class="table-responsive" id="consol-branch-table"></div>
+        <div class="consol-table-col">
+          <div class="dash-card visible">
+            <h3 class="section-title" style="margin-bottom:0.5rem">Detalle por Sucursal</h3>
+            <div class="table-responsive" id="consol-branch-table"></div>
+          </div>
         </div>
       </div>
 
-      <!-- Opening Process Timeline -->
-      <div class="neu-card timeline-card">
-        <h3 class="card-title">🗓️ Proceso de Apertura — ¿Cuánto tarda abrir la siguiente?</h3>
-        <p class="timeline-subtitle">Tiempo total estimado: <strong>6 a 8 semanas</strong> desde la firma del contrato de arrendamiento</p>
-        <div class="timeline">
-          <div class="timeline-step" data-step="1">
-            <div class="step-marker">1</div>
-            <div class="step-content">
-              <div class="step-title">Pago Cuota de Marca</div>
-              <div class="step-desc">Pago durante la FIF para respetar la promoción correspondiente</div>
-              <div class="step-note">* Reembolsable si no se concreta la firma</div>
+      <!-- Row 3: Partners (compact horizontal table) -->
+      <div class="dash-card visible" style="margin-top:0.75rem">
+        <h3 class="section-title" style="margin-bottom:0.5rem">Retorno por Socio</h3>
+        <div class="table-responsive" id="consol-partners"></div>
+      </div>
+
+      <!-- Timeline: collapsible, closed by default -->
+      <details class="res-section" style="margin-top:0.75rem">
+        <summary class="res-section-header">
+          <span class="res-section-icon">🗓️</span>
+          <span class="res-section-title">Proceso de Apertura — ¿Cuánto tarda abrir la siguiente?</span>
+          <span class="res-section-chevron">▾</span>
+        </summary>
+        <div class="res-section-body" style="padding:1rem">
+          <p class="timeline-subtitle" style="margin-bottom:1rem">Tiempo total estimado: <strong>6 a 8 semanas</strong> desde la firma del contrato de arrendamiento</p>
+          <div class="timeline">
+            <div class="timeline-step" data-step="1">
+              <div class="step-marker">1</div>
+              <div class="step-content">
+                <div class="step-title">Pago Cuota de Marca</div>
+                <div class="step-desc">Pago durante la FIF para respetar la promoción correspondiente</div>
+                <div class="step-note">* Reembolsable si no se concreta la firma</div>
+              </div>
             </div>
-          </div>
-          <div class="timeline-step" data-step="2">
-            <div class="step-marker">2</div>
-            <div class="step-content">
-              <div class="step-title">Firma de Contrato de Franquicia</div>
-              <div class="step-desc">Durante la FIF o máximo 30 días naturales después</div>
-              <div class="step-time">⏱️ 0–30 días</div>
+            <div class="timeline-step" data-step="2">
+              <div class="step-marker">2</div>
+              <div class="step-content">
+                <div class="step-title">Firma de Contrato de Franquicia</div>
+                <div class="step-desc">Durante la FIF o máximo 30 días naturales después</div>
+                <div class="step-time">⏱️ 0–30 días</div>
+              </div>
             </div>
-          </div>
-          <div class="timeline-step" data-step="3">
-            <div class="step-marker">3</div>
-            <div class="step-content">
-              <div class="step-title">Búsqueda y Decisión de Local</div>
-              <div class="step-desc">Arranque de búsqueda a partir de la firma del contrato de franquicia</div>
-              <div class="step-time">⏱️ 15–90 días</div>
+            <div class="timeline-step" data-step="3">
+              <div class="step-marker">3</div>
+              <div class="step-content">
+                <div class="step-title">Búsqueda y Decisión de Local</div>
+                <div class="step-desc">Arranque de búsqueda a partir de la firma del contrato de franquicia</div>
+                <div class="step-time">⏱️ 15–90 días</div>
+              </div>
             </div>
-          </div>
-          <div class="timeline-step" data-step="4">
-            <div class="step-marker">4</div>
-            <div class="step-content">
-              <div class="step-title">Pago de Servicios y Equipamiento</div>
-              <div class="step-desc">Se paga al aprobarse el layout y plano del local</div>
-              <div class="step-time">⏱️ Al aprobar plano</div>
+            <div class="timeline-step" data-step="4">
+              <div class="step-marker">4</div>
+              <div class="step-content">
+                <div class="step-title">Pago de Servicios y Equipamiento</div>
+                <div class="step-desc">Se paga al aprobarse el layout y plano del local</div>
+                <div class="step-time">⏱️ Al aprobar plano</div>
+              </div>
             </div>
-          </div>
-          <div class="timeline-step" data-step="5">
-            <div class="step-marker">5</div>
-            <div class="step-content">
-              <div class="step-title">Pago de Inventario Inicial</div>
-              <div class="step-desc">Pagos escalonados: al abrir, a los 21 días, y a los 51 días</div>
-              <div class="step-note">* Conforme a proveedor</div>
+            <div class="timeline-step" data-step="5">
+              <div class="step-marker">5</div>
+              <div class="step-content">
+                <div class="step-title">Pago de Inventario Inicial</div>
+                <div class="step-desc">Pagos escalonados: al abrir, a los 21 días, y a los 51 días</div>
+                <div class="step-note">* Conforme a proveedor</div>
+              </div>
             </div>
-          </div>
-          <div class="timeline-step final" data-step="✓">
-            <div class="step-marker final">✓</div>
-            <div class="step-content">
-              <div class="step-title">¡Apertura!</div>
-              <div class="step-desc">6 a 8 semanas desde la firma del contrato de arrendamiento</div>
+            <div class="timeline-step final" data-step="✓">
+              <div class="step-marker final">✓</div>
+              <div class="step-content">
+                <div class="step-title">¡Apertura!</div>
+                <div class="step-desc">6 a 8 semanas desde la firma del contrato de arrendamiento</div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </details>
     </section>
 
     <!-- ═══ COMPARADOR VIEW ═══ -->
     <section id="view-comparador" style="display:none">
       <div class="view-header"><h2>Comparador de Sucursales</h2><p>Métricas lado a lado</p></div>
-      <div class="neu-card"><h3 class="card-title">Métricas Comparativas</h3><div class="table-scroll" id="comparador-table"></div></div>
-      <div class="neu-card"><h3 class="card-title">Flujo Acumulado Comparado</h3><div class="chart-box"><canvas id="chart-comparador-cf"></canvas></div></div>
+      <div class="comparar-grid">
+        <div class="comparar-table-col">
+          <div class="dash-card visible"><h3 class="section-title" style="margin-bottom:0.5rem">Métricas Comparativas</h3><div class="table-scroll" id="comparador-table"></div></div>
+        </div>
+        <div class="comparar-chart-col">
+          <div class="dash-card visible"><h3 class="section-title" style="margin-bottom:0.5rem">Flujo Acumulado Comparado</h3><div class="chart-box"><canvas id="chart-comparador-cf"></canvas></div></div>
+        </div>
+      </div>
     </section>
 
     <!-- ═══ EMPRESA SETTINGS VIEW ═══ -->
@@ -721,38 +772,27 @@
     </section>
   </main>
 
-  <!-- ═══ ADD BRANCH MODAL ═══ -->
-  <div class="modal-overlay" id="modal-add-branch" style="display:none">
-    <div class="modal-card">
-      <h3>Nueva Sucursal</h3>
-      <div class="modal-field">
-        <label>Formato</label>
-        <select id="modal-add-format" class="input-select">
-          <optgroup label="FarmaTuya">
-            <option value="express">⚡ Express</option>
-            <option value="super">🏪 Súper</option>
-            <option value="integral">🏥 Integral</option>
-          </optgroup>
-          <optgroup label="CoolPet">
-            <option value="coolpet_estetica">🐾 CoolPet Estética</option>
-            <option value="coolpet_farmaspot">🐕 CoolPet Farma Spot</option>
-            <option value="coolpet_farmavet">🏥 CoolPet Farma Vet</option>
-          </optgroup>
-        </select>
+  <!-- ═══ STEP-BY-STEP WIZARD MODAL ═══ -->
+  <div class="modal-overlay" id="modal-wizard" style="display:none">
+    <div class="modal-card modal-wizard-card">
+      <div class="wizard-header">
+        <h3 id="wizard-title">Nueva Entidad</h3>
+        <div class="wizard-progress" id="wizard-progress">
+          <!-- Step dots injected via JS -->
+        </div>
       </div>
-      <div class="modal-field">
-        <label>Nombre</label>
-        <input type="text" id="modal-add-name" class="input-text" placeholder="Sucursal Centro">
+      
+      <div class="wizard-body" id="wizard-body">
+        <!-- Step content inside .wizard-step injected/toggled via JS -->
       </div>
-      <div class="modal-field">
-        <label>📍 Dirección / Colonia</label>
-        <input type="text" id="modal-add-colonia" class="input-text" placeholder="Ej: Col. Roma Norte, CDMX" autocomplete="off">
-        <div class="colonia-suggestions" id="modal-add-suggestions"></div>
-        <div id="modal-add-colonia-status" class="colonia-status"></div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-sm" onclick="window._closeModal()">Cancelar</button>
-        <button class="btn-sm primary" onclick="window._confirmAddBranch()">Crear</button>
+      
+      <div class="modal-actions wizard-actions">
+        <button class="btn-sm" id="wizard-btn-cancel">Cancelar</button>
+        <div class="wizard-nav-buttons" style="display:flex;gap:0.5rem">
+          <button class="btn-sm" id="wizard-btn-prev" style="display:none">← Atrás</button>
+          <button class="btn-sm primary" id="wizard-btn-next">Siguiente →</button>
+          <button class="btn-sm primary" id="wizard-btn-finish" style="display:none">Crear ✨</button>
+        </div>
       </div>
     </div>
   </div>
@@ -777,12 +817,12 @@
         <button class="bw2-modal-close" id="btn-close-profile">✕</button>
       </div>
       <div class="bw2-modal-body">
-        <!-- Photo/Logo Upload -->
+        <!-- Photo/Logo Upload + Crop -->
         <div class="profile-photo-section">
           <div class="profile-photo-upload" id="profile-photo-dropzone">
             <div class="profile-photo-placeholder" id="profile-photo-placeholder">
               <span class="profile-photo-icon">📷</span>
-              <span>Sube tu foto o logo</span>
+              <span>Sube tu foto</span>
               <small>Arrastra o haz clic · JPG, PNG</small>
             </div>
             <div class="profile-photo-preview" id="profile-photo-preview" style="display:none">
@@ -790,6 +830,21 @@
               <button class="profile-photo-remove" id="btn-remove-profile-photo" title="Eliminar foto">✕</button>
             </div>
             <input type="file" id="profile-photo-input" accept="image/*" style="display:none">
+          </div>
+          <!-- Crop Area (hidden until image selected) -->
+          <div class="profile-crop-area" id="profile-crop-area" style="display:none">
+            <div class="crop-container" id="crop-container">
+              <canvas id="crop-canvas" width="220" height="220"></canvas>
+              <div class="crop-circle-overlay"></div>
+            </div>
+            <div class="crop-controls">
+              <label class="crop-zoom-label">🔍 Zoom</label>
+              <input type="range" id="crop-zoom" min="100" max="300" value="100" class="crop-zoom-slider">
+            </div>
+            <div class="crop-actions">
+              <button class="btn-crop-confirm" id="btn-crop-confirm">✂️ Recortar</button>
+              <button class="btn-crop-cancel" id="btn-crop-cancel">Cancelar</button>
+            </div>
           </div>
         </div>
         <!-- Name Fields -->
@@ -806,6 +861,15 @@
           <label for="profile-email">Correo electrónico</label>
           <input type="email" class="input-text" id="profile-email" placeholder="tu@correo.com">
           <small id="profile-email-error" style="display:none;color:#dc2626;font-weight:600;font-size:0.7rem"></small>
+        </div>
+        <!-- Workspace Logo (moved from header) -->
+        <div class="bw2-form-group" style="padding-top:0.5rem; border-top:1px solid var(--border); margin-top:0.5rem">
+          <label>Logo de Workspace</label>
+          <div style="display:flex; align-items:center; gap:1rem">
+            <button class="btn-secondary btn-sm" id="btn-edit-platform-logo">📷 Subir Logo Personalizado</button>
+            <input type="file" id="bw2-platform-logo-input" accept="image/jpeg,image/png,image/webp,image/svg+xml" style="display:none">
+            <span style="font-size:0.7rem; color:var(--text-3)">Formatos recomendados: PNG, SVG (transparente)</span>
+          </div>
         </div>
         <!-- Change Password -->
         <details class="profile-pwd-section" id="profile-pwd-section">
@@ -835,6 +899,6 @@
   </div>
 
   <footer id="app-footer"><p>BW² — Dashboard de Inversión · v8.0 · Multi-Empresa</p></footer>
-  <script type="module" src="app.js?v=bw12"></script>
+  <script type="module" src="app.js?v=bw27"></script>
 </body>
 </html>
