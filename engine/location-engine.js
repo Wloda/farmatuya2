@@ -191,7 +191,9 @@ export async function queryMultiRadius(lat, lng) {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
       if (resp.ok) {
-        data = await resp.json();
+        const jsonData = await resp.json();
+        if (jsonData.remark) throw new Error(jsonData.remark);
+        data = jsonData;
         break;
       }
       lastError = `Overpass ${url}: HTTP ${resp.status}`;
