@@ -452,8 +452,8 @@ body:has(#app-header){padding-top:50px}
   align-items:stretch;
   margin-top:0.75rem;
 }
-.consol-chart-col{flex:7;min-width:0;display:flex;flex-direction:column}
-.consol-table-col{flex:5;min-width:0;display:flex;flex-direction:column}
+.consol-chart-col{flex:5;min-width:0;display:flex;flex-direction:column}
+.consol-table-col{flex:7;min-width:0;display:flex;flex-direction:column}
 .consol-chart-col>.dash-card,.consol-table-col>.dash-card{flex:1;display:flex;flex-direction:column}
 .consol-table-col .chart-box{flex:1}
 .consol-table-col .table-responsive{max-height:340px;overflow-y:auto}
@@ -643,7 +643,7 @@ body:has(#app-header){padding-top:50px}
 .kpi-card[data-status="good"] .kpi-value,.kpi-card[data-status="success"] .kpi-value{color:var(--green)}
 .kpi-card[data-status="bad"] .kpi-value,.kpi-card[data-status="danger"] .kpi-value{color:var(--red)}
 .kpi-card[data-status="warn"] .kpi-value,.kpi-card[data-status="warning"] .kpi-value{color:var(--yellow)}
-.kpi-detail{font-size:0.65rem;color:var(--text-2);font-weight:500}
+.kpi-detail{font-size:0.65rem;color:var(--text-2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ═══ KPI TOOLTIP (?) ═══ */
 .kpi-help{
@@ -919,6 +919,8 @@ body:has(#app-header){padding-top:50px}
 .branch-status{font-size:0.5625rem;font-weight:700;padding:3px 8px;border-radius:var(--r-xs);text-transform:uppercase;letter-spacing:0.04em}
 .branch-status.planned{background:var(--accent-soft);color:var(--accent)}
 .branch-status.active{background:var(--green-soft);color:var(--green)}
+.data-table th{background:var(--bg-app);font-size:0.75rem;font-weight:700;color:var(--text-3);letter-spacing:0.05em;border-bottom:2px solid var(--border);padding:0.75rem 1rem;white-space:nowrap}
+.data-table td{padding:0.85rem 1rem;border-bottom:1px solid var(--border);font-size:0.85rem;color:var(--text-2);vertical-align:middle;white-space:nowrap}
 .branch-status.paused,.branch-status.archived{background:var(--border);color:var(--text-3)}
 .branch-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:0.25rem;margin-bottom:0.875rem}
 .branch-kpi{text-align:center;min-width:0}
