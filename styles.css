@@ -923,7 +923,7 @@ body:has(#app-header){padding-top:50px}
 .data-table td{padding:0.85rem 1rem;border-bottom:1px solid var(--border);font-size:0.85rem;color:var(--text-2);vertical-align:middle;white-space:nowrap}
 .branch-status.paused,.branch-status.archived{background:var(--border);color:var(--text-3)}
 .branch-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:0.25rem;margin-bottom:0.875rem}
-.branch-kpi{text-align:center;min-width:0}
+.branch-kpi{display:flex;flex-direction:column;justify-content:space-between;align-items:center;height:100%;text-align:center;min-width:0}
 .bk-label{display:block;font-size:0.55rem;color:var(--text-2);text-transform:uppercase;letter-spacing:0.03em;font-weight:700;line-height:1.2;margin-bottom:0.125rem}
 .bk-value{display:block;font-size:0.75rem;font-weight:700;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .branch-actions{display:flex;gap:0.375rem;flex-wrap:wrap}
