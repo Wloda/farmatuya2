@@ -2688,10 +2688,11 @@ window._exportPnL = function() {
   const r = runProjection(branch.format, overrides);
   if (!r || !r.months) { showToast('Sin datos para exportar', 'error'); return; }
   const headers = ['Mes','Venta','COGS','Ut.Bruta','Costos Fijos','Costos Variables','EBITDA','Impuestos','Ut.Neta','Flujo Acumulado'];
+  const f = getIVA();
   const rows = r.months.map(m => [
-    m.month, Math.round(m.revenue), Math.round(m.cogs), Math.round(m.grossProfit),
-    Math.round(m.totalFixedCosts), Math.round(m.variableCosts), Math.round(m.ebitda),
-    Math.round(m.taxes), Math.round(m.netIncome), Math.round(m.cumulativeCashFlow)
+    m.month, Math.round(m.revenue*f), Math.round(m.cogs*f), Math.round(m.grossProfit*f),
+    Math.round(m.totalFixedCosts*f), Math.round(m.variableCosts*f), Math.round(m.ebitda*f),
+    Math.round(m.taxes*f), Math.round(m.netIncome*f), Math.round(m.cumulativeCashFlow*f)
   ]);
   exportCSV(`pnl_${branch.name.replace(/\s+/g,'_')}_60m.csv`, headers, rows);
 };
@@ -2702,11 +2703,12 @@ window._exportComparison = function() {
   if (!empresa) return;
   const branches = (empresa.branches || empresa.proyectos?.flatMap(p => p.branches || []) || []).filter(b => b.status !== 'archived');
   const headers = ['Sucursal','Formato','EBITDA/mes','Inversión','Payback','Score','ROI 12m','VPN'];
+  const f = getIVA();
   const rows = branches.map(b => {
     try {
       const r = runBranchProjection(b, empresa);
-      return [b.name, b.format, Math.round(r?.avgMonthlyEBITDA||0), Math.round(r?.totalInvestment||0),
-              r?.paybackMonth||'∞', r?.viabilityScore||0, (r?.roi12||0).toFixed(1)+'%', Math.round(r?.npv||0)];
+      return [b.name, b.format, Math.round((r?.avgMonthlyEBITDA||0)*f), Math.round((r?.totalInvestment||0)*f),
+              r?.paybackMonth||'∞', r?.viabilityScore||0, (r?.roi12||0).toFixed(1)+'%', Math.round((r?.npv||0)*f)];
     } catch(e) { return [b.name, b.format, 0, 0, '∞', 0, '0%', 0]; }
   });
   exportCSV(`comparativa_${empresa.name?.replace(/\s+/g,'_')||'empresa'}.csv`, headers, rows);

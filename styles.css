@@ -3643,3 +3643,11 @@ input:focus,select:focus,textarea:focus{
   box-shadow:0 1px 3px rgba(0,0,0,0.15)}
 .mvar-toggle input:checked+.mvar-slider{background:var(--accent)}
 .mvar-toggle input:checked+.mvar-slider::before{transform:translateX(14px)}
+
+/* ── RESPONSIVE HEADER TWEAKS ── */
+@media (max-width: 768px) {
+  .header-right { flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; }
+  .iva-label { display: none !important; }
+  #global-refresh-loc-btn span:last-child { display: none !important; }
+  #global-refresh-loc-btn kbd { display: none !important; }
+}
