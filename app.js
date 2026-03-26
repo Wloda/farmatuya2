@@ -3842,35 +3842,35 @@ window._removePartner = (id) => {
 
 // Module scripts run after DOM is parsed — no need for DOMContentLoaded
 {
-  let _empSaveTimeout = null;
-  const saveEmpresaData = () => {
-    clearTimeout(_empSaveTimeout);
-    _empSaveTimeout = setTimeout(() => {
-      updateEmpresa({
+  const saveBtn=$('btn-save-empresa');
+  if(saveBtn) saveBtn.addEventListener('click',()=>{
+    const fileInp = $('emp-logo-upload');
+    const commit = (logoStr) => {
+      const data = {
         name:$('emp-name').value,
-        projectName:$('emp-project-name')?.value || '',
+        projectName:$('emp-project-name')?.value || 'FarmaTuya',
         totalCapital:parseFloat($('emp-capital').value)||0,
         corporateReserve:parseFloat($('emp-reserve').value)||0,
         corporateExpenses:parseFloat($('emp-corp-expenses')?.value)||0
-      });
-      // Re-render only the KPI strip so we don't lose input focus
-      renderEmpresaSettings(getActiveEmpresa());
-    }, 500);
-  };
+      };
+      if (logoStr !== undefined) data.logo = logoStr;
+      
+      updateEmpresa(data);
+      renderEmpresaSettings(getActiveEmpresa()); // Re-render KPIs
+      saveBtn.textContent='✅ Guardado';
+      setTimeout(()=>saveBtn.textContent='Guardar Cambios',1500);
+    };
 
-  ['emp-name', 'emp-project-name', 'emp-capital', 'emp-reserve', 'emp-corp-expenses'].forEach(id => {
-    const el = $(id);
-    if(el) el.addEventListener('input', saveEmpresaData);
+    if (fileInp && fileInp.files && fileInp.files[0]) {
+      const fr = new FileReader();
+      fr.onload = (e) => commit(e.target.result);
+      fr.readAsDataURL(fileInp.files[0]);
+    } else {
+      commit(undefined);
+    }
   });
 
-  const saveBtn=$('btn-save-empresa');
-  if(saveBtn) saveBtn.addEventListener('click',()=>{
-    saveEmpresaData();
-    saveBtn.textContent='✅ Guardado';
-    setTimeout(()=>saveBtn.textContent='Guardar Cambios',1500);
-  });
-  
-  // Live preview & auto-save when file is selected
+  // Live preview when file is selected
   const fileInp = $('emp-logo-upload');
   if(fileInp) fileInp.addEventListener('change', (e) => {
     if(e.target.files && e.target.files[0]) {
@@ -3878,7 +3878,6 @@ window._removePartner = (id) => {
       fr.onload = (ev) => {
          const preview = $('emp-logo-preview');
          if (preview) preview.src = ev.target.result;
-         updateEmpresa({ logo: ev.target.result });
       };
       fr.readAsDataURL(e.target.files[0]);
     }
