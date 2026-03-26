@@ -4,12 +4,7 @@
   publish = "."
   # No build command needed — pure static site
 
-# Redirect www → apex domain
-[[redirects]]
-  from = "https://www.bw2.ai/*"
-  to = "https://bw2.ai/:splat"
-  status = 301
-  force = true
+# Rely purely on Netlify Dashboard DNS for www -> apex redirects to prevent loops
 
 # SPA-style fallback (optional, keeps clean URLs)
 [[redirects]]
