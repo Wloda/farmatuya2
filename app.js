@@ -436,7 +436,7 @@ function initNav(){
       if (emp) {
         if (!emp.settings) emp.settings = {};
         emp.settings.applyMarketFactor = e.target.checked;
-        saveData();
+        updateEmpresa({ settings: emp.settings });
         renderCurrentView();
       }
     });
