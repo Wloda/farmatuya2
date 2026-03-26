@@ -17,8 +17,6 @@ import { googleGeocode, isGoogleMapsLoaded, getGoogleApiKey } from './google-pla
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const OVERPASS_URLS = [
   'https://overpass-api.de/api/interpreter',
-  'https://lz4.overpass-api.de/api/interpreter',
-  'https://z.overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter'
 ];
 
@@ -124,86 +122,82 @@ async function _nominatimGeocode(query, returnMultiple = false) {
 export async function queryMultiRadius(lat, lng) {
   // Single comprehensive Overpass query for ALL categories at 2km radius
   // We'll classify by distance afterwards into 500m / 1km / 2km bands
-  // Single comprehensive Overpass query optimized for speed
-  const radius = 1500; // Reduced from 2000m to 1500m to aggressively cut query time (our scoring only strictly needs 1km)
+  const radius = 2000;
   const query = `
-    [out:json][timeout:25];
+    [out:json][timeout:30];
     (
       // Pharmacies
-      nwr["amenity"="pharmacy"](around:${radius},${lat},${lng});
+      node["amenity"="pharmacy"](around:${radius},${lat},${lng});
+      way["amenity"="pharmacy"](around:${radius},${lat},${lng});
+
       // Health facilities
-      nwr["amenity"~"^(clinic|hospital|doctors|dentist|veterinary)$"](around:${radius},${lat},${lng});
+      node["amenity"~"clinic|hospital|doctors|dentist|veterinary"](around:${radius},${lat},${lng});
+      way["amenity"~"clinic|hospital|doctors|dentist|veterinary"](around:${radius},${lat},${lng});
+
       // Schools & Education
-      nwr["amenity"~"^(school|university|college|kindergarten)$"](around:${radius},${lat},${lng});
+      node["amenity"~"school|university|college|kindergarten"](around:${radius},${lat},${lng});
+      way["amenity"~"school|university|college|kindergarten"](around:${radius},${lat},${lng});
+
       // Churches & Religious
-      nwr["amenity"="place_of_worship"](around:${radius},${lat},${lng});
+      node["amenity"="place_of_worship"](around:${radius},${lat},${lng});
+      way["amenity"="place_of_worship"](around:${radius},${lat},${lng});
+
       // Markets & Supermarkets
-      nwr["shop"~"^(supermarket|convenience|mall|department_store|wholesale)$"](around:${radius},${lat},${lng});
+      node["shop"~"supermarket|convenience|mall|department_store|wholesale"](around:${radius},${lat},${lng});
+      way["shop"~"supermarket|convenience|mall|department_store|wholesale"](around:${radius},${lat},${lng});
+
       // Other shops (density proxy)
-      nwr["shop"](around:${radius},${lat},${lng});
+      node["shop"](around:${radius},${lat},${lng});
+
+      // Pet shops (vet corridor)
+      node["shop"="pet"](around:${radius},${lat},${lng});
+      way["shop"="pet"](around:${radius},${lat},${lng});
+
       // Banks & ATMs (income proxy)
-      nwr["amenity"~"^(bank|atm)$"](around:${radius},${lat},${lng});
+      node["amenity"~"bank|atm"](around:${radius},${lat},${lng});
+      way["amenity"="bank"](around:${radius},${lat},${lng});
+
       // Restaurants (density + income proxy)
-      nwr["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
+      node["amenity"~"restaurant|cafe|fast_food"](around:${radius},${lat},${lng});
+
       // Public transport
-      nwr["highway"="bus_stop"](around:${radius},${lat},${lng});
-      nwr["railway"~"^(station|halt)$"](around:${radius},${lat},${lng});
-      nwr["station"="subway"](around:${radius},${lat},${lng});
+      node["highway"="bus_stop"](around:${radius},${lat},${lng});
+      node["railway"~"station|halt"](around:${radius},${lat},${lng});
+      node["station"="subway"](around:${radius},${lat},${lng});
+
       // Gas stations (traffic proxy)
-      nwr["amenity"="fuel"](around:${radius},${lat},${lng});
+      node["amenity"="fuel"](around:${radius},${lat},${lng});
+
       // Dog parks (vet corridor)
-      nwr["leisure"="dog_park"](around:${radius},${lat},${lng});
+      node["leisure"="dog_park"](around:${radius},${lat},${lng});
+      way["leisure"="dog_park"](around:${radius},${lat},${lng});
+
       // Residential (density estimation)
-      nwr["building"~"^(apartments|residential)$"](around:${radius},${lat},${lng});
+      way["building"="apartments"](around:${radius},${lat},${lng});
+      way["building"="residential"](around:${radius},${lat},${lng});
     );
-    out center tags;
+    out center body;
   `;
 
-  // P6: Query Overpass servers sequentially with timeout (fixes 429 and "All servers failed")
+  // Try primary + mirror Overpass servers with retry
   let data = null;
   let lastError = null;
-  const TIMEOUT_MS = 28000; // Extended timeout, but query will finish before this (avg 3-5s now)
-  
   for (const url of OVERPASS_URLS) {
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-      
       const resp = await fetch(url, {
         method: 'POST',
         body: 'data=' + encodeURIComponent(query),
-        headers: { 
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json'
-        },
-        signal: controller.signal
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
-      clearTimeout(timer);
-
-      if (!resp.ok) {
-        if (resp.status === 429) {
-          console.warn(`[LocationEngine] Overpass 429 Rate Limit en ${url}, intentando el siguiente...`);
-          lastError = `Rate limit on ${url}`;
-          continue;
-        }
-        throw new Error(`HTTP ${resp.status}`);
+      if (resp.ok) {
+        data = await resp.json();
+        break;
       }
-      
-      const json = await resp.json();
-      if (json && json.elements) {
-        data = json;
-        console.log(`[LocationEngine] Overpass data obtained via ${url}`);
-        break; // Success
-      } else {
-        throw new Error('No elements array in response');
-      }
+      lastError = `Overpass ${url}: HTTP ${resp.status}`;
     } catch (e) {
-      lastError = `Failed at ${url}: ${e.message}`;
-      console.warn(`[LocationEngine] ${lastError}`);
-      continue;
+      lastError = `Overpass ${url}: ${e.message}`;
     }
   }
-
   if (!data) throw new Error(lastError || 'All Overpass servers failed');
   const elements = data.elements || [];
 

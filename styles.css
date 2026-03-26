@@ -3589,9 +3589,3 @@ input:focus,select:focus,textarea:focus{
   box-shadow:0 1px 3px rgba(0,0,0,0.15)}
 .mvar-toggle input:checked+.mvar-slider{background:var(--accent)}
 .mvar-toggle input:checked+.mvar-slider::before{transform:translateX(14px)}
-
-@media (max-width: 768px) {
-  .iva-label {
-    display: none;
-  }
-}

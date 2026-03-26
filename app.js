@@ -1,14 +1,14 @@
 /**
  * BW² — Multi-Empresa Multi-Proyecto Dashboard v8
  */
-import { MODELS, SCENARIOS, LOCATIONS, BENCHMARKS } from './data/model-registry.js?v=bw5';
-import { runProjection, runSensitivity, generateHeatmap, calcStress, generateChecklist, evaluateAlerts } from './engine/financial-model.js?v=bw6';
-import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated, updateUserProfile, updateUserEmail, changePassword } from './auth.js?v=bw31';
-import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw5';
-import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw5';
-import { runLocationStudy, calcCombinedMarketFactor, geocodeAddress } from './engine/location-engine.js?v=bw7';
-import { generateBranchPDF } from './pdf-export.js?v=bw5';
-import { setGoogleApiKey, loadGoogleMaps, attachPlacesAutocomplete, createGoogleMap, buildStudyMarkers, isGoogleMapsLoaded, getGoogleApiKey } from './engine/google-places.js?v=bw5';
+import { MODELS, SCENARIOS, LOCATIONS, BENCHMARKS } from './data/model-registry.js?v=bw4';
+import { runProjection, runSensitivity, generateHeatmap, calcStress, generateChecklist, evaluateAlerts } from './engine/financial-model.js?v=bw5';
+import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated, updateUserProfile, updateUserEmail, changePassword } from './auth.js';
+import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw4';
+import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw4';
+import { runLocationStudy, calcCombinedMarketFactor, geocodeAddress } from './engine/location-engine.js?v=bw6';
+import { generateBranchPDF } from './pdf-export.js?v=bw4';
+import { setGoogleApiKey, loadGoogleMaps, attachPlacesAutocomplete, createGoogleMap, buildStudyMarkers, isGoogleMapsLoaded, getGoogleApiKey } from './engine/google-places.js';
 
 /* ═══ GOOGLE API CONFIGURATION ═══ */
 // Set your Google Cloud API key here (requires Maps JS, Places, Geocoding APIs)
@@ -181,8 +181,7 @@ Chart.defaults.animation.duration = 800;
 Chart.defaults.animation.easing = 'easeOutQuart';
 
 const $=id=>document.getElementById(id);
-const getIVA=()=>document.getElementById('toggle-iva')?.checked?1.16:1;
-const fmt={m:v=>'$'+Math.round(v*getIVA()).toLocaleString('es-MX'),mk:v=>'$'+((v*getIVA())/1000).toFixed(0)+'K',p:v=>(v*100).toFixed(1)+'%',pi:v=>Math.round(v*100)+'%',mo:v=>v?v+' m':'∞'};
+const fmt={m:v=>'$'+Math.round(v).toLocaleString('es-MX'),mk:v=>'$'+(v/1000).toFixed(0)+'K',p:v=>(v*100).toFixed(1)+'%',pi:v=>Math.round(v*100)+'%',mo:v=>v?v+' m':'∞'};
 
 /* ── Projection Cache (cleared each render cycle) ── */
 const _projCache = new Map();
@@ -2414,14 +2413,6 @@ function renderBranchPnL(r,model,overrides){
   }
 }
 
-/* ── Global IVA Toggle Listener ── */
-document.getElementById('toggle-iva')?.addEventListener('change', (e) => {
-  document.getElementById('iva-label').textContent = e.target.checked ? 'Con IVA(+)' : 'Sin IVA';
-  if (window.currentAppView === 'branch' && window.currentBranchId) { renderBranchData(window.currentBranchId); }
-  else if (window.currentAppView === 'empresa') { renderEmpresaDash(); }
-  else if (window.currentAppView === 'consolidado') { renderConsolidationView(); }
-});
-
 /* ── P&L CSV Export ── */
 window._exportPnL = function() {
   const branch = getBranch(state.activeBranchId);
@@ -2430,12 +2421,11 @@ window._exportPnL = function() {
   const overrides = {...branch.overrides};
   const r = runProjection(branch.format, overrides);
   if (!r || !r.months) { showToast('Sin datos para exportar', 'error'); return; }
-  const f = getIVA();
   const headers = ['Mes','Venta','COGS','Ut.Bruta','Costos Fijos','Costos Variables','EBITDA','Impuestos','Ut.Neta','Flujo Acumulado'];
   const rows = r.months.map(m => [
-    m.month, Math.round(m.revenue*f), Math.round(m.cogs*f), Math.round(m.grossProfit*f),
-    Math.round(m.totalFixedCosts*f), Math.round(m.variableCosts*f), Math.round(m.ebitda*f),
-    Math.round(m.taxes*f), Math.round(m.netIncome*f), Math.round(m.cumulativeCashFlow*f)
+    m.month, Math.round(m.revenue), Math.round(m.cogs), Math.round(m.grossProfit),
+    Math.round(m.totalFixedCosts), Math.round(m.variableCosts), Math.round(m.ebitda),
+    Math.round(m.taxes), Math.round(m.netIncome), Math.round(m.cumulativeCashFlow)
   ]);
   exportCSV(`pnl_${branch.name.replace(/\s+/g,'_')}_60m.csv`, headers, rows);
 };
@@ -2444,14 +2434,13 @@ window._exportPnL = function() {
 window._exportComparison = function() {
   const empresa = getActiveEmpresa ? getActiveEmpresa() : getEmpresa();
   if (!empresa) return;
-  const f = getIVA();
   const branches = (empresa.branches || empresa.proyectos?.flatMap(p => p.branches || []) || []).filter(b => b.status !== 'archived');
   const headers = ['Sucursal','Formato','EBITDA/mes','Inversión','Payback','Score','ROI 12m','VPN'];
   const rows = branches.map(b => {
     try {
       const r = runBranchProjection(b, empresa);
-      return [b.name, b.format, Math.round((r?.avgMonthlyEBITDA||0)*f), Math.round((r?.totalInvestment||0)*f),
-              r?.paybackMonth||'∞', r?.viabilityScore||0, (r?.roi12||0).toFixed(1)+'%', Math.round((r?.npv||0)*f)];
+      return [b.name, b.format, Math.round(r?.avgMonthlyEBITDA||0), Math.round(r?.totalInvestment||0),
+              r?.paybackMonth||'∞', r?.viabilityScore||0, (r?.roi12||0).toFixed(1)+'%', Math.round(r?.npv||0)];
     } catch(e) { return [b.name, b.format, 0, 0, '∞', 0, '0%', 0]; }
   });
   exportCSV(`comparativa_${empresa.name?.replace(/\s+/g,'_')||'empresa'}.csv`, headers, rows);

@@ -155,15 +155,20 @@ function logoutUser() {
  * Get current authenticated user (or null)
  */
 function getCurrentUser() {
-  // BYPASS AUTHENTICATION
-  return { id: 'u_admin_bypass', email: 'admin@bw2.ai', firstName: 'Admin', lastName: 'Demo', role: 'admin' };
+  const session = getSession();
+  if (!session) return null;
+  if (Date.now() > session.expiry) { clearSession(); return null; }
+
+  const users = getUsers();
+  const user = users.find(u => u.id === session.userId);
+  return user ? sanitizeUser(user) : null;
 }
 
 /**
  * Check if user is authenticated
  */
 function isAuthenticated() {
-  return true;
+  return getCurrentUser() !== null;
 }
 
 /**
