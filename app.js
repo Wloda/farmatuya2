@@ -1318,9 +1318,9 @@ function updateNav() {
     html += `<div style="margin-top:1.5rem; display:flex; flex-direction:column; gap:0.6rem">`;
     html += `<button class="btn-add" id="btn-nav-crear-empresa"><span class="nav-icon">+</span> <span class="nav-text">Nueva Empresa</span></button>`;
     html += `<div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.4rem">`;
-    html += `<button class="nav-action-btn" id="btn-nav-export-data"><span class="nav-icon">${ico('download')}</span> <span class="nav-text" style="flex:1">Respaldar Datos</span></button>`;
-    html += `<button class="nav-action-btn" id="btn-nav-import-data"><span class="nav-icon">${ico('upload')}</span> <span class="nav-text" style="flex:1">Cargar Respaldo</span></button>`;
-    html += `<input type="file" id="import-data-file" accept=".json" style="display:none">`;
+    html += `<button class="nav-action-btn" id="btn-nav-export-data"><span class="nav-icon">${ico('download')}</span> <span class="nav-text" style="flex:1">Guardar en mi PC</span></button>`;
+    html += `<button class="nav-action-btn" id="btn-nav-import-data"><span class="nav-icon">${ico('upload')}</span> <span class="nav-text" style="flex:1">Abrir archivo (.bw2)</span></button>`;
+    html += `<input type="file" id="import-data-file" accept=".bw2,.json" style="display:none">`;
     html += `</div></div>`;
     
     nav.innerHTML = html;
@@ -1346,13 +1346,13 @@ function updateNav() {
           }
         }
         
-        if(!foundKeys) return alert('No hay datos BW² estructurados para respaldar.');
+        if(!foundKeys) return alert('No hay datos BW² estructurados para guardar.');
         
         const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `bw2_respaldo_${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `bw2_datos_${new Date().toISOString().split('T')[0]}.bw2`;
         a.click();
       });
     }
@@ -1376,11 +1376,11 @@ function updateNav() {
                   localStorage.setItem(k, valStr);
                 }
               }
-              alert('Respaldo cargado correctamente. El sistema se reiniciará.');
+              alert('Archivo abierto correctamente. Cargando contraseñas y proyectos...');
               location.reload();
             } else throw new Error('Formato inválido');
           } catch(err) {
-            alert('El archivo no es un respaldo válido completo de BW2.');
+            alert('El archivo no es un documento BW2 válido.');
           }
         };
         reader.readAsText(file);
