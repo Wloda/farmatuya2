@@ -455,7 +455,7 @@ body:has(#app-header){padding-top:50px}
 .consol-chart-col{flex:7;min-width:0;display:flex;flex-direction:column}
 .consol-table-col{flex:5;min-width:0;display:flex;flex-direction:column}
 .consol-chart-col>.dash-card,.consol-table-col>.dash-card{display:flex;flex-direction:column;justify-content:flex-start}
-.consol-chart-col .chart-box, .consol-table-col .chart-box{flex:none;height:250px!important;max-height:250px!important;display:flex;justify-content:center;align-items:center}
+.consol-chart-col .chart-box, .consol-table-col .chart-box{flex:none;height:180px!important;max-height:180px!important;display:flex;justify-content:center;align-items:center}
 .consol-table-col .table-responsive{max-height:340px;overflow-y:auto}
 .partner-table{font-size:0.8rem}
 .partner-table th,.partner-table td{padding:0.4rem 0.6rem;white-space:nowrap}
