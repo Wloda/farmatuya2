@@ -452,8 +452,8 @@ body:has(#app-header){padding-top:50px}
   align-items:stretch;
   margin-top:0.75rem;
 }
-.consol-chart-col{flex:5;min-width:0;display:flex;flex-direction:column}
-.consol-table-col{flex:7;min-width:0;display:flex;flex-direction:column}
+.consol-chart-col{flex:7;min-width:0;display:flex;flex-direction:column}
+.consol-table-col{flex:5;min-width:0;display:flex;flex-direction:column}
 .consol-chart-col>.dash-card,.consol-table-col>.dash-card{flex:1;display:flex;flex-direction:column}
 .consol-table-col .chart-box{flex:1}
 .consol-table-col .table-responsive{max-height:340px;overflow-y:auto}
