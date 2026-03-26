@@ -4469,6 +4469,12 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLoader.style.display = 'none';
 
     if (result.success) {
+      if (window.PasswordCredential) {
+        try {
+          const c = new PasswordCredential({ id: email, password: password });
+          navigator.credentials.store(c);
+        } catch(e) {}
+      }
       showApp();
       if (typeof renderCurrentView === 'function') renderCurrentView();
     } else {
@@ -4514,6 +4520,12 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLoader.style.display = 'none';
 
     if (result.success) {
+      if (window.PasswordCredential) {
+        try {
+          const c = new PasswordCredential({ id: email, password: password, name: firstName + ' ' + lastName });
+          navigator.credentials.store(c);
+        } catch(e) {}
+      }
       showApp();
       if (typeof renderCurrentView === 'function') renderCurrentView();
       if (typeof showToast === 'function') showToast('¡Cuenta creada exitosamente!', 'success');
