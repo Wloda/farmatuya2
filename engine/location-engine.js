@@ -184,7 +184,7 @@ export async function queryMultiRadius(lat, lng) {
   // P6: Query Overpass servers sequentially with timeout (fixes 429 and "All servers failed")
   let data = null;
   let lastError = null;
-  const TIMEOUT_MS = 10000;
+  const TIMEOUT_MS = 25000; // Extended timeout for heavy/dense city queries
   
   for (const url of OVERPASS_URLS) {
     try {
