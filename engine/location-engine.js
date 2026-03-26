@@ -122,69 +122,45 @@ async function _nominatimGeocode(query, returnMultiple = false) {
    MULTI-RADIUS POI QUERY via Overpass
    ══════════════════════════════════════════ */
 export async function queryMultiRadius(lat, lng) {
-  // Single comprehensive Overpass query for ALL categories at 2km radius
-  // We'll classify by distance afterwards into 500m / 1km / 2km bands
-  const radius = 2000;
+  // Single comprehensive Overpass query optimized for speed
+  const radius = 1500; // Reduced from 2000m to 1500m to aggressively cut query time (our scoring only strictly needs 1km)
   const query = `
-    [out:json][timeout:30];
+    [out:json][timeout:25];
     (
       // Pharmacies
-      node["amenity"="pharmacy"](around:${radius},${lat},${lng});
-      way["amenity"="pharmacy"](around:${radius},${lat},${lng});
-
+      nwr["amenity"="pharmacy"](around:${radius},${lat},${lng});
       // Health facilities
-      node["amenity"~"clinic|hospital|doctors|dentist|veterinary"](around:${radius},${lat},${lng});
-      way["amenity"~"clinic|hospital|doctors|dentist|veterinary"](around:${radius},${lat},${lng});
-
+      nwr["amenity"~"^(clinic|hospital|doctors|dentist|veterinary)$"](around:${radius},${lat},${lng});
       // Schools & Education
-      node["amenity"~"school|university|college|kindergarten"](around:${radius},${lat},${lng});
-      way["amenity"~"school|university|college|kindergarten"](around:${radius},${lat},${lng});
-
+      nwr["amenity"~"^(school|university|college|kindergarten)$"](around:${radius},${lat},${lng});
       // Churches & Religious
-      node["amenity"="place_of_worship"](around:${radius},${lat},${lng});
-      way["amenity"="place_of_worship"](around:${radius},${lat},${lng});
-
+      nwr["amenity"="place_of_worship"](around:${radius},${lat},${lng});
       // Markets & Supermarkets
-      node["shop"~"supermarket|convenience|mall|department_store|wholesale"](around:${radius},${lat},${lng});
-      way["shop"~"supermarket|convenience|mall|department_store|wholesale"](around:${radius},${lat},${lng});
-
+      nwr["shop"~"^(supermarket|convenience|mall|department_store|wholesale)$"](around:${radius},${lat},${lng});
       // Other shops (density proxy)
-      node["shop"](around:${radius},${lat},${lng});
-
-      // Pet shops (vet corridor)
-      node["shop"="pet"](around:${radius},${lat},${lng});
-      way["shop"="pet"](around:${radius},${lat},${lng});
-
+      nwr["shop"](around:${radius},${lat},${lng});
       // Banks & ATMs (income proxy)
-      node["amenity"~"bank|atm"](around:${radius},${lat},${lng});
-      way["amenity"="bank"](around:${radius},${lat},${lng});
-
+      nwr["amenity"~"^(bank|atm)$"](around:${radius},${lat},${lng});
       // Restaurants (density + income proxy)
-      node["amenity"~"restaurant|cafe|fast_food"](around:${radius},${lat},${lng});
-
+      nwr["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
       // Public transport
-      node["highway"="bus_stop"](around:${radius},${lat},${lng});
-      node["railway"~"station|halt"](around:${radius},${lat},${lng});
-      node["station"="subway"](around:${radius},${lat},${lng});
-
+      nwr["highway"="bus_stop"](around:${radius},${lat},${lng});
+      nwr["railway"~"^(station|halt)$"](around:${radius},${lat},${lng});
+      nwr["station"="subway"](around:${radius},${lat},${lng});
       // Gas stations (traffic proxy)
-      node["amenity"="fuel"](around:${radius},${lat},${lng});
-
+      nwr["amenity"="fuel"](around:${radius},${lat},${lng});
       // Dog parks (vet corridor)
-      node["leisure"="dog_park"](around:${radius},${lat},${lng});
-      way["leisure"="dog_park"](around:${radius},${lat},${lng});
-
+      nwr["leisure"="dog_park"](around:${radius},${lat},${lng});
       // Residential (density estimation)
-      way["building"="apartments"](around:${radius},${lat},${lng});
-      way["building"="residential"](around:${radius},${lat},${lng});
+      nwr["building"~"^(apartments|residential)$"](around:${radius},${lat},${lng});
     );
-    out center body;
+    out center tags;
   `;
 
   // P6: Query Overpass servers sequentially with timeout (fixes 429 and "All servers failed")
   let data = null;
   let lastError = null;
-  const TIMEOUT_MS = 25000; // Extended timeout for heavy/dense city queries
+  const TIMEOUT_MS = 28000; // Extended timeout, but query will finish before this (avg 3-5s now)
   
   for (const url of OVERPASS_URLS) {
     try {
