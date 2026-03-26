@@ -27,8 +27,3 @@ npm-debug.log*
 
 # Local Netlify folder
 .netlify
-
-# === Dev/Test artifacts ===
-test-validation.html
-validate_engine.mjs
-_headers

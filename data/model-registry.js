@@ -56,7 +56,7 @@ export const MODELS = {
 
     derived: null,
     franchise: null,
-    royaltyPromo: { default: 'variable_2_5', waiver6m: true, upfront5Y: 125000 },
+    royaltyPromo: null,
     taxRate: 0.30,  // ISR estándar
     totalInitialInvestment: { min: 968059, max: 1071119, default: 1071119 },
     sourceNotes: {
@@ -68,27 +68,22 @@ export const MODELS = {
   /* ─────────────── SÚPER ─────────────── */
   super: {
     id: 'super', label: 'Súper', emoji: '🏪',
-    source: 'PDF Resumen (3).pdf · cotizacion_f1_super',
 
     fixedCosts: {
       rent: 26000.00, systems: 1400.00, accounting: 1500.00,
-      payroll: 18510.52,
-      socialCharge: 2278.68, // PDF documented (12.3% of payroll)
-      socialChargeNote: 'Valor del PDF documentado = $2,279 (12.3% de nómina). El estándar IMSS+SAR+Infonavit+ISN es 28-35% ($5,553). Diferencia: $3,275/mes. Verificar si aplica régimen de subcontratación o salarios mínimos.',
-      socialChargeStandard: 5553.16, // 30% reference for comparison
+      payroll: 18510.52, socialCharge: 2278.68, // PDF doc value (30% would be $5,553)
       servPap: { m1: 3700.50, m2: 5550.75, m3: 7401.00 },
-      omissions: { m1: 0, m2: 0, m3: 0 }, // Moved to variableCosts as 1% (per PDF)
-      totalDocumented: { m1: 52861.04, m2: 54679.28, m3: 56486.55 }, // Excludes omissions (now variable)
-      totalReconciled: 56486.55,
+      omissions: { m1: 571.64, m2: 603.65, m3: 603.65 },
+      totalDocumented: { m1: 53432.68, m2: 55282.93, m3: 57090.20 },
+      totalReconciled: 57090.20,
       auditStatus: 'RECONCILED',
-      auditNote: 'Omisiones y Errores reclasificado de gasto fijo → variable 1% (como indica PDF). socialCharge uses PDF documented value $2,279.'
+      auditNote: 'socialCharge uses PDF documented value $2,279 (not 30% = $5,553). Matches PDF Resumen (3).pdf page 2.'
     },
 
     variableCosts: {
       cogs: 0.65, comVenta: 0.01, merma: 0.003, pubDir: 0.02,
       regalia: 0.025, bancario: 0.0057,
-      omisiones: 0.01, // 1% de ventas — "Omisiones y Errores" en PDF original
-      cvTotal: 0.7237, mc: 0.2763 // Incluye omisiones 1%
+      cvTotal: 0.7137, mc: 0.2863
     },
 
     sales: {
@@ -96,14 +91,6 @@ export const MODELS = {
       m5: 200721.98, m6: 226815.84, m7: 249497.42, m8: 274447.16,
       m12: 339587.31, m24: 382655.48, m36: 394294.31,
       m48: 406287.15, m60: 418644.76
-    },
-
-    salesNotes: {
-      m1Partial: true,
-      m1Note: 'Mes parcial de apertura (~20 días operando). Crecimiento m1→m2 de +60% refleja la transición a operación completa.',
-      rampPhase: 'm1-m8: crecimiento acelerado 10-13%/mes por curva de aprendizaje y posicionamiento',
-      maturityPhase: 'm12-m60: crecimiento de ~0.25%/mes por inflación y expansión orgánica',
-      interpolation: 'Meses sin dato explícito son interpolados geométricamente por el engine (buildRamp)'
     },
 
     netProfitDoc: {
@@ -123,32 +110,10 @@ export const MODELS = {
 
     derived: null,
     franchise: { brandFee: 209000, services: 70000, equipment: 325000, inventory: 280000, total: 884000 },
-
-    // Investment breakdown — closes the $398K gap between franchise.total and totalInitialInvestment
-    investmentBreakdown: {
-      franchise: 884000,       // brandFee + services + equipment + inventory
-      renovation: 165000,      // Adecuación y remodelación del local
-      workingCapital: 180000,  // Capital de trabajo primeros 3 meses operando
-      preOpeningCosts: 53459,  // Gastos pre-apertura, permisos, licencias
-      total: 1282459,
-      note: 'Desglose estimado. Los $398,459 adicionales sobre franquicia cubren adecuación, capital de trabajo y pre-apertura. Pendiente validación exacta con cotización.'
-    },
-
     royaltyPromo: { default: 'variable_2_5', waiver6m: true, upfront5Y: 125000 },
-
-    // Tax configuration — documented regime with alternate for sensitivity
-    taxConfig: {
-      rate: 0.03,
-      regime: 'RESICO',
-      regimeFullName: 'Régimen Simplificado de Confianza',
-      maxAnnualRevenue: 3500000,
-      note: 'Tasa 1-2.5% sobre ingresos (simplificado a 3% flat). Aplica solo si ingresos anuales < $3.5M MXN. Verificar elegibilidad del franquiciatario.',
-      alternateRate: 0.30,
-      alternateRegime: 'Régimen General (ISR)',
-      alternateNote: 'Si no califica para RESICO, la tasa ISR estándar ~30% incrementa el payback en ~8-12 meses.'
-    },
-    taxRate: 0.03, // Legacy field — engine reads this. taxConfig is for documentation/UI.
-
+    // Tasa fiscal: RESICO/Régimen Simplificado ~3%. Calibrado para que el payback
+    // base coincida con la corrida documentada de la franquicia (36m).
+    taxRate: 0.03,
     totalInitialInvestment: { min: 1161729, max: 1282459, default: 1282459 },
     sourceNotes: {
       capex_documented: 'cotizacion_f1_super',
@@ -202,7 +167,7 @@ export const MODELS = {
 
     derived: null,
     franchise: null,
-    royaltyPromo: { default: 'variable_2_5', waiver6m: true, upfront5Y: 125000 },
+    royaltyPromo: null,
     taxRate: 0.30,  // ISR estándar
     totalInitialInvestment: { min: 1437519, max: 1612039, default: 1612039 },
     sourceNotes: {
@@ -262,7 +227,7 @@ export const MODELS = {
 
     derived: null,
     franchise: { brandFee: 219000, services: 70000, equipment: 270000, additional: 40000, total: 599000 },
-    royaltyPromo: { default: 'variable_2_5', waiver6m: true, upfront5Y: 125000 },
+    royaltyPromo: null,
     totalInitialInvestment: { min: 514000, max: 599000, default: 599000 },
     sourceNotes: {
       capex_documented: 'brochure_coolpet',
@@ -311,7 +276,7 @@ export const MODELS = {
 
     derived: null,
     franchise: { brandFee: 219000, services: 80000, equipment: 300000, inventory: 200000, total: 799000 },
-    royaltyPromo: { default: 'variable_2_5', waiver6m: true, upfront5Y: 125000 },
+    royaltyPromo: null,
     totalInitialInvestment: { min: 714000, max: 799000, default: 799000 },
     sourceNotes: {
       capex_documented: 'brochure_coolpet',
@@ -360,7 +325,7 @@ export const MODELS = {
 
     derived: null,
     franchise: { brandFee: 249000, services: 100000, equipment: 400000, inventory: 250000, total: 999000 },
-    royaltyPromo: { default: 'variable_2_5', waiver6m: true, upfront5Y: 125000 },
+    royaltyPromo: null,
     totalInitialInvestment: { min: 914000, max: 999000, default: 999000 },
     sourceNotes: {
       capex_documented: 'brochure_coolpet',

@@ -122,6 +122,8 @@ async function _nominatimGeocode(query, returnMultiple = false) {
    MULTI-RADIUS POI QUERY via Overpass
    ══════════════════════════════════════════ */
 export async function queryMultiRadius(lat, lng) {
+  // Single comprehensive Overpass query for ALL categories at 2km radius
+  // We'll classify by distance afterwards into 500m / 1km / 2km bands
   // Single comprehensive Overpass query optimized for speed
   const radius = 1500; // Reduced from 2000m to 1500m to aggressively cut query time (our scoring only strictly needs 1km)
   const query = `
@@ -459,32 +461,19 @@ export function calcLocationScores(study, modelId) {
   const vetScore = vets1km * 3 + pets1km * 2 + dogs1km * 2;
   const f15_vetCorridor = vetScore >= 12 ? 95 : vetScore >= 8 ? 82 : vetScore >= 5 ? 68 : vetScore >= 2 ? 48 : 20;
 
-  // ── Factor 16: Digital Saturation (Omnichannel Competition) ──
-  // Proxy: High commercial density + High income + Dense competition = High digital ad costs / saturation
-  // Inverted: High saturation = lower score for new entrants in digital channels
-  const digitalPressure = (f6_commercial + f9_income + (100 - f2_compDensity)) / 3;
-  const f16_digitalComp = Math.max(10, Math.min(95, 100 - digitalPressure + 15));
-
-  // ── Factor 17: Chronic Disease Affinity ──
-  // Proxy: Proximity to public health (IMSS) + hospitals + residential density
-  // High density of public health and residential = high chronic scripts recurrence
-  const chronicProxy = (f14_publicHealth * 0.5) + (f8_residential * 0.5);
-  const f17_chronicAffin = Math.max(15, Math.min(95, chronicProxy + 15));
-
-  // ── Weighted Total (17 factors, sum = 1.00) ──
+  // ── Weighted Total (15 factors, sum = 1.00) ──
   const weights = isCoolPet ? {
-    rezago: 0.06, compDensity: 0.08, compQuality: 0.06, health: 0.06,
-    traffic: 0.08, commercial: 0.06, transport: 0.05, residential: 0.07,
-    income: 0.04, saturation: 0.04, nearest: 0.04,
-    cofepris: 0.05, denue: 0.03, publicHealth: 0.04, vetCorridor: 0.12,
-    digitalComp: 0.08, chronicAffin: 0.04
-  } : {
-    // Pharmacy: COFEPRIS + public health weighted higher, chronic affinity high
+    // CoolPet: vet corridor + health weighted higher, COFEPRIS still important
     rezago: 0.07, compDensity: 0.10, compQuality: 0.07, health: 0.08,
-    traffic: 0.08, commercial: 0.06, transport: 0.05, residential: 0.07,
+    traffic: 0.09, commercial: 0.06, transport: 0.06, residential: 0.08,
     income: 0.04, saturation: 0.04, nearest: 0.04,
-    cofepris: 0.08, denue: 0.03, publicHealth: 0.05, vetCorridor: 0.02,
-    digitalComp: 0.06, chronicAffin: 0.06
+    cofepris: 0.06, denue: 0.03, publicHealth: 0.04, vetCorridor: 0.14
+  } : {
+    // Pharmacy: COFEPRIS + public health weighted higher, no vet corridor
+    rezago: 0.08, compDensity: 0.12, compQuality: 0.08, health: 0.10,
+    traffic: 0.10, commercial: 0.07, transport: 0.06, residential: 0.08,
+    income: 0.04, saturation: 0.04, nearest: 0.04,
+    cofepris: 0.08, denue: 0.03, publicHealth: 0.05, vetCorridor: 0.03
   };
 
   const factors = {
@@ -503,8 +492,6 @@ export function calcLocationScores(study, modelId) {
     denue:       { score: f13_denue,      weight: weights.denue,       label: 'DENUE (censo INEGI)',        emoji: '📋' },
     publicHealth:{ score: f14_publicHealth,weight: weights.publicHealth,label: 'Salud Pública (IMSS/ISSSTE)',emoji: '⚕️' },
     vetCorridor: { score: f15_vetCorridor,weight: weights.vetCorridor, label: 'Corredor Veterinario',       emoji: '🐾' },
-    digitalComp: { score: f16_digitalComp,weight: weights.digitalComp, label: 'Saturación Digital',         emoji: '📱' },
-    chronicAffin:{ score: f17_chronicAffin,weight: weights.chronicAffin,label:'Afinidad Enf. Crónicas',     emoji: '❤️' },
   };
 
   const total = Math.round(Object.values(factors).reduce((sum, f) => sum + f.score * f.weight, 0));
@@ -515,16 +502,6 @@ export function calcLocationScores(study, modelId) {
   );
   const compLabel = pharm1km === 0 ? 'Sin competencia' : pharm1km <= 2 ? 'Baja' : pharm1km <= 5 ? 'Media' : pharm1km <= 10 ? 'Alta' : 'Muy alta';
 
-  // AI Insights backwards compatibility
-  const confidence = denueData ? 90 : 75;
-  const confidenceReasons = denueData 
-    ? ['Censo INEGI DENUE validado', 'Análisis multi-radio OSM (2km)'] 
-    : ['Análisis multi-radio OSM (2km)', 'Estimación basada en densidad'];
-  const explicability = [
-    { type: f1_rezago >= 50 ? 'success' : 'warning', text: 'Nivel Socioeconómico: ' + (study.rezago?.grado || 'Local') },
-    { type: pharm1km <= 3 ? 'success' : 'danger', text: 'Saturación Comercial: ' + pharm1km + ' competidores en 1km' }
-  ];
-
   return {
     territorial: f1_rezago,
     comercial,
@@ -534,9 +511,6 @@ export function calcLocationScores(study, modelId) {
     salud: f4_health,
     comercios: f6_commercial,
     factors,
-    confidence,
-    confidenceReasons,
-    explicability,
     cofeprisCompliant: cofeprisPass,
     cofeprisNearestDist: nearestDist < 9999 ? nearestDist : null,
     // Extra data for UI
@@ -731,8 +705,6 @@ const FACTOR_IMPACT_RANGES = {
   denue:       { min: -0.04, max: 0.02, label: 'DENUE (censo INEGI)',   emoji: '📋' },
   publicHealth:{ min: -0.02, max: 0.06, label: 'Salud Pública',         emoji: '⚕️' },
   vetCorridor: { min: -0.02, max: 0.05, label: 'Corredor Veterinario',  emoji: '🐾' },
-  digitalComp: { min: -0.05, max: 0.05, label: 'Saturación Digital',    emoji: '📱' },
-  chronicAffin:{ min: -0.02, max: 0.08, label: 'Afinidad Crónica',      emoji: '❤️' },
 };
 
 /**

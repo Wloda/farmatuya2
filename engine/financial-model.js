@@ -45,15 +45,10 @@ export function calcFixedCostBreakdown(fc) {
 }
 
 /* ── Variable Cost Rate ── */
-export function calcVarRate(vc, royaltyMode, month, preOpeningMonths=0, waiverFromOpening=false) {
+export function calcVarRate(vc, royaltyMode, month) {
   let r = vc.cogs + vc.comVenta + vc.merma + vc.pubDir + vc.bancario;
-  // Omisiones y Errores: 1% of sales in documented Súper format (variable, not fixed)
-  r += (vc.omisiones || 0);
   if (!royaltyMode || royaltyMode==='variable_2_5') r += vc.regalia;
-  else if (royaltyMode==='condonacion_6m') {
-    const startWaiverAt = waiverFromOpening ? preOpeningMonths : 0;
-    if (month > startWaiverAt + 6) r += vc.regalia;
-  }
+  else if (royaltyMode==='condonacion_6m' && month>6) r += vc.regalia;
   // pago_unico: no royalty added
   return r;
 }
@@ -65,20 +60,11 @@ export function runProjection(modelId, overrides={}) {
 
   const fc = { ...model.fixedCosts, ...(overrides.fixedCosts||{}) };
   const vc = { ...model.variableCosts, ...(overrides.variableCosts||{}) };
-  
-  // Market Factor check
-  const applyMarketFactor = overrides.applyMarketFactor !== false; // Default true
-  let scenarioFactor = overrides.scenarioFactor || 1.0;
-  if (!applyMarketFactor) {
-    scenarioFactor = overrides.baseScenarioFactor || 1.0;
-  }
-
+  const scenarioFactor = overrides.scenarioFactor || 1.0;
   const royaltyMode = overrides.royaltyMode || (model.royaltyPromo ? model.royaltyPromo.default : 'variable_2_5');
   const horizonMonths = overrides.horizonMonths || 60;
   const taxRate = overrides.taxRate ?? model.taxRate ?? 0.30;
   const discountRate = overrides.discountRate || 0.12;
-  const preOpeningMonths = overrides.preOpenMonths || 0; // Renamed from preOpenMonths to preOpeningMonths for consistency with new param
-  const waiverFromOpening = overrides.waiverFromOpening || false;
 
   // Investment — uses per-branch override (worst case default)
   let totalInv;
@@ -94,16 +80,11 @@ export function runProjection(modelId, overrides={}) {
     totalInv += model.royaltyPromo.upfront5Y || 125000;
   }
 
-  // Partners (Safely map Spanish data contract to English engine contract)
-  const rawPartners = overrides.partners || [
+  // Partners
+  const partners = overrides.partners || [
     {name:'Socio 1',capital:1500000,equity:0.50},
     {name:'Socio 2',capital:1500000,equity:0.50}
   ];
-  const partners = rawPartners.map(p => ({
-    name: p.nombre || p.name,
-    capital: p.capitalAportado !== undefined ? p.capitalAportado : p.capital,
-    equity: p.porcentajeAcciones !== undefined ? p.porcentajeAcciones : p.equity
-  }));
   const totalCapital = partners.reduce((s,p)=>s+p.capital,0);
 
   // Ramp
@@ -112,14 +93,15 @@ export function runProjection(modelId, overrides={}) {
   const fcWithRent = { ...fc, rent: rentOverride };
 
   // Pre-opening months (capital deployed but store not yet open)
-  const totalMonths = preOpeningMonths + horizonMonths;
+  const preOpenMonths = overrides.preOpenMonths || 0;
+  const totalMonths = preOpenMonths + horizonMonths;
 
   const months = [];
   let cumCF = -totalInv, pbMonth = null;
   let taxLossPool = 0;  // Accumulated losses carried forward (tax shield)
 
   // Pre-opening phase: rent + partial costs, zero revenue
-  for (let p = 0; p < preOpeningMonths; p++) {
+  for (let p = 0; p < preOpenMonths; p++) {
     const m = p + 1;
     // During pre-opening: rent, services (m1-level), but no payroll/operations yet
     const preOpenCost = rentOverride + (fcWithRent.servPap?.m1 || 0);
@@ -130,46 +112,19 @@ export function runProjection(modelId, overrides={}) {
     months.push({ month: m, revenue: 0, cogs: 0, grossProfit: 0, totalFixedCosts: preOpenCost, variableCosts: 0, variableCostsExCogs: 0, ebitda, ebitdaMargin: 0, taxes: 0, netIncome: net, cashFlow: net, cumulativeCashFlow: cumCF, seasonFactor: 1, preOpen: true });
   }
 
-  // Extract Marketing & CAF Levers
-  const mkt = overrides.marketing || {};
-  const seoLocal = mkt.seoLocal || 0;
-  const ads = mkt.ads || 0;
-  const cofepris = mkt.cofepris || 0;
-  const loyaltyActive = mkt.loyalty || false;
-  
-  const caf = overrides.caf || {};
-  const maxConsultas = caf.consultas || 0;
-  const conversionCAF = caf.conversion || 0.40;
-  const ticketCAF = caf.ticket || 350;
-  
   // Operating phase
   for (let i=0; i<horizonMonths; i++) {
-    const m = preOpeningMonths + i + 1;
+    const m = preOpenMonths + i + 1;
     const opMonth = i + 1; // operating month (for ramp/fixed cost calc)
     const season = SEASONALITY[i%12];
-    
-    // Base revenue + CAF revenue (ramped up)
-    let baseRevenue = ramp[i] * season;
-    let cafRevenue = maxConsultas * conversionCAF * ticketCAF * Math.min(1, ramp[i] / (ramp[horizonMonths-1] || 1)) * season;
-    let revenue = baseRevenue + cafRevenue;
-    
-    // Loyalty Boost (+10% sales, but costs 2% of total sales)
-    if (loyaltyActive) revenue *= 1.10;
-    
-    // Fixed Costs + Marketing/Compliance
-    const cfTotal = calcFixedCosts(fcWithRent, opMonth) + seoLocal + ads + cofepris;
-    
+    const revenue = ramp[i] * season;
+    const cfTotal = calcFixedCosts(fcWithRent, opMonth);
     const varRate = calcVarRate(vc, royaltyMode, opMonth);
     const cogs = revenue * vc.cogs;
     const grossProfit = revenue - cogs;
-    
-    // Variable costs + Loyalty expense
-    let varCostsTotal = revenue * varRate;
-    if (loyaltyActive) varCostsTotal += (revenue * 0.02);
-    
+    const varCostsTotal = revenue * varRate;
     const varCostsExCogs = varCostsTotal - cogs;
     const ebitda = grossProfit - varCostsExCogs - cfTotal;
-    
     // Tax loss carryforward: losses offset future taxable income
     let taxes = 0;
     if (ebitda > 0) {

@@ -33,18 +33,6 @@
   [headers.values]
     Cache-Control = "public, max-age=2592000, immutable"
 
-# HTML — always revalidate (so updated query strings propagate immediately)
-[[headers]]
-  for = "/*.html"
-  [headers.values]
-    Cache-Control = "no-cache"
-
-[[headers]]
-  for = "/"
-  [headers.values]
-    Cache-Control = "no-cache"
-
-# Versioned assets — cache 24h (query strings handle invalidation)
 [[headers]]
   for = "/*.css"
   [headers.values]

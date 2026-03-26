@@ -7,20 +7,8 @@ import { MODELS, SCENARIOS } from '../data/model-registry.js?v=bw4';
 import { runProjection } from './financial-model.js?v=bw4';
 import { calcCombinedMarketFactor } from './location-engine.js?v=bw5';
 
-/* ── Projection Cache (P5 — avoid redundant M1-M60 recalculations) ── */
-const _projectionCache = new Map();
-const MAX_CACHE_SIZE = 20;
-
-function _cacheKey(branch, empresa) {
-  return branch.id + '|' + branch.scenarioId + '|' + JSON.stringify(branch.overrides || {}) + '|' +
-    (branch.locationStudy?.scores?.total ?? '') + '|' + (empresa.socios?.length ?? 0);
-}
-
 /* ── Single Branch Projection ── */
 export function runBranchProjection(branch, empresa) {
-  const key = _cacheKey(branch, empresa);
-  if (_projectionCache.has(key)) return _projectionCache.get(key);
-
   const sc = SCENARIOS[branch.scenarioId] || SCENARIOS.base;
   const model = MODELS[branch.format];
   if (!model) throw new Error('Unknown format: ' + branch.format);
@@ -45,13 +33,8 @@ export function runBranchProjection(branch, empresa) {
     overrides.scenarioFactor *= combinedFactor;
   }
 
-  // Partners come from empresa, not from branch (safely mapped for engine compat)
-  const rawPartners = empresa.socios || empresa.partners || [];
-  overrides.partners = rawPartners.map(p => ({
-    name: p.nombre || p.name,
-    capital: p.capitalAportado !== undefined ? p.capitalAportado : p.capital,
-    equity: p.porcentajeAcciones !== undefined ? p.porcentajeAcciones : p.equity
-  }));
+  // Partners come from empresa, not from branch
+  overrides.partners = empresa.partners;
 
   // Enforce 0 royalty if the project is not a franchise
   const proj = empresa.proyectos?.find(p => p.id === branch.proyectoId);
@@ -60,22 +43,12 @@ export function runBranchProjection(branch, empresa) {
     overrides.variableCosts.regalia = 0;
   }
 
-  const result = runProjection(branch.format, overrides);
-
-  // Store in cache (LRU eviction)
-  if (_projectionCache.size >= MAX_CACHE_SIZE) {
-    const firstKey = _projectionCache.keys().next().value;
-    _projectionCache.delete(firstKey);
-  }
-  _projectionCache.set(key, result);
-
-  return result;
+  return runProjection(branch.format, overrides);
 }
 
 /* ── Enterprise Consolidation ── */
 export function runConsolidation(empresa) {
-  const allBranches = empresa.branches || (empresa.proyectos?.flatMap(p => p.branches || []) || []);
-  const activeBranches = allBranches.filter(b => b.status !== 'paused' && b.status !== 'archived');
+  const activeBranches = empresa.branches.filter(b => b.status !== 'paused' && b.status !== 'archived');
 
   const branchResults = activeBranches.map(branch => ({
     branch,
@@ -123,16 +96,8 @@ export function runConsolidation(empresa) {
   // Total 5Y
   const totalNet60 = months.reduce((s, m) => s + m.netIncome, 0);
 
-  // Per-partner attribution (safely mapping Spanish data contract)
-  const rawPartners = empresa.socios || empresa.partners || [];
-  const mappedPartners = rawPartners.map(p => ({
-    id: p.id,
-    name: p.nombre || p.name,
-    capital: p.capitalAportado !== undefined ? p.capitalAportado : p.capital,
-    equity: p.porcentajeAcciones !== undefined ? p.porcentajeAcciones : p.equity
-  }));
-  
-  const perPartner = mappedPartners.map(p => ({
+  // Per-partner attribution
+  const perPartner = empresa.partners.map(p => ({
     id: p.id,
     name: p.name,
     equity: p.equity,
