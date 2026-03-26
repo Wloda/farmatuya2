@@ -3,44 +3,44 @@
 
 :root {
   /* ═══ NEUMORPHIC SURFACE SYSTEM ═══ */
-  --bg:#ECECEC;
-  --surface:#FFFFFF;
-  --surface-alt:#F5F5F5;
-  --raised:#FFFFFF;
+  --bg:#E0E5EC;
+  --surface:#E0E5EC;
+  --surface-alt:#E0E5EC;
+  --raised:#E0E5EC;
 
   /* Header System */
-  --header-bg:#FFFFFF;
-  --header-text:#0F172A;
-  --header-sub:#374151;
-  --nav-bg:#F3F3F3;
+  --header-bg:#E0E5EC;
+  --header-text:#31344B;
+  --header-sub:#4A4D6D;
+  --nav-bg:#E0E5EC;
 
-  /* ═══ NEUMORPHIC SHADOWS (subtle) ═══ */
-  --shadow-neu:2px 2px 5px #c8c8c8, -2px -2px 5px #ffffff;
-  --shadow-neu-sm:1px 1px 3px #c8c8c8, -1px -1px 3px #ffffff;
-  --shadow-neu-inset:inset 2px 2px 4px #d0d0d0, inset -2px -2px 4px #ffffff;
-  --shadow-neu-inset-sm:inset 1px 1px 2px #d0d0d0, inset -1px -1px 2px #ffffff;
-  --shadow-card:2px 2px 6px #c8c8c8, -2px -2px 6px #ffffff;
-  --shadow-card-hover:3px 3px 8px #c0c0c0, -3px -3px 8px #ffffff;
-  --shadow-hover:3px 3px 8px #c0c0c0, -3px -3px 8px #ffffff;
-  --shadow-active:inset 1px 1px 3px #c8c8c8, inset -1px -1px 3px #ffffff;
-  --shadow-lg:4px 4px 10px #c0c0c0, -4px -4px 10px #ffffff;
+  /* ═══ PURE NEUMORPHIC SHADOWS ═══ */
+  --shadow-neu:6px 6px 12px rgba(163,177,198,0.6), -6px -6px 12px rgba(255,255,255,0.8);
+  --shadow-neu-sm:4px 4px 8px rgba(163,177,198,0.5), -4px -4px 8px rgba(255,255,255,0.8);
+  --shadow-neu-inset:inset 4px 4px 8px rgba(163,177,198,0.6), inset -4px -4px 8px rgba(255,255,255,0.8);
+  --shadow-neu-inset-sm:inset 2px 2px 4px rgba(163,177,198,0.6), inset -2px -2px 4px rgba(255,255,255,0.8);
+  --shadow-card:9px 9px 16px rgba(163,177,198,0.5), -9px -9px 16px rgba(255,255,255,0.8);
+  --shadow-card-hover:12px 12px 20px rgba(163,177,198,0.6), -12px -12px 20px rgba(255,255,255,0.9);
+  --shadow-hover:6px 6px 12px rgba(163,177,198,0.6), -6px -6px 12px rgba(255,255,255,0.9);
+  --shadow-active:inset 3px 3px 6px rgba(163,177,198,0.6), inset -3px -3px 6px rgba(255,255,255,0.8);
+  --shadow-lg:12px 12px 24px rgba(163,177,198,0.6), -12px -12px 24px rgba(255,255,255,0.8);
 
   /* Modal/overlay shadow */
-  --shadow-modal:5px 5px 15px #c0c0c0, -5px -5px 15px #ffffff, 0 20px 40px -10px rgba(0,0,0,0.12);
+  --shadow-modal:16px 16px 32px rgba(163,177,198,0.7), -16px -16px 32px rgba(255,255,255,0.9), 0 20px 40px -10px rgba(0,0,0,0.12);
 
-  /* Text — dark on light (maximum contrast) */
-  --text-1:#0F172A;
-  --text-2:#1E293B;
-  --text-3:#334155;
+  /* Text — softer contrast for neumorphism */
+  --text-1:#31344B;
+  --text-2:#4A4D6D;
+  --text-3:#757993;
 
-  /* Accent — Corporate Green */
-  --accent:#4A5E28;
-  --accent-soft:rgba(74,94,40,0.08);
-  --accent2:#5F7833;
-  --accent-hover:#35441D;
-  --accent-glow:rgba(74,94,40,0.15);
+  /* Accent — Premium Soft Blue/Green */
+  --accent:#5A72A0;
+  --accent-soft:rgba(90, 114, 160, 0.1);
+  --accent2:#3E5879;
+  --accent-hover:#3E5879;
+  --accent-glow:rgba(90, 114, 160, 0.2);
 
-  /* Status Colors */
+  /* Status Colors (softened slightly) */
   --green:#10B981;
   --green-soft:rgba(16,185,129,0.1);
   --yellow:#F59E0B;
@@ -56,7 +56,7 @@
   --sem-positive:#10B981;
   --sem-negative:#EF4444;
   --sem-warning:#F59E0B;
-  --sem-neutral:#4A5E28;
+  --sem-neutral:#5A72A0;
 
   /* Typography Scale */
   --fs-kpi:1.125rem;
@@ -72,20 +72,20 @@
   --space-lg:16px;
   --space-xl:24px;
 
-  /* Borders — sharp for corporate look */
-  --border:#CBD5E1;
-  --border-hover:#94A3B8;
+  /* Borders — Soft white ridge */
+  --border:rgba(255,255,255,0.5);
+  --border-hover:rgba(163,177,198,0.4);
 
-  /* Card background — white for contrast */
-  --bg-card:#FFFFFF;
-  --bg-hover:#F5F5F5;
+  /* Card background — unified for neumorphism */
+  --bg-card:#E0E5EC;
+  --bg-hover:#E5EAF1;
 
-  /* Radii — compact corporate */
-  --r-xs:3px;
-  --r-sm:5px;
-  --r-md:8px;
-  --r-lg:10px;
-  --r-xl:12px;
+  /* Radii — Smooth and larger for neumorphism */
+  --r-xs:6px;
+  --r-sm:10px;
+  --r-md:14px;
+  --r-lg:18px;
+  --r-xl:24px;
 
   /* Fonts — DM Sans for UI, JetBrains Mono for data */
   --font:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
