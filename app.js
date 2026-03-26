@@ -820,7 +820,7 @@ function renderEmpresaDashboard(empresa){
   const erSel=$('empresa-royalty-select'); if(erSel) erSel.value = ov.royaltyMode || 'variable_2_5';
   const ewSel=$('empresa-waiver-select');  if(ewSel) ewSel.value = (ov.waiverFromOpening||false).toString();
   const epSel=$('empresa-preopen-select'); if(epSel) epSel.value = (ov.preOpenMonths||0).toString();
-  const emSel=$('empresa-market-toggle');  if(emSel) emSel.value = (ov.applyMarketFactor!==false).toString();
+  const emSel=$('empresa-market-toggle');  if(emSel) emSel.checked = ov.applyMarketFactor!==false;
   const esSel=$('empresa-scenario-select');if(esSel) esSel.value = (ov.baseScenarioFactor||1).toString();
 
   // Render project cards
@@ -3554,7 +3554,7 @@ async function renderConsolidated(empresa){
   const grSel=$('global-royalty-select'); if(grSel) grSel.value = ov.royaltyMode || 'variable_2_5';
   const gwSel=$('global-waiver-select');  if(gwSel) gwSel.value = (ov.waiverFromOpening||false).toString();
   const gpSel=$('global-preopen-select'); if(gpSel) gpSel.value = (ov.preOpenMonths||0).toString();
-  const gmSel=$('global-market-toggle');  if(gmSel) gmSel.value = (ov.applyMarketFactor!==false).toString();
+  const gmSel=$('global-market-toggle');  if(gmSel) gmSel.checked = ov.applyMarketFactor!==false;
   const gsSel=$('global-scenario-select');if(gsSel) gsSel.value = (ov.baseScenarioFactor||1).toString();
 
   // Enterprise KPI Strip (compact, matching Resultados style)
