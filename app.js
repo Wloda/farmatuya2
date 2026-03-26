@@ -1963,15 +1963,9 @@ async function renderBranchDetail(empresa){
   if(!branch){state.view='portfolio';renderCurrentView();return;}
   await ensureChartJS();
 
-  const overrides={...branch.overrides};
   const sc=SCENARIOS[branch.scenarioId]||SCENARIOS.base;
-  if(sc.rentAdj&&sc.rentAdj!==1) overrides.rent=(overrides.fixedCosts?.rent||MODELS[branch.format].fixedCosts.rent)*sc.rentAdj;
-  if(sc.mermaAdj){const vc={...(overrides.variableCosts||MODELS[branch.format].variableCosts)};vc.merma=(vc.merma||MODELS[branch.format].variableCosts.merma)+sc.mermaAdj;overrides.variableCosts=vc;}
-  overrides.scenarioFactor=(sc.factor||1)*(overrides.scenarioFactor||1);
-  overrides.royaltyMode=overrides.royaltyMode||(MODELS[branch.format].royaltyPromo?MODELS[branch.format].royaltyPromo.default:'variable_2_5');
-  overrides.partners=empresa.partners;
-
-  const r=runProjection(branch.format,overrides);
+  const r=runBranchProjection(branch, empresa);
+  const overrides=r._overridesUsed || branch.overrides;
   const model=MODELS[branch.format];
 
   // Compact context line
@@ -2645,8 +2639,7 @@ window._exportPnL = function() {
   const branch = getBranch(state.activeBranchId);
   if (!branch) return;
   const empresa = getActiveEmpresa ? getActiveEmpresa() : getEmpresa();
-  const overrides = {...branch.overrides};
-  const r = runProjection(branch.format, overrides);
+  const r = runBranchProjection(branch, empresa);
   if (!r || !r.months) { showToast('Sin datos para exportar', 'error'); return; }
   const headers = ['Mes','Venta','COGS','Ut.Bruta','Costos Fijos','Costos Variables','EBITDA','Impuestos','Ut.Neta','Flujo Acumulado'];
   const rows = r.months.map(m => [

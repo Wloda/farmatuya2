@@ -44,7 +44,9 @@ export function runBranchProjection(branch, empresa) {
     overrides.variableCosts.regalia = 0;
   }
 
-  return runProjection(branch.format, overrides);
+  const result = runProjection(branch.format, overrides);
+  result._overridesUsed = overrides;
+  return result;
 }
 
 /* ── Enterprise Consolidation ── */
