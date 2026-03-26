@@ -352,6 +352,7 @@ export function updateEmpresa(updates) {
   if (emp) {
     if (updates.name !== undefined) emp.name = updates.name;
     if (updates.logo !== undefined) emp.logo = updates.logo;
+    if (updates.settings !== undefined) emp.settings = updates.settings;
   }
   
   if (proj) {
@@ -359,6 +360,7 @@ export function updateEmpresa(updates) {
     if (updates.totalCapital !== undefined) proj.totalCapital = updates.totalCapital;
     if (updates.corporateReserve !== undefined) proj.corporateReserve = updates.corporateReserve;
     if (updates.corporateExpenses !== undefined) proj.corporateExpenses = updates.corporateExpenses;
+    if (updates.overrides !== undefined) proj.overrides = updates.overrides;
   }
   
   _save();
