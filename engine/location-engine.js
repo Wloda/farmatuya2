@@ -17,6 +17,8 @@ import { googleGeocode, isGoogleMapsLoaded, getGoogleApiKey } from './google-pla
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const OVERPASS_URLS = [
   'https://overpass-api.de/api/interpreter',
+  'https://lz4.overpass-api.de/api/interpreter',
+  'https://z.overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter'
 ];
 
@@ -179,32 +181,51 @@ export async function queryMultiRadius(lat, lng) {
     out center body;
   `;
 
-  // P6: Race all Overpass servers in parallel (fastest wins)
+  // P6: Query Overpass servers sequentially with timeout (fixes 429 and "All servers failed")
   let data = null;
   let lastError = null;
-  const TIMEOUT_MS = 8000;
-  try {
-    data = await Promise.any(OVERPASS_URLS.map(async url => {
+  const TIMEOUT_MS = 10000;
+  
+  for (const url of OVERPASS_URLS) {
+    try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-      try {
-        const resp = await fetch(url, {
-          method: 'POST',
-          body: 'data=' + encodeURIComponent(query),
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          signal: controller.signal
-        });
-        clearTimeout(timer);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        return await resp.json();
-      } catch (e) {
-        clearTimeout(timer);
-        throw e;
+      
+      const resp = await fetch(url, {
+        method: 'POST',
+        body: 'data=' + encodeURIComponent(query),
+        headers: { 
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
+        },
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+
+      if (!resp.ok) {
+        if (resp.status === 429) {
+          console.warn(`[LocationEngine] Overpass 429 Rate Limit en ${url}, intentando el siguiente...`);
+          lastError = `Rate limit on ${url}`;
+          continue;
+        }
+        throw new Error(`HTTP ${resp.status}`);
       }
-    }));
-  } catch (e) {
-    lastError = `All Overpass servers failed: ${e.message}`;
+      
+      const json = await resp.json();
+      if (json && json.elements) {
+        data = json;
+        console.log(`[LocationEngine] Overpass data obtained via ${url}`);
+        break; // Success
+      } else {
+        throw new Error('No elements array in response');
+      }
+    } catch (e) {
+      lastError = `Failed at ${url}: ${e.message}`;
+      console.warn(`[LocationEngine] ${lastError}`);
+      continue;
+    }
   }
+
   if (!data) throw new Error(lastError || 'All Overpass servers failed');
   const elements = data.elements || [];
 
