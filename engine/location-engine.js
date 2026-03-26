@@ -518,6 +518,16 @@ export function calcLocationScores(study, modelId) {
   );
   const compLabel = pharm1km === 0 ? 'Sin competencia' : pharm1km <= 2 ? 'Baja' : pharm1km <= 5 ? 'Media' : pharm1km <= 10 ? 'Alta' : 'Muy alta';
 
+  // AI Insights backwards compatibility
+  const confidence = denueData ? 90 : 75;
+  const confidenceReasons = denueData 
+    ? ['Censo INEGI DENUE validado', 'Análisis multi-radio OSM (2km)'] 
+    : ['Análisis multi-radio OSM (2km)', 'Estimación basada en densidad'];
+  const explicability = [
+    { type: f1_rezago >= 50 ? 'success' : 'warning', text: 'Nivel Socioeconómico: ' + (study.rezago?.grado || 'Local') },
+    { type: pharm1km <= 3 ? 'success' : 'danger', text: 'Saturación Comercial: ' + pharm1km + ' competidores en 1km' }
+  ];
+
   return {
     territorial: f1_rezago,
     comercial,

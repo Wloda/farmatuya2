@@ -8,7 +8,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Libraries loaded ON DEMAND by app.js helpers (ensureChartJS, ensureLeaflet, ensurePDFLibs) -->
   <!-- Google Maps loaded dynamically by engine/google-places.js -->
   <script>
@@ -158,13 +158,14 @@
   <header id="app-header">
     <div class="header-left">
       <button class="header-home-btn" id="btn-bw2-home" title="Inicio BW²"><svg class="header-bw2-logo" id="bw2-default-logo" viewBox="0 0 48 32" width="48" height="32"><text x="2" y="24" font-family="Inter,sans-serif" font-weight="900" font-size="22" fill="#1A1A1A">BW</text><text x="36" y="16" font-family="Inter,sans-serif" font-weight="700" font-size="10" fill="#6B7A2E">²</text></svg><img id="bw2-custom-logo" src="" alt="Logo" style="display:none;height:28px;max-width:120px;object-fit:contain"></button>
-      <button class="btn-edit-platform-logo" id="btn-edit-platform-logo" title="Cambiar logo">📷</button>
-      <input type="file" id="bw2-platform-logo-input" accept="image/jpeg,image/png,image/webp,image/svg+xml" style="display:none">
       <img src="" alt="" class="header-logo" style="display:none">
       <nav class="header-breadcrumb" id="header-breadcrumb"></nav>
     </div>
     <div class="header-center" id="enterprise-header-info"></div>
-    <div class="header-right">
+    <div class="header-right" style="display:flex;align-items:center;gap:1rem;">
+      <button class="btn-sm" title="Actualizar Todos los Estudios de Mercado" id="global-refresh-loc-btn" style="background:linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.06);color:var(--text-1);cursor:pointer;display:flex;align-items:center;gap:0.5rem;padding:0.45rem 1rem;border-radius:24px;font-size:0.8rem;transition:all 0.2s ease">
+        <span style="display:flex;align-items:center;color:var(--accent)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-10.26l3.08 2.69"/></svg></span> <span style="font-weight:600;letter-spacing:-0.01em">Actualizar Mercado</span> <kbd style="font-family:monospace;background:var(--bg-card);padding:0.15rem 0.4rem;border-radius:4px;font-size:0.65rem;font-weight:700;color:var(--text-3);border:1px solid var(--border);margin-left:0.2rem">↻</kbd>
+      </button>
       <button class="profile-avatar-btn" id="btn-open-profile" title="Mi Perfil">
         <span class="profile-avatar-initials" id="profile-avatar-initials">👤</span>
         <img class="profile-avatar-img" id="profile-avatar-img" src="" alt="" style="display:none">
@@ -249,7 +250,7 @@
     </section>
 
     <!-- ═══ PORTFOLIO VIEW (Level 3: Proyecto) ═══ -->
-    <section id="view-portfolio">
+    <section id="view-portfolio" style="display:none">
       <div id="portfolio-summary" class="bw2-global-summary" style="display:none;margin-bottom:0.75rem"></div>
       <div class="view-header"><h2 id="portfolio-title">Sucursales de Proyecto</h2><p>Haz clic en 📊 <strong>Ver</strong> para explorar los detalles de cada sucursal</p></div>
       <div class="portfolio-grid" id="portfolio-grid"></div>
@@ -356,6 +357,9 @@
               <option value="pago_unico">💰 Pago Único</option>
             </select>
           </div>
+          <div class="filter-bar-group" style="margin-left:auto">
+            <button class="btn-sm" title="Descargar flujo completo a 60 meses en formato CSV" style="background:var(--surface);border:1px solid var(--border);color:var(--text-2);cursor:pointer;display:flex;align-items:center;gap:0.4rem;height:32px;transition:all 0.2s;font-weight:600" onclick="if(window._exportPnL) window._exportPnL()"><span>📥</span> P&L 60m (CSV)</button>
+          </div>
         </div>
         <div class="edit-layout-toolbar" id="toolbar-branch-resultados" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:1rem">
@@ -363,35 +367,39 @@
              <span style="font-size:0.85rem;color:var(--text-2)">Arrastra las tarjetas para reordenarlas. Usa ← → para ancho y ↑ ↓ para alto.</span>
           </div>
           <div style="display:flex;gap:0.5rem">
+             <div style="display:flex;align-items:center;gap:0.4rem;background:var(--surface);padding:0.3rem 0.6rem;border-radius:var(--r-md);border:1px solid var(--border)">
+               <input type="checkbox" id="market-master-switch" style="cursor:pointer">
+               <label for="market-master-switch" style="font-size:0.65rem;font-weight:600;color:var(--text-2);cursor:pointer" title="Activa o desactiva el impacto del estudio de mercado sobre las ventas estimadas.">Aplicar Estudio de Mercado</label>
+             </div>
              <button class="btn-sm primary btn-save-layout" data-target="branch-resultados">Guardar Layout</button>
           </div>
         </div>
 
         <div class="kpi-strip" id="branch-kpi-strip">
-          <div class="kpi-strip-item" title="Ventas mínimas para cubrir costos (punto de equilibrio)">
-            <span class="kpi-strip-label">Pto. Equilibrio</span>
+          <div class="kpi-strip-item">
+            <span class="kpi-strip-label">Pto. Equilibrio <span class="kpi-help">?<span class="kpi-tip">Ventas mínimas mensuales para no perder dinero. Si vendes menos que esto, la sucursal opera a pérdida.</span></span></span>
             <span class="kpi-strip-value" id="branch-kpi-equilibrio">-</span>
             <span class="kpi-strip-detail" id="kpi-be-pct"></span>
           </div>
           <div class="kpi-strip-divider"></div>
-          <div class="kpi-strip-item" title="EBITDA promedio mensual estabilizado">
-            <span class="kpi-strip-label">Ganancia / Mes</span>
+          <div class="kpi-strip-item">
+            <span class="kpi-strip-label">Ganancia / Mes <span class="kpi-help">?<span class="kpi-tip">Lo que gana la sucursal cada mes después de pagar todos los costos operativos (EBITDA). Es tu utilidad real mensual.</span></span></span>
             <span class="kpi-strip-value" id="branch-kpi-profit">-</span>
           </div>
           <div class="kpi-strip-divider"></div>
-          <div class="kpi-strip-item" title="Meses estimados para recuperar la inversión total">
-            <span class="kpi-strip-label">Recuperación</span>
+          <div class="kpi-strip-item">
+            <span class="kpi-strip-label">Recuperación <span class="kpi-help">?<span class="kpi-tip">Cuántos meses necesitas para recuperar toda tu inversión inicial. Menor es mejor. Óptimo: menos de 24 meses.</span></span></span>
             <span class="kpi-strip-value" id="branch-kpi-payback">-</span>
             <span class="kpi-strip-detail" id="kpi-payback-sub"></span>
           </div>
           <div class="kpi-strip-divider"></div>
-          <div class="kpi-strip-item" title="Retorno sobre inversión en los primeros 12 meses">
-            <span class="kpi-strip-label">ROI 12m</span>
+          <div class="kpi-strip-item">
+            <span class="kpi-strip-label">ROI 12m <span class="kpi-help">?<span class="kpi-tip">Porcentaje de tu dinero que recuperas en el primer año. Si es positivo, ya estás ganando desde el año 1.</span></span></span>
             <span class="kpi-strip-value" id="kpi-roi-value">-</span>
           </div>
           <div class="kpi-strip-divider"></div>
-          <div class="kpi-strip-item" title="Factor de ajuste basado en el estudio de ubicación">
-            <span class="kpi-strip-label">Factor Mercado</span>
+          <div class="kpi-strip-item">
+            <span class="kpi-strip-label">Factor Mercado <span class="kpi-help">?<span class="kpi-tip">Multiplicador basado en la ubicación real. Analiza competencia, densidad poblacional y tráfico. 1.0 = sin ajuste.</span></span></span>
             <span class="kpi-strip-value" id="branch-kpi-factor" style="color:var(--text-2)">—</span>
             <span class="kpi-strip-detail" id="kpi-factor-label"></span>
           </div>
@@ -400,7 +408,7 @@
         <!-- ═══ COLLAPSIBLE SECTION: Flujo de Caja ═══ -->
         <details class="res-section" open>
           <summary class="res-section-header">
-            <span class="res-section-icon">💰</span>
+            <span class="res-section-icon" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:var(--accent)"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 100 4h4v-4z"/></svg></span>
             <span class="res-section-title">Flujo de Caja</span>
             <span class="res-section-chevron">▾</span>
           </summary>
@@ -414,7 +422,7 @@
             <div class="consol-table-col">
               <div class="dash-card visible">
                 <h3 class="section-title" style="margin-bottom:0.5rem">Estructura de Costos</h3>
-                <div class="chart-box" style="height:200px"><canvas id="chart-branch-costs-main"></canvas></div>
+                <div class="chart-box"><canvas id="chart-branch-costs-main"></canvas></div>
                 <div id="cost-donut-legend" class="donut-legend"></div>
               </div>
             </div>
@@ -428,7 +436,7 @@
         <!-- ═══ COLLAPSIBLE SECTION: Checklist & Alertas ═══ -->
         <details class="res-section" open>
           <summary class="res-section-header">
-            <span class="res-section-icon">✅</span>
+            <span class="res-section-icon" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:var(--green)"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
             <span class="res-section-title">Checklist y Alertas</span>
             <span class="res-section-chevron">▾</span>
           </summary>
@@ -447,7 +455,7 @@
         <!-- Collapsible Sub-sections for Detailed Results -->
         <details class="res-section" open>
           <summary class="res-section-header">
-            <span class="res-section-icon">📊</span>
+            <span class="res-section-icon" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:var(--accent)"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
             <span class="res-section-title">Análisis Detallado</span>
             <span class="res-section-chevron">▾</span>
           </summary>
@@ -859,38 +867,27 @@
     </section>
   </main>
 
-  <!-- ═══ ADD BRANCH MODAL ═══ -->
-  <div class="modal-overlay" id="modal-add-branch" style="display:none">
-    <div class="modal-card">
-      <h3>Nueva Sucursal</h3>
-      <div class="modal-field">
-        <label>Formato</label>
-        <select id="modal-add-format" class="input-select">
-          <optgroup label="FarmaTuya">
-            <option value="express">⚡ Express</option>
-            <option value="super">🏪 Súper</option>
-            <option value="integral">🏥 Integral</option>
-          </optgroup>
-          <optgroup label="CoolPet">
-            <option value="coolpet_estetica">🐾 CoolPet Estética</option>
-            <option value="coolpet_farmaspot">🐕 CoolPet Farma Spot</option>
-            <option value="coolpet_farmavet">🏥 CoolPet Farma Vet</option>
-          </optgroup>
-        </select>
+  <!-- ═══ STEP-BY-STEP WIZARD MODAL ═══ -->
+  <div class="modal-overlay" id="modal-wizard" style="display:none">
+    <div class="modal-card modal-wizard-card">
+      <div class="wizard-header">
+        <h3 id="wizard-title">Nueva Entidad</h3>
+        <div class="wizard-progress" id="wizard-progress">
+          <!-- Step dots injected via JS -->
+        </div>
       </div>
-      <div class="modal-field">
-        <label>Nombre</label>
-        <input type="text" id="modal-add-name" class="input-text" placeholder="Sucursal Centro">
+      
+      <div class="wizard-body" id="wizard-body">
+        <!-- Step content inside .wizard-step injected/toggled via JS -->
       </div>
-      <div class="modal-field">
-        <label>📍 Dirección / Colonia</label>
-        <input type="text" id="modal-add-colonia" class="input-text" placeholder="Ej: Col. Roma Norte, CDMX" autocomplete="off">
-        <div class="colonia-suggestions" id="modal-add-suggestions"></div>
-        <div id="modal-add-colonia-status" class="colonia-status"></div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-sm" onclick="window._closeModal()">Cancelar</button>
-        <button class="btn-sm primary" onclick="window._confirmAddBranch()">Crear</button>
+      
+      <div class="modal-actions wizard-actions">
+        <button class="btn-sm" id="wizard-btn-cancel">Cancelar</button>
+        <div class="wizard-nav-buttons" style="display:flex;gap:0.5rem">
+          <button class="btn-sm" id="wizard-btn-prev" style="display:none">← Atrás</button>
+          <button class="btn-sm primary" id="wizard-btn-next">Siguiente →</button>
+          <button class="btn-sm primary" id="wizard-btn-finish" style="display:none">Crear ✨</button>
+        </div>
       </div>
     </div>
   </div>
@@ -959,6 +956,15 @@
           <label for="profile-email">Correo electrónico</label>
           <input type="email" class="input-text" id="profile-email" placeholder="tu@correo.com">
           <small id="profile-email-error" style="display:none;color:#dc2626;font-weight:600;font-size:0.7rem"></small>
+        </div>
+        <!-- Workspace Logo (moved from header) -->
+        <div class="bw2-form-group" style="padding-top:0.5rem; border-top:1px solid var(--border); margin-top:0.5rem">
+          <label>Logo de Workspace</label>
+          <div style="display:flex; align-items:center; gap:1rem">
+            <button class="btn-secondary btn-sm" id="btn-edit-platform-logo">📷 Subir Logo Personalizado</button>
+            <input type="file" id="bw2-platform-logo-input" accept="image/jpeg,image/png,image/webp,image/svg+xml" style="display:none">
+            <span style="font-size:0.7rem; color:var(--text-3)">Formatos recomendados: PNG, SVG (transparente)</span>
+          </div>
         </div>
         <!-- Change Password -->
         <details class="profile-pwd-section" id="profile-pwd-section">

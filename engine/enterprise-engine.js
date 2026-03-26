@@ -74,7 +74,8 @@ export function runBranchProjection(branch, empresa) {
 
 /* ── Enterprise Consolidation ── */
 export function runConsolidation(empresa) {
-  const activeBranches = empresa.branches.filter(b => b.status !== 'paused' && b.status !== 'archived');
+  const allBranches = empresa.branches || (empresa.proyectos?.flatMap(p => p.branches || []) || []);
+  const activeBranches = allBranches.filter(b => b.status !== 'paused' && b.status !== 'archived');
 
   const branchResults = activeBranches.map(branch => ({
     branch,

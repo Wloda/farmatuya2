@@ -144,7 +144,7 @@ export function runProjection(modelId, overrides={}) {
   
   // Operating phase
   for (let i=0; i<horizonMonths; i++) {
-    const m = preOpenMonths + i + 1;
+    const m = preOpeningMonths + i + 1;
     const opMonth = i + 1; // operating month (for ramp/fixed cost calc)
     const season = SEASONALITY[i%12];
     
