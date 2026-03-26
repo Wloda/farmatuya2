@@ -15,9 +15,13 @@ import { lookupRezago } from '../data/coneval-rezago.js';
 import { googleGeocode, isGoogleMapsLoaded, getGoogleApiKey } from './google-places.js';
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+
 const OVERPASS_URLS = [
+  'https://lz4.overpass-api.de/api/interpreter',
+  'https://z.overpass-api.de/api/interpreter',
   'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter'
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  'https://overpass.osm.ch/api/interpreter'
 ];
 
 /* ══════════════════════════════════════════════════
