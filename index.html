@@ -166,6 +166,13 @@
       <button class="btn-sm" title="Actualizar Todos los Estudios de Mercado" id="global-refresh-loc-btn" style="background:linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.06);color:var(--text-1);cursor:pointer;display:flex;align-items:center;gap:0.5rem;padding:0.45rem 1rem;border-radius:24px;font-size:0.8rem;transition:all 0.2s ease">
         <span style="display:flex;align-items:center;color:var(--accent)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-10.26l3.08 2.69"/></svg></span> <span style="font-weight:600;letter-spacing:-0.01em">Actualizar Mercado</span> <kbd style="font-family:monospace;background:var(--bg-card);padding:0.15rem 0.4rem;border-radius:4px;font-size:0.65rem;font-weight:700;color:var(--text-3);border:1px solid var(--border);margin-left:0.2rem">↻</kbd>
       </button>
+      <div style="display:flex;align-items:center;background:var(--surface);padding:0.4rem 0.8rem;border-radius:24px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+        <label class="iva-toggle" title="Multiplicar los montos monetarios por 1.16 para ver con IVA" style="margin:0;font-size:0.75rem;font-weight:600">
+           <input type="checkbox" id="toggle-iva">
+           <span class="iva-slider"></span>
+           <span class="iva-label" id="iva-label" style="margin-left:0.4rem;color:var(--text-1)">Sin IVA</span>
+        </label>
+      </div>
       <button class="profile-avatar-btn" id="btn-open-profile" title="Mi Perfil">
         <span class="profile-avatar-initials" id="profile-avatar-initials">👤</span>
         <img class="profile-avatar-img" id="profile-avatar-img" src="" alt="" style="display:none">
@@ -194,56 +201,6 @@
         <div>
           <h2 id="empresa-dash-title">Empresa</h2>
           <p>Selecciona un proyecto para ver las sucursales</p>
-        </div>
-        <div class="dinamismo-panel" style="display:flex;flex-wrap:wrap;gap:0.75rem;background:var(--bg);padding:0.75rem 1rem;border-radius:var(--r-md);border:1px solid var(--border);box-shadow:var(--shadow-sm)">
-          <!-- Retención -->
-          <div style="display:flex;flex-direction:column;gap:0.25rem">
-            <span style="font-size:0.65rem;font-weight:700;color:var(--text-3);text-transform:uppercase">Retención / Regalía</span>
-            <select id="empresa-royalty-select" class="dyn-select">
-              <option value="variable_2_5" selected>💳 Variable 2.5%</option>
-              <option value="condonacion_6m">🎁 Condonación 6m</option>
-              <option value="pago_unico">💰 Pago Único a 5 años</option>
-            </select>
-          </div>
-          <!-- Waiver Start -->
-          <div style="display:flex;flex-direction:column;gap:0.25rem">
-            <span style="font-size:0.65rem;font-weight:700;color:var(--text-3);text-transform:uppercase">Inicio Condonación</span>
-            <select id="empresa-waiver-select" class="dyn-select">
-              <option value="false" selected>Ingreso de Capital</option>
-              <option value="true">Desde Apertura</option>
-            </select>
-          </div>
-          <!-- Pre-Opening -->
-          <div style="display:flex;flex-direction:column;gap:0.25rem">
-            <span style="font-size:0.65rem;font-weight:700;color:var(--text-3);text-transform:uppercase">Meses Pre-apertura</span>
-            <select id="empresa-preopen-select" class="dyn-select">
-              <option value="0" selected>0 meses</option>
-              <option value="1">1 mes</option>
-              <option value="2">2 meses</option>
-              <option value="3">3 meses</option>
-              <option value="6">6 meses</option>
-            </select>
-          </div>
-          <!-- Market Factor Toggle -->
-          <div style="display:flex;flex-direction:column;gap:0.25rem">
-            <span style="font-size:0.65rem;font-weight:700;color:var(--text-3);text-transform:uppercase">Factor de Mercado</span>
-            <select id="empresa-market-toggle" class="dyn-select">
-              <option value="true" selected>✅ Aplicar a Ventas</option>
-              <option value="false">❌ Ignorar Score</option>
-            </select>
-          </div>
-          <!-- Escenario Base -->
-          <div style="display:flex;flex-direction:column;gap:0.25rem">
-            <span style="font-size:0.65rem;font-weight:700;color:var(--text-3);text-transform:uppercase">Escenario Global</span>
-            <select id="empresa-scenario-select" class="dyn-select">
-              <option value="0.85">Pesimista (-15%)</option>
-              <option value="1" selected>Base (100%)</option>
-              <option value="1.15">Optimista (+15%)</option>
-            </select>
-          </div>
-          <div style="display:flex;align-items:flex-end">
-             <button id="btn-empresa-recalc" class="btn-sm" style="height:32px;background:var(--surface);border:1px solid var(--border);color:var(--text-1);font-weight:600;cursor:pointer">📍 Recalcular Estudios</button>
-          </div>
         </div>
       </div>
       <div id="empresa-dash-proyectos" class="empresa-proyectos-grid"></div>
@@ -626,54 +583,6 @@
               <button id="consol-market-indicator" class="btn-sm" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text-3);font-size:0.75rem;padding:0.25rem 0.6rem;font-weight:600;cursor:default;white-space:nowrap;transition:all 0.2s">📍 Mercado: --</button>
             </h2>
             <p>Métricas agregadas del holding y todas las sucursales</p>
-          </div>
-          <div class="dinamismo-panel" style="display:flex;flex-wrap:wrap;gap:0.75rem;background:var(--bg);padding:0.75rem 1rem;border-radius:var(--r-md);border:1px solid var(--border);box-shadow:var(--shadow-sm)">
-             <div style="display:flex;flex-direction:column;gap:0.25rem">
-               <span style="font-size:0.65rem;font-weight:700;color:var(--text-3);text-transform:uppercase">Retención / Regalía</span>
-               <select id="global-royalty-select" class="dyn-select">
-                 <option value="variable_2_5" selected>💳 Variable 2.5%</option>
-                 <option value="condonacion_6m">🎁 Condonación 6m</option>
-                 <option value="pago_unico">💰 Pago Único a 5 años</option>
-               </select>
-             </div>
-             <div style="display:flex;flex-direction:column;gap:0.25rem">
-               <span style="font-size:0.65rem;font-weight:700;color:var(--text-3);text-transform:uppercase">Inicio Condonación</span>
-               <select id="global-waiver-select" class="dyn-select">
-                 <option value="false" selected>Modo Inyección</option>
-                 <option value="true">Modo Apertura</option>
-               </select>
-             </div>
-             <div style="display:flex;flex-direction:column;gap:0.25rem">
-               <span style="font-size:0.65rem;font-weight:700;color:var(--text-3);text-transform:uppercase">Meses Pre-apertura</span>
-               <select id="global-preopen-select" class="dyn-select">
-                 <option value="0" selected>0 meses</option>
-                 <option value="1">1 mes</option>
-                 <option value="2">2 meses</option>
-                 <option value="3">3 meses</option>
-                 <option value="6">6 meses</option>
-               </select>
-             </div>
-             <div style="display:flex;flex-direction:column;gap:0.25rem">
-               <span style="font-size:0.65rem;font-weight:700;color:var(--text-3);text-transform:uppercase">Factor Mercado</span>
-               <select id="global-market-toggle" class="dyn-select">
-                 <option value="true" selected>✅ Aplicar</option>
-                 <option value="false">❌ Ignorar</option>
-               </select>
-             </div>
-             <div style="display:flex;flex-direction:column;gap:0.25rem">
-               <span style="font-size:0.65rem;font-weight:700;color:var(--text-3);text-transform:uppercase">Escenario Red</span>
-               <select id="global-scenario-select" class="dyn-select">
-                 <option value="0.85">Pesimista</option>
-                 <option value="1" selected>Base</option>
-                 <option value="1.15">Optimista</option>
-               </select>
-             </div>
-             <div style="display:flex;align-items:flex-end;gap:0.5rem">
-                <button id="btn-global-recalc" class="btn-sm" style="height:32px;background:var(--surface);border:1px solid var(--border);color:var(--text-1);font-weight:600;cursor:pointer">📍 Recalcular Todo</button>
-             </div>
-             <div style="display:flex;align-items:flex-end">
-                <label class="iva-toggle" title="Multiplicar los montos por 1.16 para ver con IVA"><input type="checkbox" id="toggle-iva"><span class="iva-slider"></span><span class="iva-label" id="iva-label">Sin IVA</span></label>
-             </div>
           </div>
         </div>
       </div>

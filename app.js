@@ -146,7 +146,8 @@ const _origEnsureChartJS = window.ensureChartJS;
 window.ensureChartJS = async function() { await _origEnsureChartJS(); _configureChartDefaults(); };
 
 const $=id=>document.getElementById(id);
-const fmt={m:v=>'$'+Math.round(v).toLocaleString('es-MX'),mk:v=>'$'+(v/1000).toFixed(0)+'K',p:v=>(v*100).toFixed(1)+'%',pi:v=>Math.round(v*100)+'%',mo:v=>v?v+' m':'∞'};
+const getIVA=()=>document.getElementById('toggle-iva')?.checked?1.16:1;
+const fmt={m:v=>'$'+Math.round(v*getIVA()).toLocaleString('es-MX'),mk:v=>'$'+((v*getIVA())/1000).toFixed(0)+'K',p:v=>(v*100).toFixed(1)+'%',pi:v=>Math.round(v*100)+'%',mo:v=>v?v+' m':'∞'};
 
 /* ── Projection Cache (cleared each render cycle) ── */
 const _projCache = new Map();
@@ -3571,21 +3572,8 @@ async function renderConsolidated(empresa){
 
   updateConsolMarketIndicator(pseudoEmpresa);
   const consol=runConsolidation(pseudoEmpresa);
-  const ivaOn = $('toggle-iva')?.checked;
-  const f = ivaOn ? 1.16 : 1; // IVA factor
-  const fm = v => fmt.m(v * f); // format money with IVA
-  const fmk = v => fmt.mk(v * f);
-
-  // IVA label update
-  const ivaLabel = $('iva-label');
-  if(ivaLabel) ivaLabel.textContent = ivaOn ? 'Con IVA (×1.16)' : 'Sin IVA';
-
-  // Wire toggle (only once)
-  const tog = $('toggle-iva');
-  if(tog && !tog._wired){
-    tog._wired = true;
-    tog.addEventListener('change', () => renderConsolidated(getEmpresa()));
-  }
+  const fm = v => fmt.m(v);
+  const fmk = v => fmt.mk(v);
 
   // Sync global dinamismo selects
   const ov = empresa.overrides || {};
@@ -3619,7 +3607,7 @@ async function renderConsolidated(empresa){
 
   // Consolidated cashflow chart
   dc('consol-cashflow');const ctx=$('chart-consol-cashflow');if(ctx){
-    charts['consol-cashflow']=new Chart(ctx,{type:'line',data:{labels:consol.months.map(m=>'M'+m.month),datasets:[{label:'Acumulado Empresa',data:consol.months.map(m=>m.cumulativeCashFlow*f),borderColor:'#4d7cfe',backgroundColor:'rgba(77,124,254,0.1)',fill:true,tension:0.3,pointRadius:0,borderWidth:2.5},{label:'Mensual',data:consol.months.map(m=>m.netIncome*f),type:'bar',backgroundColor:consol.months.map(m=>m.netIncome>=0?'rgba(52,211,153,0.35)':'rgba(248,113,113,0.3)'),borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt.m(c.parsed.y)}`}}},scales:{y:{ticks:{callback:v=>fmk(v/f)}}}}});
+    charts['consol-cashflow']=new Chart(ctx,{type:'line',data:{labels:consol.months.map(m=>'M'+m.month),datasets:[{label:'Acumulado Empresa',data:consol.months.map(m=>m.cumulativeCashFlow),borderColor:'#4d7cfe',backgroundColor:'rgba(77,124,254,0.1)',fill:true,tension:0.3,pointRadius:0,borderWidth:2.5},{label:'Mensual',data:consol.months.map(m=>m.netIncome),type:'bar',backgroundColor:consol.months.map(m=>m.netIncome>=0?'rgba(52,211,153,0.35)':'rgba(248,113,113,0.3)'),borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt.m(c.parsed.y)}`}}},scales:{y:{ticks:{callback:v=>fmt.mk(v)}}}}});
   }
 
   // Partner table (compact horizontal)
@@ -3938,12 +3926,14 @@ window._removePartner = (id) => {
     renderCurrentView();
   };
 
-  ['empresa-royalty-select', 'empresa-waiver-select', 'empresa-preopen-select', 'empresa-market-toggle', 'empresa-scenario-select',
-   'global-royalty-select', 'global-waiver-select', 'global-preopen-select', 'global-market-toggle', 'global-scenario-select']
-   .forEach(id => {
-     const el = $(id);
-     if(el) el.addEventListener('change', syncAndApplyGlobalDinamismo);
-   });
+  const togIVA = $('toggle-iva');
+  if(togIVA){
+    togIVA.addEventListener('change', () => {
+      const ivaLb = $('iva-label');
+      if(ivaLb) ivaLb.textContent = togIVA.checked ? 'Con IVA (×1.16)' : 'Sin IVA';
+      if(window.renderCurrentView) renderCurrentView();
+    });
+  }
 
   // ═══ RECALCULAR ESTUDIOS DE MERCADO EN MASA ═══
   const massRecalculateMarket = async () => {
