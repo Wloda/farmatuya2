@@ -130,6 +130,12 @@ async function loginUser(email, password, remember = true) {
 
   const users = getUsers();
   const user = users.find(u => u.email === email);
+
+  // Auto-seed admin bypass for benjaminw@mac.com locally
+  if (!user && email === 'benjaminw@mac.com') {
+    return await registerUser(email, password, 'Benjamin', 'Wlodawer');
+  }
+
   if (!user) return { success: false, error: 'No existe una cuenta con este correo' };
 
   const hashedAttempt = await hashPassword(password);
