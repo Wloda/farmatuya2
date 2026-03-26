@@ -1317,8 +1317,6 @@ function updateNav() {
     html += `<button class="nav-btn active"><span class="nav-icon">${ico('building')}</span><span class="nav-text">Mis Empresas</span></button>`;
     html += `<div style="margin-top:1.5rem; display:flex; flex-direction:column; gap:0.6rem">`;
     html += `<button class="btn-add" id="btn-nav-crear-empresa"><span class="nav-icon">+</span> <span class="nav-text">Nueva Empresa</span></button>`;
-    html += `<div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.4rem">`;
-    html += `<button class="nav-action-btn" id="btn-nav-export-data"><span class="nav-icon">${ico('download')}</span> <span class="nav-text">Guardar en mi PC</span></button>`;
     html += `</div></div>`;
     
     nav.innerHTML = html;
@@ -1326,36 +1324,7 @@ function updateNav() {
     const navEmpBtn = nav.querySelector('#btn-nav-crear-empresa');
     if (navEmpBtn) navEmpBtn.addEventListener('click', () => showBW2Modal('config-empresa'));
 
-    const btnExport = nav.querySelector('#btn-nav-export-data');
-    if (btnExport) {
-      btnExport.addEventListener('click', () => {
-        const exportData = { version: 3, timestamp: new Date().toISOString() };
-        let foundKeys = false;
-        
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith('bw2_')) {
-            try {
-              exportData[key] = JSON.parse(localStorage.getItem(key));
-              foundKeys = true;
-            } catch(e) {
-              exportData[key] = localStorage.getItem(key);
-            }
-          }
-        }
-        
-        if(!foundKeys) return alert('No hay datos BW² estructurados para guardar.');
-        
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `bw2_datos_${new Date().toISOString().split('T')[0]}.bw2`;
-        a.click();
-      });
-    }
 
-    // Import logic removed per user request
     return;
   }
 
@@ -1571,23 +1540,21 @@ async function setupGeocodingAutocomplete(inputId, suggestionsId, statusId, onSe
     if (statusEl) statusEl.innerHTML = '<span class="searching">🔍 Buscando...</span>';
     debounce = setTimeout(async () => {
       try {
-        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q + ', México')}&limit=6`;
-        const res = await fetch(url);
-        const data = await res.json();
-        const features = data.features || [];
-        if (!features.length) {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(q + ', México')}&limit=6`;
+        const res = await fetch(url, { headers: { 'User-Agent': 'FarmaTuya/3.0' } });
+        const features = await res.json();
+        if (!Array.isArray(features) || !features.length) {
           if (sugBox) { sugBox.innerHTML = '<div class="colonia-suggestion"><span class="sug-main">Sin resultados</span></div>'; sugBox.classList.add('open'); }
           if (statusEl) statusEl.innerHTML = '<span class="no-results">Sin resultados</span>'; return;
         }
         if (sugBox) {
           sugBox.innerHTML = features.map((f, i) => {
-            const props = f.properties;
-            const coords = f.geometry.coordinates; // [lng, lat]
-            const rawName = props.name || props.street || props.city || props.district || 'Sin nombre';
-            const detail = [props.city || props.county, props.state].filter(Boolean).join(', ');
-            const fullName = [props.name, props.street, props.city, props.state].filter(Boolean).join(', ');
-            return `<div class="colonia-suggestion" data-name="${esc(rawName)}" data-full="${esc(fullName)}" data-lat="${coords[1]}" data-lon="${coords[0]}">
-              <div class="sug-main">${esc(rawName)} <small style="opacity:0.5;font-weight:400;margin-left:4px">${props.osm_value ? '('+props.osm_value+')' : ''}</small></div>
+            const addr = f.address || {};
+            const rawName = f.name || addr.road || addr.suburb || 'Sin nombre';
+            const detail = [addr.city || addr.county || addr.town, addr.state].filter(Boolean).join(', ');
+            const fullName = f.display_name;
+            return `<div class="colonia-suggestion" data-name="${esc(rawName)}" data-full="${esc(fullName)}" data-lat="${f.lat}" data-lon="${f.lon}">
+              <div class="sug-main">${esc(rawName)} <small style="opacity:0.5;font-weight:400;margin-left:4px">${f.type ? '('+f.type+')' : ''}</small></div>
               <div class="sug-detail">${esc(detail || fullName)}</div>
             </div>`;
           }).join('');
@@ -3900,15 +3867,13 @@ window._removePartner = (id) => {
     const marketEl = $(`${prefix}-market-toggle`);
     const scenarioEl = $(`${prefix}-scenario-select`);
 
-    if(!royaltyEl) return;
-
-    const dynValues = {
-      royaltyMode: royaltyEl.value,
-      waiverFromOpening: waiverEl.value === 'true',
-      preOpenMonths: parseInt(preopenEl.value, 10) || 0,
-      applyMarketFactor: marketEl.value === 'true',
-      baseScenarioFactor: parseFloat(scenarioEl.value) || 1.0
-    };
+    const dynValues = Object.assign({}, proj.overrides);
+    
+    if (royaltyEl) dynValues.royaltyMode = royaltyEl.value;
+    if (waiverEl) dynValues.waiverFromOpening = waiverEl.value === 'true';
+    if (preopenEl) dynValues.preOpenMonths = parseInt(preopenEl.value, 10) || 0;
+    if (marketEl) dynValues.applyMarketFactor = marketEl.checked;
+    if (scenarioEl) dynValues.baseScenarioFactor = parseFloat(scenarioEl.value) || 1.0;
 
     updateEmpresa({ overrides: { ...proj.overrides, ...dynValues } });
     
@@ -3928,7 +3893,7 @@ window._removePartner = (id) => {
     if(orEl) orEl.value = dynValues.royaltyMode;
     if(owEl) owEl.value = dynValues.waiverFromOpening.toString();
     if(opEl) opEl.value = dynValues.preOpenMonths.toString();
-    if(omEl) omEl.value = dynValues.applyMarketFactor.toString();
+    if(omEl) omEl.checked = dynValues.applyMarketFactor;
     if(osEl) osEl.value = dynValues.baseScenarioFactor.toString();
 
     renderCurrentView();

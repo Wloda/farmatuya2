@@ -68,10 +68,8 @@ export async function geocodeAddress(query, returnMultiple = false) {
   return _nominatimGeocode(query, returnMultiple);
 }
 
-const PHOTON_URL = 'https://photon.komoot.io/api/';
-
 /**
- * Photon geocoding (komoot) - Far superior POI search than standard Nominatim
+ * Standard Nominatim geocoding (komoot is often unreliable/blocked)
  */
 async function _nominatimGeocode(query, returnMultiple = false) {
   // Append Mexico if no explicit reference to help guide the global search
@@ -80,38 +78,39 @@ async function _nominatimGeocode(query, returnMultiple = false) {
 
   const params = new URLSearchParams({
     q: searchQuery,
+    format: 'json',
+    addressdetails: '1',
     limit: returnMultiple ? '8' : '1'
   });
 
-  const resp = await fetch(`${PHOTON_URL}?${params}`, {
-    headers: { 'Accept': 'application/json' }
+  const resp = await fetch(`${NOMINATIM_URL}?${params}`, {
+    headers: { 'Accept': 'application/json', 'User-Agent': 'FarmaTuya/3.0' }
   });
 
   if (!resp.ok) throw new Error(`Geocoding error: ${resp.status}`);
   const data = await resp.json();
-  if (!data.features || !data.features.length) throw new Error('No se encontró la ubicación');
+  if (!Array.isArray(data) || !data.length) throw new Error('No se encontró la ubicación');
 
   const parseResult = (feature) => {
-    const props = feature.properties;
-    const coords = feature.geometry.coordinates; // [lng, lat]
+    const addr = feature.address || {};
     return {
-      lat: parseFloat(coords[1]),
-      lng: parseFloat(coords[0]),
-      displayName: [props.name, props.street, props.city, props.state].filter(Boolean).join(', '),
-      municipio: props.city || props.county || null,
-      estado: props.state || null,
-      colonia: props.district || props.locality || null,
-      cp: props.postcode || null,
-      source: 'Photon/OSM',
-      confidence: 'alta', // Photon generally surfaces very high confidence POIs
-      importance: 0.8,
-      type: props.osm_value || null,
-      category: props.osm_key || null
+      lat: parseFloat(feature.lat),
+      lng: parseFloat(feature.lon),
+      displayName: feature.display_name,
+      municipio: addr.city || addr.county || addr.town || null,
+      estado: addr.state || null,
+      colonia: addr.suburb || addr.neighbourhood || addr.village || null,
+      cp: addr.postcode || null,
+      source: 'Nominatim/OSM',
+      confidence: 'media',
+      importance: parseFloat(feature.importance) || 0.5,
+      type: feature.type || null,
+      category: feature.class || null
     };
   };
 
-  if (returnMultiple) return data.features.map(parseResult);
-  return parseResult(data.features[0]);
+  if (returnMultiple) return data.map(parseResult);
+  return parseResult(data[0]);
 }
 
 /* ══════════════════════════════════════════

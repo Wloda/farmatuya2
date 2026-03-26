@@ -3,42 +3,42 @@
 
 :root {
   /* ═══ NEUMORPHIC SURFACE SYSTEM ═══ */
-  --bg:#F0F0F3;
-  --surface:#F0F0F3;
-  --surface-alt:#F0F0F3;
-  --raised:#F0F0F3;
+  --bg:#ECECEC;
+  --surface:#FFFFFF;
+  --surface-alt:#F5F5F5;
+  --raised:#FFFFFF;
 
   /* Header System */
-  --header-bg:#F0F0F3;
-  --header-text:#2D3748;
-  --header-sub:#4A5568;
-  --nav-bg:#F0F0F3;
+  --header-bg:#FFFFFF;
+  --header-text:#0F172A;
+  --header-sub:#374151;
+  --nav-bg:#F3F3F3;
 
-  /* ═══ PURE NEUMORPHIC SHADOWS (Neutral Gray) ═══ */
-  --shadow-neu:6px 6px 14px #D1D5DB, -6px -6px 14px #FFFFFF;
-  --shadow-neu-sm:4px 4px 8px #D1D5DB, -4px -4px 8px #FFFFFF;
-  --shadow-neu-inset:inset 4px 4px 8px #D1D5DB, inset -4px -4px 8px #FFFFFF;
-  --shadow-neu-inset-sm:inset 2px 2px 5px #D1D5DB, inset -2px -2px 5px #FFFFFF;
-  --shadow-card:8px 8px 16px #D1D5DB, -8px -8px 16px #FFFFFF;
-  --shadow-card-hover:10px 10px 20px #D1D5DB, -10px -10px 20px #FFFFFF;
-  --shadow-hover:6px 6px 14px #D1D5DB, -6px -6px 14px #FFFFFF;
-  --shadow-active:inset 3px 3px 6px #D1D5DB, inset -3px -3px 6px #FFFFFF;
-  --shadow-lg:12px 12px 24px #D1D5DB, -12px -12px 24px #FFFFFF;
+  /* ═══ NEUMORPHIC SHADOWS (subtle) ═══ */
+  --shadow-neu:2px 2px 5px #c8c8c8, -2px -2px 5px #ffffff;
+  --shadow-neu-sm:1px 1px 3px #c8c8c8, -1px -1px 3px #ffffff;
+  --shadow-neu-inset:inset 2px 2px 4px #d0d0d0, inset -2px -2px 4px #ffffff;
+  --shadow-neu-inset-sm:inset 1px 1px 2px #d0d0d0, inset -1px -1px 2px #ffffff;
+  --shadow-card:2px 2px 6px #c8c8c8, -2px -2px 6px #ffffff;
+  --shadow-card-hover:3px 3px 8px #c0c0c0, -3px -3px 8px #ffffff;
+  --shadow-hover:3px 3px 8px #c0c0c0, -3px -3px 8px #ffffff;
+  --shadow-active:inset 1px 1px 3px #c8c8c8, inset -1px -1px 3px #ffffff;
+  --shadow-lg:4px 4px 10px #c0c0c0, -4px -4px 10px #ffffff;
 
   /* Modal/overlay shadow */
-  --shadow-modal:15px 15px 30px #C3C8D4, -15px -15px 30px #FFFFFF, 0 20px 40px -10px rgba(0,0,0,0.1);
+  --shadow-modal:5px 5px 15px #c0c0c0, -5px -5px 15px #ffffff, 0 20px 40px -10px rgba(0,0,0,0.12);
 
-  /* Text — neutral dark */
-  --text-1:#2D3748;
-  --text-2:#4A5568;
-  --text-3:#718096;
+  /* Text — dark on light (maximum contrast) */
+  --text-1:#0F172A;
+  --text-2:#1E293B;
+  --text-3:#334155;
 
-  /* Accent — Keeping the premium soft blueish-slate */
-  --accent:#4A6583;
-  --accent-soft:rgba(74, 101, 131, 0.1);
-  --accent2:#2C3E50;
-  --accent-hover:#3B526B;
-  --accent-glow:rgba(74, 101, 131, 0.2);
+  /* Accent — Corporate Green */
+  --accent:#4A5E28;
+  --accent-soft:rgba(74,94,40,0.08);
+  --accent2:#5F7833;
+  --accent-hover:#35441D;
+  --accent-glow:rgba(74,94,40,0.15);
 
   /* Status Colors */
   --green:#10B981;
@@ -56,7 +56,7 @@
   --sem-positive:#10B981;
   --sem-negative:#EF4444;
   --sem-warning:#F59E0B;
-  --sem-neutral:#4A6583;
+  --sem-neutral:#4A5E28;
 
   /* Typography Scale */
   --fs-kpi:1.125rem;
@@ -72,20 +72,20 @@
   --space-lg:16px;
   --space-xl:24px;
 
-  /* Borders — Soft white ridge */
-  --border:rgba(255,255,255,0.6);
-  --border-hover:rgba(209,213,219,0.6);
+  /* Borders — sharp for corporate look */
+  --border:#CBD5E1;
+  --border-hover:#94A3B8;
 
-  /* Card background — unified for neumorphism */
-  --bg-card:#F0F0F3;
-  --bg-hover:#F4F4F7;
+  /* Card background — white for contrast */
+  --bg-card:#FFFFFF;
+  --bg-hover:#F5F5F5;
 
-  /* Radii — Smooth and larger for neumorphism */
-  --r-xs:6px;
-  --r-sm:10px;
-  --r-md:14px;
-  --r-lg:18px;
-  --r-xl:24px;
+  /* Radii — compact corporate */
+  --r-xs:3px;
+  --r-sm:5px;
+  --r-md:8px;
+  --r-lg:10px;
+  --r-xl:12px;
 
   /* Fonts — DM Sans for UI, JetBrains Mono for data */
   --font:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -810,35 +810,43 @@ body:has(#app-header){padding-top:50px}
   border:none;background:var(--bg);
   color:var(--text-2);
   font-family:var(--font);font-size:0.8125rem;font-weight:500;
-  padding:0.625rem 0.875rem;cursor:pointer;
+  padding:0.5rem 0.75rem;cursor:pointer;
   border-radius:var(--r-lg);
   box-shadow:var(--shadow-neu-sm);
   transition:all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-  display:flex;flex-direction:row;align-items:center;gap:0.625rem;
+  display:flex;flex-direction:row;align-items:center;gap:0.5rem;
   text-align:left;width:100%;
   margin-left:0;
+  position:relative;
+}
+.nav-btn::before {
+  content:''; position:absolute; left:0; top:15%; height:70%; width:4px;
+  background:var(--accent); border-radius:0 4px 4px 0;
+  opacity:0; transform:scaleY(0.3);
+  transition:all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .nav-btn small{
   font-size:0.65rem;font-weight:500;color:var(--text-2);
   letter-spacing:0.01em;opacity:0.85; transition:all 0.2s;
 }
 .nav-btn:hover{box-shadow:var(--shadow-card);color:var(--text-1)}
+.nav-btn:hover::before{opacity:0.4; transform:scaleY(0.6)}
 .nav-btn:hover small{opacity:1;color:var(--text-2)}
 .nav-btn.active{
-  color:var(--accent);
+  color:var(--text-1);
   font-weight:700;
   background:var(--bg);
   box-shadow:var(--shadow-active); /* pressed/inset neumorphic */
 }
-.nav-btn.active small{color:var(--accent);opacity:0.9;font-weight:700}
+.nav-btn.active::before{opacity:1; transform:scaleY(1); width: 3px; border-radius: 3px}
+.nav-btn.active small{color:var(--accent);opacity:0.9;font-weight:500}
 .nav-spacer{flex:1}
 .btn-add{
   border:none;background:var(--accent);color:#fff;
-  font-family:var(--font);font-size:0.8125rem;font-weight:600;
-  padding:0.75rem 1rem;border-radius:var(--r-lg);
+  font-family:var(--font);font-size:0.75rem;font-weight:600;
+  padding:0.625rem 1rem;border-radius:var(--r-sm);
   cursor:pointer;transition:all 0.25s;letter-spacing:0.01em;
-  width:100%;margin-top:0.5rem;
-  display:flex;align-items:center;justify-content:center;gap:0.5rem;
+  width:100%;text-align:center;margin-top:0.5rem;
   box-shadow:var(--shadow-neu);
 }
 .btn-add:hover{background:var(--accent-hover);box-shadow:var(--shadow-active)}
@@ -1554,25 +1562,20 @@ body:has(#app-header){padding-top:50px}
 
 /* ── Global / Portfolio Summary ── */
 .bw2-global-summary{
-  margin:0 0.5rem 1.5rem;
-  background:transparent;
-  padding:0;
+  margin:0 0.5rem 0.75rem;
+  background:var(--surface);border-radius:var(--r-lg);
+  padding:0.75rem;box-shadow:var(--shadow-neu-sm);
 }
 .global-summary-title{
-  font-size:0.8125rem;font-weight:800;color:var(--text-2);
-  text-transform:uppercase;letter-spacing:0.05em;
-  margin-bottom:0.875rem;display:flex;align-items:center;gap:0.5rem;
+  font-size:0.75rem;font-weight:800;color:var(--text-2);
+  text-transform:uppercase;letter-spacing:0.04em;
+  margin-bottom:0.5rem;padding-bottom:0.375rem;
   border-bottom:none;
 }
-.global-summary-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:1.25rem}
+.global-summary-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0.5rem}
 .global-summary-card{
-  background:var(--surface);border-radius:var(--r-lg);padding:1rem 1.125rem;
-  box-shadow:var(--shadow-neu-sm);display:flex;flex-direction:column;gap:0.35rem;
-  transition:transform 0.3s, box-shadow 0.3s;
-}
-.global-summary-card:hover{
-  transform:translateY(-2px);
-  box-shadow:var(--shadow-card);
+  background:var(--surface);border-radius:var(--r-md);padding:0.5rem 0.625rem;
+  box-shadow:var(--shadow-neu-inset-sm);display:flex;flex-direction:column;gap:0.15rem;
 }
 .global-summary-label{font-size:0.6rem;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:0.04em}
 .global-summary-value{font-size:1rem;font-weight:800;color:var(--text-1);letter-spacing:-0.02em}
