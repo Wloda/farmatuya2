@@ -1,14 +1,14 @@
 /**
  * BW² — Multi-Empresa Multi-Proyecto Dashboard v8
  */
-import { MODELS, SCENARIOS } from './data/model-registry.js?v=bw5';
-import { runProjection, runSensitivity, calcStress, generateChecklist, evaluateAlerts } from './engine/financial-model.js?v=bw5';
-import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw4';
-import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw4';
-import { runLocationStudy, calcCombinedMarketFactor, geocodeAddress } from './engine/location-engine.js?v=bw6';
-import { generateBranchPDF } from './pdf-export.js?v=bw4';
-import { setGoogleApiKey, loadGoogleMaps, attachPlacesAutocomplete, createGoogleMap, buildStudyMarkers, isGoogleMapsLoaded, getGoogleApiKey } from './engine/google-places.js';
-import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated, updateUserProfile, updateUserEmail, changePassword } from './auth.js';
+import { MODELS, SCENARIOS } from './data/model-registry.js?v=bw30';
+import { runProjection, runSensitivity, calcStress, generateChecklist, evaluateAlerts } from './engine/financial-model.js?v=bw30';
+import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw30';
+import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw30';
+import { runLocationStudy, calcCombinedMarketFactor, geocodeAddress } from './engine/location-engine.js?v=bw30';
+import { generateBranchPDF } from './pdf-export.js?v=bw30';
+import { setGoogleApiKey, loadGoogleMaps, attachPlacesAutocomplete, createGoogleMap, buildStudyMarkers, isGoogleMapsLoaded, getGoogleApiKey } from './engine/google-places.js?v=bw30';
+import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated, updateUserProfile, updateUserEmail, changePassword } from './auth.js?v=bw30';
 
 /* ═══ SVG ICON SYSTEM (Lucide-style stroked icons) ═══ */
 const _ICO = {
@@ -671,9 +671,8 @@ function renderBW2Home(){
   h += `<div class="empresa-proyectos-grid">`;
   empresas.forEach(emp => {
     const pCount = emp.proyectos.length;
-    let bCount=0, ebitda=0, score=0, scored=0, payback=0, totalCap=0, totalComm=0;
+    let bCount=0, ebitda=0, score=0, scored=0, payback=0;
     (emp.proyectos||[]).forEach(proj => {
-      totalCap += proj.totalCapital || 0;
       (proj.branches||[]).forEach(b => {
         if(b.status==='archived') return;
         bCount++;
@@ -681,7 +680,6 @@ function renderBW2Home(){
           const r = runBranchProjection(b, getActiveEmpresa());
           if(r){
             ebitda += r.avgMonthlyEBITDA||0;
-            totalComm += r.totalInvestment||0;
             if(r.paybackMonth > payback) payback = r.paybackMonth;
             if(r.viabilityScore){ score += r.viabilityScore; scored++; }
           }
@@ -715,7 +713,7 @@ function renderBW2Home(){
           ${logo}
           <div>
             <div class="emp-dash-proj-name">${esc(emp.name)}</div>
-            <div class="emp-dash-proj-meta">Capital: ${fmt.m(totalCap)} · ${pCount} proy.</div>
+            <div class="emp-dash-proj-meta">${pCount} proyecto${pCount!==1?'s':''} · ${bCount} sucursal${bCount!==1?'es':''}</div>
           </div>
         </div>
         <div style="display:flex;gap:0.25rem">
@@ -730,7 +728,7 @@ function renderBW2Home(){
       </div>
       ${sparkData.length >= 2 ? sparklineSVG(sparkData) : ''}
       <div class="emp-dash-proj-footer">
-        <div class="emp-dash-proj-meta-foot">Inv: ${fmt.m(totalComm)} · ${bCount} uds.</div>
+        <div class="emp-dash-proj-meta-foot">${pCount} proyecto${pCount!==1?'s':''} · ${bCount} sucursal${bCount!==1?'es':''}</div>
         <button class="btn-open-empresa btn-compact-open" data-emp-id="${emp.id}">Abrir →</button>
       </div>
     </div>`;
@@ -876,7 +874,6 @@ function renderEmpresaDashboard(empresa){
   (empresa.proyectos||[]).forEach(proj => {
     const activeBranches = (proj.branches||[]).filter(b=>b.status!=='archived');
     let projEBITDA=0, projScore=0, projScored=0, projPayback=0;
-    let sparkData = [];
     activeBranches.forEach(b => {
       try {
         const r = runBranchProjection(b, getActiveEmpresa());
@@ -884,10 +881,6 @@ function renderEmpresaDashboard(empresa){
           projEBITDA += r.avgMonthlyEBITDA||0;
           if(r.paybackMonth > projPayback) projPayback = r.paybackMonth;
           if(r.viabilityScore){ projScore += r.viabilityScore; projScored++; }
-          if (r.months) {
-            const last12 = r.months.slice(-12);
-            last12.forEach((m,i) => { sparkData[i] = (sparkData[i]||0) + (m.ebitda||0); });
-          }
         }
       } catch(e){}
     });
@@ -916,10 +909,7 @@ function renderEmpresaDashboard(empresa){
         <div class="emp-dash-kpi"><span class="emp-dash-kpi-label">Recuperación</span><span class="emp-dash-kpi-value">${projPayback?projPayback+' m':'—'}</span></div>
         <div class="emp-dash-kpi" style="display:flex;align-items:center;gap:0.4rem"><span class="emp-dash-kpi-label">Score</span>${scoreRing(pScore, 36)}</div>
       </div>
-      ${sparkData.length >= 2 ? sparklineSVG(sparkData) : ''}
-      <div class="emp-dash-proj-footer" style="margin-top:0.25rem">
-        <button class="btn-open-proyecto-dash btn-compact-open" data-emp-id="${empresa.id}" data-proj-id="${proj.id}">Abrir Proyecto →</button>
-      </div>
+      <button class="btn-open-proyecto-dash" data-emp-id="${empresa.id}" data-proj-id="${proj.id}">Abrir Proyecto →</button>
     </div>`;
   });
 
@@ -2487,7 +2477,28 @@ async function renderBranchResumen(r){
       <div><span style="font-weight:700;font-size:0.8125rem;color:var(--text-1)">${passed}/${total} criterios</span><span style="font-size:0.6875rem;color:var(--text-3);margin-left:0.5rem">${passed===total?'✨ Todos aprobados':'⚠️ '+(total-passed)+' pendiente'+(total-passed>1?'s':'')}</span></div>
     </div>
   `+cl.map(c=>`<div class="checklist-item ${c.pass?'pass':'fail'}"><span class="check-icon">${c.pass?'<svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" fill="rgba(22,163,74,0.12)"/><path d="M5.5 9.5L7.5 11.5L12.5 6.5" stroke="#16a34a" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>':'<svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" fill="rgba(220,38,38,0.1)"/><path d="M6.5 6.5L11.5 11.5M11.5 6.5L6.5 11.5" stroke="#dc2626" stroke-width="1.5" stroke-linecap="round"/></svg>'}</span><span class="check-label">${c.item}</span><span class="check-detail">${c.detail}</span></div>`).join('');
-  
+  dc('branch-cashflow');const ctx=$('chart-branch-cashflow');if(!ctx)return;
+  // Create gradient for the cumulative line
+  const ctxCanvas = ctx.getContext('2d');
+  const grad = ctxCanvas.createLinearGradient(0, 0, 0, ctx.parentElement.clientHeight || 300);
+  grad.addColorStop(0, 'rgba(77,124,254,0.18)');
+  grad.addColorStop(0.5, 'rgba(77,124,254,0.06)');
+  grad.addColorStop(1, 'rgba(77,124,254,0.01)');
+  charts['branch-cashflow']=new Chart(ctx,{type:'line',data:{labels:r.months.map(m=>'M'+m.month),datasets:[{label:'Acumulado',data:r.months.map(m=>m.cumulativeCashFlow),borderColor:'#4d7cfe',backgroundColor:grad,fill:true,pointRadius:0,borderWidth:2.5,pointHoverRadius:5,pointHoverBackgroundColor:'#4d7cfe',pointHoverBorderColor:'#fff',pointHoverBorderWidth:2},{label:'Mensual',data:r.months.map(m=>m.cashFlow),type:'bar',backgroundColor:r.months.map(m=>m.cashFlow>=0?'rgba(52,211,153,0.45)':'rgba(248,113,113,0.35)'),borderRadius:4,maxBarThickness:8}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt.m(c.parsed.y)}`}}},scales:{y:{ticks:{callback:v=>fmt.mk(v)}}}}});
+
+  // Cost structure donut (main section)
+  dc('branch-costs-main');const cDonut=$('chart-branch-costs-main');if(cDonut){
+    const bd=r.fixedCostBreakdown;
+    const colors=['#f87171','#4d7cfe','#818cf8','#8b5cf6','#34d399','#fbbf24'];
+    const labels=['Renta','Nómina','C.Social','Sistemas','Contab.','Serv/Pap'];
+    const data=[bd.renta,bd.nomina,bd.cargaSocial,bd.sistemas,bd.contabilidad,bd.serviciosPap];
+    const total=data.reduce((a,b)=>a+b,0);
+    charts['branch-costs-main']=new Chart(cDonut,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${fmt.m(c.parsed)} (${(c.parsed/total*100).toFixed(0)}%)`}}}}});
+    // Render compact legend
+    const legendEl=$('cost-donut-legend');
+    if(legendEl) legendEl.innerHTML=labels.map((l,i)=>`<span class="donut-legend-item"><span class="donut-legend-dot" style="background:${colors[i]}"></span>${l}</span>`).join('');
+  }
+
   renderAlerts(evaluateAlerts(r),'branch-alerts');
 }
 
