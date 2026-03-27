@@ -1964,7 +1964,7 @@ async function renderBranchDetail(empresa){
   await ensureChartJS();
 
   const sc=SCENARIOS[branch.scenarioId]||SCENARIOS.base;
-  const r=runBranchProjection(branch, empresa);
+  const r=runBranchProjection(branch, empresa, getActiveEmpresa());
   const overrides=r._overridesUsed || branch.overrides;
   const model=MODELS[branch.format];
 
@@ -2639,7 +2639,7 @@ window._exportPnL = function() {
   const branch = getBranch(state.activeBranchId);
   if (!branch) return;
   const empresa = getActiveEmpresa ? getActiveEmpresa() : getEmpresa();
-  const r = runBranchProjection(branch, empresa);
+  const r = runBranchProjection(branch, empresa, getActiveEmpresa());
   if (!r || !r.months) { showToast('Sin datos para exportar', 'error'); return; }
   const headers = ['Mes','Venta','COGS','Ut.Bruta','Costos Fijos','Costos Variables','EBITDA','Impuestos','Ut.Neta','Flujo Acumulado'];
   const rows = r.months.map(m => [

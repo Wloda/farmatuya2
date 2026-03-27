@@ -8,7 +8,7 @@ import { runProjection } from './financial-model.js?v=bw4';
 import { calcCombinedMarketFactor } from './location-engine.js?v=bw5';
 
 /* ── Single Branch Projection ── */
-export function runBranchProjection(branch, empresa) {
+export function runBranchProjection(branch, empresa, activeEmpresa) {
   const sc = SCENARIOS[branch.scenarioId] || SCENARIOS.base;
   const model = MODELS[branch.format];
   if (!model) throw new Error('Unknown format: ' + branch.format);
@@ -27,7 +27,9 @@ export function runBranchProjection(branch, empresa) {
   }
 
   // Apply market study adjustments (if study exists and is enabled)
-  const globalMarketEnabled = empresa?.settings?.applyMarketFactor !== false;
+  // Settings are on the actual empresa (activeEmpresa), not on the proyecto
+  const settingsSource = activeEmpresa || empresa;
+  const globalMarketEnabled = settingsSource?.settings?.applyMarketFactor !== false;
   if (globalMarketEnabled && branch.locationStudy?.scores?.factors && overrides.marketStudyEnabled !== false) {
     const toggles = overrides.marketStudyToggles || {};
     const { combinedFactor } = calcCombinedMarketFactor(branch.locationStudy.scores.factors, toggles);
