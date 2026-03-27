@@ -3878,3 +3878,27 @@ input:focus,select:focus,textarea:focus{
 #branch-pnl-table-full::-webkit-scrollbar { width: 6px; height: 6px; }
 #branch-pnl-table-full::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 #branch-pnl-table-full::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Info tooltip icon ── */
+.corrida-tip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.06);
+  color: #94a3b8;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  cursor: help;
+  margin-left: 3px;
+  vertical-align: middle;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+.corrida-tip:hover {
+  background: #3b82f6;
+  color: #fff;
+}

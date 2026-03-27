@@ -36,6 +36,7 @@ const _ICO = {
   dollar:     '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>',
   store:      '<path d="M3 9l1-4h16l1 4"/><path d="M3 9v11a1 1 0 001 1h16a1 1 0 001-1V9"/><path d="M9 21V13h6v8"/>',
   eye:        '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  grid:       '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
 };
 function ico(name, size = 16) {
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${_ICO[name] || ''}</svg>`;
@@ -1387,6 +1388,7 @@ function updateNav() {
     // Level 4: Branch Details
     html += `<div class="nav-section">Análisis Operativo</div>`;
     html += `<button class="nav-btn ${state.activeTab === 'resultados' ? 'active' : ''}" data-branch-tab="resultados"><span class="nav-icon">${ico('trending')}</span><span class="nav-text">Estado de Resultados</span></button>`;
+    html += `<button class="nav-btn ${state.activeTab === 'corrida' ? 'active' : ''}" data-branch-tab="corrida"><span class="nav-icon">${ico('grid')}</span><span class="nav-text">Corrida Financiera</span></button>`;
     html += `<button class="nav-btn ${state.activeTab === 'marketing' ? 'active' : ''}" data-branch-tab="marketing"><span class="nav-icon">${ico('rocket')}</span><span class="nav-text">Growth & Marketing</span></button>`;
     html += `<button class="nav-btn ${state.activeTab === 'config' ? 'active' : ''}" data-branch-tab="config"><span class="nav-icon">${ico('gear')}</span><span class="nav-text">Configuración Capex</span></button>`;
     html += `<button class="nav-btn ${state.activeTab === 'socioeconomico' ? 'active' : ''}" data-branch-tab="socioeconomico"><span class="nav-icon">${ico('map')}</span><span class="nav-text">Estudio de Mercado</span></button>`;
@@ -2703,23 +2705,26 @@ function renderInteractiveCorrida(r, model, overrides) {
   
   // Fixed cost row definitions
   const social = fc.socialCharge != null ? fc.socialCharge : fc.payroll * 0.30;
+  // ℹ Tooltip helper
+  const tip = (text, hint) => `${text} <span class="corrida-tip" title="${hint}">ℹ</span>`;
+  
   const fixedRows = [
-    { label: 'Renta (+7%)', key: 'rent', val: fc.rent, editable: true, ovKey: 'fixedCosts.rent' },
-    { label: 'Nómina', key: 'payroll', val: fc.payroll, editable: true, ovKey: 'fixedCosts.payroll' },
-    { label: 'C. Social', key: 'socialCharge', val: social, editable: true, ovKey: 'fixedCosts.socialCharge' },
-    { label: 'Contabilidad Externa', key: 'accounting', val: fc.accounting, editable: true, ovKey: 'fixedCosts.accounting' },
-    { label: 'Sistemas', key: 'systems', val: fc.systems, editable: true, ovKey: 'fixedCosts.systems' },
-    { label: 'Servicios y Papelería', key: 'servPap', val: fc.servPap?.m3 || 0, editable: true, ovKey: 'fixedCosts.servPap' },
+    { label: tip('Renta (+7%)','Renta mensual del local. Se incrementa 7% anual por contrato.'), key: 'rent', val: fc.rent, editable: true, ovKey: 'fixedCosts.rent' },
+    { label: tip('Nómina','Sueldos y salarios del personal operativo de la sucursal.'), key: 'payroll', val: fc.payroll, editable: true, ovKey: 'fixedCosts.payroll' },
+    { label: tip('C. Social','Cargas sociales: IMSS, Infonavit, SAR (~30% de nómina).'), key: 'socialCharge', val: social, editable: true, ovKey: 'fixedCosts.socialCharge' },
+    { label: tip('Contabilidad Ext.','Honorarios del despacho contable externo.'), key: 'accounting', val: fc.accounting, editable: true, ovKey: 'fixedCosts.accounting' },
+    { label: tip('Sistemas','Licencias de software, POS, ERP y soporte técnico.'), key: 'systems', val: fc.systems, editable: true, ovKey: 'fixedCosts.systems' },
+    { label: tip('Serv. y Papelería','Servicios (luz, agua, internet) y materiales de papelería.'), key: 'servPap', val: fc.servPap?.m3 || 0, editable: true, ovKey: 'fixedCosts.servPap' },
   ];
   
   // Variable cost row definitions (percentages)
   const varRows = [
-    { label: 'Inventario (COGS)', key: 'cogs', pct: effVc.cogs, editable: true, ovKey: 'variableCosts.cogs' },
-    { label: 'Comisiones de venta', key: 'comVenta', pct: effVc.comVenta, editable: true, ovKey: 'variableCosts.comVenta' },
-    { label: 'Merma del inventario', key: 'merma', pct: effVc.merma, editable: true, ovKey: 'variableCosts.merma' },
-    { label: 'Publicidad directa', key: 'pubDir', pct: effVc.pubDir, editable: true, ovKey: 'variableCosts.pubDir' },
-    { label: 'Regalías', key: 'regalia', pct: effVc.regalia, editable: true, ovKey: 'variableCosts.regalia' },
-    { label: 'Comisiones bancarias', key: 'bancario', pct: effVc.bancario, editable: true, ovKey: 'variableCosts.bancario' },
+    { label: tip('Inventario (COGS)','Cost of Goods Sold — costo de adquisición de mercancía vendida.'), key: 'cogs', pct: effVc.cogs, editable: true, ovKey: 'variableCosts.cogs' },
+    { label: tip('Com. de venta','Comisiones pagadas al personal por cada venta realizada.'), key: 'comVenta', pct: effVc.comVenta, editable: true, ovKey: 'variableCosts.comVenta' },
+    { label: tip('Merma','Pérdida de inventario por caducidad, robo o daño.'), key: 'merma', pct: effVc.merma, editable: true, ovKey: 'variableCosts.merma' },
+    { label: tip('Publicidad directa','Inversión en publicidad local: volantes, redes, promociones.'), key: 'pubDir', pct: effVc.pubDir, editable: true, ovKey: 'variableCosts.pubDir' },
+    { label: tip('Regalías','Pago al franquiciante por uso de marca y know-how.'), key: 'regalia', pct: effVc.regalia, editable: true, ovKey: 'variableCosts.regalia' },
+    { label: tip('Com. bancarias','Comisiones por cobro con terminal bancaria y transferencias.'), key: 'bancario', pct: effVc.bancario, editable: true, ovKey: 'variableCosts.bancario' },
   ];
   
   const isOverridden = (ovKey) => {
@@ -2775,7 +2780,7 @@ function renderInteractiveCorrida(r, model, overrides) {
   tbody += '</tr>';
   
   // ── INGRESOS ──
-  tbody += `<tr class="corrida-row-revenue"><td>Venta Mensual Proyectada</td>`;
+  tbody += `<tr class="corrida-row-revenue"><td>${tip('Venta Mensual','Ingreso bruto proyectado por ventas de la sucursal.')}</td>`;
   for (const m of months) {
     const isYearEnd = m.month % 12 === 0;
     tbody += `<td class="${isYearEnd ? 'corrida-year-sep' : ''}">${fmtN(m.revenue)}</td>`;
@@ -2783,7 +2788,7 @@ function renderInteractiveCorrida(r, model, overrides) {
   tbody += '</tr>';
   
   // ── EBITDA ──
-  tbody += `<tr class="corrida-row-ebitda"><td>EBITDA</td>`;
+  tbody += `<tr class="corrida-row-ebitda"><td>${tip('EBITDA','Earnings Before Interest, Taxes, Depreciation & Amortization — utilidad operativa antes de impuestos y depreciación.')}</td>`;
   for (const m of months) {
     const isYearEnd = m.month % 12 === 0;
     tbody += `<td class="${valClass(m.ebitda)}${isYearEnd ? ' corrida-year-sep' : ''}">${fmtN(m.ebitda)}</td>`;
@@ -2791,7 +2796,7 @@ function renderInteractiveCorrida(r, model, overrides) {
   tbody += '</tr>';
   
   // ── IMPUESTOS ──
-  tbody += `<tr class="corrida-row-tax"><td>  Impuestos</td>`;
+  tbody += `<tr class="corrida-row-tax"><td>${tip('Impuestos','ISR e IVA estimados sobre la utilidad gravable.')}</td>`;
   for (const m of months) {
     const isYearEnd = m.month % 12 === 0;
     tbody += `<td class="${isYearEnd ? 'corrida-year-sep' : ''}">${fmtN(m.taxes)}</td>`;
@@ -2799,7 +2804,7 @@ function renderInteractiveCorrida(r, model, overrides) {
   tbody += '</tr>';
   
   // ── UTILIDAD NETA ──
-  tbody += `<tr class="corrida-row-net"><td>Utilidad NETA</td>`;
+  tbody += `<tr class="corrida-row-net"><td>${tip('Utilidad NETA','Ganancia final después de todos los costos e impuestos. EBITDA − Impuestos.')}</td>`;
   for (const m of months) {
     const isYearEnd = m.month % 12 === 0;
     tbody += `<td class="${valClass(m.netIncome)}${isYearEnd ? ' corrida-year-sep' : ''}">${fmtN(m.netIncome)}</td>`;
@@ -2807,7 +2812,7 @@ function renderInteractiveCorrida(r, model, overrides) {
   tbody += '</tr>';
   
   // ── FLUJO ACUMULADO ──
-  tbody += `<tr class="corrida-row-cumcf"><td>Flujo Acumulado</td>`;
+  tbody += `<tr class="corrida-row-cumcf"><td>${tip('Flujo Acumulado','Suma acumulada de utilidad neta desde el mes 1. Cuando cruza $0 indica recuperación de inversión (payback).')}</td>`;
   for (const m of months) {
     const isYearEnd = m.month % 12 === 0;
     tbody += `<td class="${valClass(m.cumulativeCashFlow)}${isYearEnd ? ' corrida-year-sep' : ''}">${fmtN(m.cumulativeCashFlow)}</td>`;
