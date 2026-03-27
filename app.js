@@ -431,7 +431,44 @@ function initNav(){
 
   const marketToggle = $('global-market-toggle');
   if (marketToggle) {
+    // The checkbox is display:none (CSS custom toggle). Clicks on the
+    // track/thumb div don't always propagate to the hidden input.
+    // So we attach a click listener on the visible wrapper.
+    const toggleWrapper = marketToggle.closest('.header-market-toggle');
+    const toggleTrack = toggleWrapper?.querySelector('.header-toggle-track');
+
+    const applyToggleVisual = (checked) => {
+      if (toggleTrack) {
+        toggleTrack.style.background = checked ? 'var(--accent, #6B7A2E)' : 'var(--border, #ddd)';
+        const thumb = toggleTrack.querySelector('.header-toggle-thumb');
+        if (thumb) thumb.style.left = checked ? '18px' : '2px';
+      }
+    };
+
+    // Initialize visual state
+    applyToggleVisual(marketToggle.checked);
+
+    const handleToggle = () => {
+      marketToggle.checked = !marketToggle.checked;
+      const isChecked = marketToggle.checked;
+      applyToggleVisual(isChecked);
+      const emp = getActiveEmpresa();
+      if (emp) {
+        if (!emp.settings) emp.settings = {};
+        emp.settings.applyMarketFactor = isChecked;
+        updateEmpresa({ settings: emp.settings });
+        renderCurrentView();
+      }
+    };
+
+    // Attach click on the track (the visible green/grey pill)
+    if (toggleTrack) toggleTrack.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); handleToggle(); });
+    // Also on the "F. Mercado" text label
+    const textLabel = toggleWrapper?.querySelector('span');
+    if (textLabel) textLabel.addEventListener('click', (e) => { e.preventDefault(); handleToggle(); });
+    // Fallback: if someone manages to trigger the native change
     marketToggle.addEventListener('change', (e) => {
+      applyToggleVisual(e.target.checked);
       const emp = getActiveEmpresa();
       if (emp) {
         if (!emp.settings) emp.settings = {};
@@ -543,9 +580,17 @@ function updateEnterpriseHeader(empresa){
   
   const marketToggle = $('global-market-toggle');
   if (marketToggle) {
-    marketToggle.checked = emp?.settings?.applyMarketFactor !== false;
+    const isOn = emp?.settings?.applyMarketFactor !== false;
+    marketToggle.checked = isOn;
     const toggleContainer = marketToggle.closest('.header-market-toggle');
     if (toggleContainer) toggleContainer.style.display = emp ? 'flex' : 'none';
+    // Sync JS-driven visual state
+    const track = toggleContainer?.querySelector('.header-toggle-track');
+    if (track) {
+      track.style.background = isOn ? 'var(--accent, #6B7A2E)' : 'var(--border, #ddd)';
+      const thumb = track.querySelector('.header-toggle-thumb');
+      if (thumb) thumb.style.left = isOn ? '18px' : '2px';
+    }
   }
 }
 
