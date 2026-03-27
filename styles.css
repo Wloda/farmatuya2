@@ -3666,239 +3666,194 @@ input:focus,select:focus,textarea:focus{
 .corrida-table {
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.75rem;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-family: var(--font, 'Inter'), system-ui, sans-serif;
   width: max-content;
   min-width: 100%;
   background: var(--bg-card, #fff);
-}
-.corrida-table th, .corrida-table td {
-  padding: 6px 10px;
-  white-space: nowrap;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
-  border-right: 1px solid rgba(0,0,0,0.04);
-  text-align: right;
-  min-width: 90px;
-  font-variant-numeric: tabular-nums;
-}
-/* Header row — dark premium bar */
-.corrida-table thead th {
-  background: #1e293b;
-  color: #e2e8f0;
-  font-weight: 700;
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  padding: 8px 10px;
-  border-bottom: 2px solid #334155;
-}
-/* Sticky row label column */
-.corrida-table td:first-child,
-.corrida-table th:first-child {
-  position: sticky;
-  left: 0;
-  z-index: 6;
-  background: var(--bg-card, #fff);
-  text-align: left;
-  font-weight: 600;
-  min-width: 210px;
-  max-width: 210px;
-  border-right: 2px solid rgba(0,0,0,0.1);
-  font-size: 0.73rem;
   color: var(--text-1);
 }
-.corrida-table thead th:first-child {
-  z-index: 8;
-  background: #0f172a;
-  color: #f8fafc;
+
+.corrida-table th, .corrida-table td {
+  padding: 8px 14px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  min-width: 100px;
+  font-variant-numeric: tabular-nums;
+  height: 40px;
+  box-sizing: border-box;
 }
 
-/* ── Section header rows ── */
+/* ── Sticky Headers (Top) ── */
+.corrida-table thead th {
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 2px solid #cbd5e1;
+}
+
+/* ── Sticky Columns (Left) ── */
+.corrida-sticky {
+  position: sticky !important;
+  left: 0;
+  z-index: 5;
+  background: #fff;
+  text-align: left !important;
+  font-weight: 600;
+  width: 240px;
+  min-width: 240px;
+  max-width: 240px;
+  box-shadow: inset -1px 0 0 var(--border);
+}
+.corrida-sticky-base {
+  position: sticky !important;
+  left: 240px;
+  z-index: 5;
+  background: #f8fafc;
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
+  border-right: 2px solid #cbd5e1 !important;
+  font-weight: 700;
+}
+
+/* ── Top-Left Corner Intersections ── */
+.corrida-table thead th.corrida-sticky {
+  z-index: 15;
+  background: #f1f5f9;
+}
+.corrida-table thead th.corrida-sticky-base {
+  z-index: 15;
+  background: #e2e8f0;
+}
+
+/* ── Alternating Rows ── */
+.corrida-row-item td { background: #fff; }
+.corrida-row-item:nth-child(even) td { background: #fafbfc; }
+.corrida-row-item:nth-child(even) td.corrida-sticky { background: #fafbfc; }
+.corrida-row-item:nth-child(even) td.corrida-sticky-base { background: #f1f5f9; }
+
+/* ── Section Header Rows ── */
 .corrida-row-header td {
   background: #f1f5f9 !important;
   font-weight: 800 !important;
   color: #1e293b !important;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-top: 2px solid #cbd5e1;
+  border-top: 2px solid #94a3b8;
   border-bottom: 1px solid #cbd5e1;
-  padding: 8px 10px;
-}
-.corrida-row-header td:first-child {
-  background: #e2e8f0 !important;
-  border-right-color: #94a3b8;
 }
 
-/* ── Sub-item rows (indented) ── */
-.corrida-row-item td:first-child {
-  padding-left: 1.5rem;
+/* ── Sub-item rows (indented label) ── */
+.corrida-row-item td.corrida-sticky {
+  padding-left: 24px;
   font-weight: 500;
-  color: var(--text-2, #64748b);
-}
-.corrida-row-item td {
-  background: #fff;
-}
-.corrida-row-item:nth-child(even) td {
-  background: #fafbfc;
+  color: #475569;
 }
 
-/* ── Total rows — blue accent band ── */
+/* ── Total Rows ── */
 .corrida-row-total td {
   background: #eff6ff !important;
-  font-weight: 800 !important;
-  color: #1d4ed8 !important;
-  font-size: 0.74rem;
-  border-top: 2px solid #3b82f6;
-  border-bottom: 2px solid #3b82f6;
-  padding: 8px 10px;
-}
-.corrida-row-total td:first-child {
-  background: #dbeafe !important;
+  font-weight: 700 !important;
   color: #1e40af !important;
+  border-top: 2px solid #93c5fd;
+  border-bottom: 2px solid #93c5fd;
 }
+.corrida-row-total td.corrida-sticky { background: #dbeafe !important; }
+.corrida-row-total td.corrida-sticky-base { background: #bfdbfe !important; }
 
-/* ── Revenue row — green highlight ── */
+/* ── Financial Highlights ── */
 .corrida-row-revenue td {
   background: #ecfdf5 !important;
-  font-weight: 700;
+  font-weight: 700 !important;
   color: #065f46 !important;
-  font-size: 0.74rem;
   border-top: 2px solid #10b981;
-  border-bottom: 1px solid #a7f3d0;
 }
-.corrida-row-revenue td:first-child {
-  background: #d1fae5 !important;
-  color: #064e3b !important;
-  font-weight: 800;
-}
+.corrida-row-revenue td.corrida-sticky { background: #d1fae5 !important; }
+.corrida-row-revenue td.corrida-sticky-base { background: #a7f3d0 !important; }
 
-/* ── EBITDA row ── */
 .corrida-row-ebitda td {
-  font-weight: 700;
   background: #fefce8 !important;
+  font-weight: 700 !important;
   border-top: 1px solid #fde047;
 }
-.corrida-row-ebitda td:first-child {
-  background: #fef9c3 !important;
-  color: #854d0e !important;
-  font-weight: 800;
-}
+.corrida-row-ebitda td.corrida-sticky { background: #fef9c3 !important; color: #854d0e !important; }
+.corrida-row-ebitda td.corrida-sticky-base { background: #fef08a !important; }
 
-/* ── Net income row — bold bottom line ── */
 .corrida-row-net td {
   font-weight: 800 !important;
-  font-size: 0.76rem;
+  font-size: 0.85rem;
   border-top: 3px double #1e293b;
   background: #f8fafc !important;
-  padding: 8px 10px;
 }
-.corrida-row-net td:first-child {
-  background: #e2e8f0 !important;
-  color: #0f172a !important;
-}
+.corrida-row-net td.corrida-sticky { background: #e2e8f0 !important; color: #0f172a !important; }
+.corrida-row-net td.corrida-sticky-base { background: #cbd5e1 !important; }
 
-/* ── Cumulative cashflow row ── */
 .corrida-row-cumcf td {
-  font-weight: 700;
   background: #faf5ff !important;
+  font-weight: 700 !important;
   border-top: 2px solid #a855f7;
 }
-.corrida-row-cumcf td:first-child {
-  background: #f3e8ff !important;
-  color: #6b21a8 !important;
-  font-weight: 800;
-}
+.corrida-row-cumcf td.corrida-sticky { background: #f3e8ff !important; color: #6b21a8 !important; }
+.corrida-row-cumcf td.corrida-sticky-base { background: #e9d5ff !important; }
 
-/* ── Editable cell interaction ── */
-.corrida-editable {
+/* ── Tax row styling ── */
+.corrida-row-tax td { color: #64748b; font-size: 0.75rem; }
+.corrida-row-tax td.corrida-sticky { color: #64748b !important; }
+
+/* ── Editable cells & Inputs ── */
+td.corrida-editable {
   cursor: pointer;
   position: relative;
-  transition: background 0.12s, box-shadow 0.12s;
+  transition: all 0.2s;
 }
-.corrida-editable:hover {
-  background: rgba(59, 130, 246, 0.08) !important;
-  box-shadow: inset 0 0 0 1.5px #3b82f6;
+td.corrida-editable:hover {
+  background: #e0f2fe !important;
+  box-shadow: inset 0 0 0 2px #38bdf8 !important;
 }
-/* Override indicator */
-.corrida-modified {
-  background: rgba(251, 191, 36, 0.1) !important;
+.corrida-dot {
+  color: #ea580c;
+  font-size: 10px;
+  vertical-align: super;
+  margin-left: 4px;
 }
-.corrida-modified::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #d97706;
-}
-/* Inline edit input */
 .corrida-input {
-  width: 80px;
+  width: 90px;
   border: none;
-  background: #eff6ff;
-  outline: 2px solid #3b82f6;
-  border-radius: 3px;
-  font-size: 0.75rem;
+  background: #fff;
+  outline: 2px solid #0ea5e9;
+  border-radius: 4px;
+  font-size: 0.8rem;
   font-family: inherit;
   font-variant-numeric: tabular-nums;
   text-align: right;
-  padding: 3px 6px;
-  color: #1e293b;
+  padding: 4px 8px;
   font-weight: 700;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-/* ── Value coloring ── */
+/* ── Value Colors ── */
 .corrida-positive { color: #059669 !important; }
 .corrida-negative { color: #dc2626 !important; }
 
-/* ── Year separator columns ── */
+/* ── Year Separators ── */
 .corrida-year-sep {
-  border-left: 2px solid #3b82f6 !important;
-}
-/* Tax row styling */
-.corrida-row-tax td {
-  color: #94a3b8;
-  font-size: 0.7rem;
-}
-.corrida-row-tax td:first-child {
-  color: #94a3b8 !important;
+  border-left: 2px solid #94a3b8 !important;
 }
 
 /* ── Scroll container ── */
 #branch-pnl-table-full {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: #94a3b8 transparent;
 }
-#branch-pnl-table-full::-webkit-scrollbar { width: 6px; height: 6px; }
-#branch-pnl-table-full::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+#branch-pnl-table-full::-webkit-scrollbar { width: 8px; height: 8px; }
+#branch-pnl-table-full::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
 #branch-pnl-table-full::-webkit-scrollbar-track { background: transparent; }
-
-/* ── Info tooltip icon ── */
-.corrida-tip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.06);
-  color: #94a3b8;
-  font-size: 9px;
-  font-style: normal;
-  font-weight: 700;
-  cursor: help;
-  margin-left: 3px;
-  vertical-align: middle;
-  transition: background 0.15s, color 0.15s;
-  line-height: 1;
-}
-.corrida-tip:hover {
-  background: #3b82f6;
-  color: #fff;
-}

@@ -2242,14 +2242,15 @@ document.addEventListener('DOMContentLoaded',()=>{
     else if (currentBranch?.locationStudy?.address) marketAddrInput.value = currentBranch.locationStudy.address;
 
     // ── Run Full Study ──
-    const doRefresh = async (overrideQuery, preGeocodedObject) => {
+    const doRefresh = async (overrideQuery, preGeocodedObject, forceRefresh = false) => {
       const query = overrideQuery || marketAddrInput.value.trim();
       if (!query || !state.activeBranchId) return;
       marketRefreshBtn.disabled = true;
       marketRefreshBtn.textContent = '⏳';
       if (typeof showToast === 'function') showToast('🔍 Analizando ubicación...', 'info');
       try {
-        const study = await runLocationStudy(query, preGeocodedObject);
+        // Pass forceRefresh explicitly to location-engine
+        const study = await runLocationStudy(query, preGeocodedObject, forceRefresh);
         if (study.errors?.length && !study.coordinates) {
           if (typeof showToast === 'function') showToast('❌ No se pudo encontrar la ubicación', 'error');
           return;
@@ -2337,8 +2338,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     };
     setupInlineAutocomplete();
 
-    marketRefreshBtn.addEventListener('click', () => doRefresh());
-    marketAddrInput.addEventListener('keydown', e => { if (e.key === 'Enter') doRefresh(); });
+    // Pass true to force refresh and bypass geocode cache
+    marketRefreshBtn.addEventListener('click', () => doRefresh(null, null, true));
+    marketAddrInput.addEventListener('keydown', e => { if (e.key === 'Enter') doRefresh(null, null, true); });
   }
 
   // (Royalty panel init moved to renderBranchDetail where branch is available)
@@ -2676,13 +2678,13 @@ function renderBranchPnL(r,model,overrides){
 function renderInteractiveCorrida(r, model, overrides) {
   const container = $('branch-pnl-table-full');
   if (!container) return;
-  
+
   const months = r.months;
   const fc = { ...model.fixedCosts, ...(overrides.fixedCosts || {}) };
   const vcModel = model.variableCosts;
   const vcOv = overrides.variableCosts || {};
   const effVc = { ...vcModel, ...vcOv };
-  
+
   const fmtN = (v) => {
     if (v == null || isNaN(v)) return '—';
     const abs = Math.abs(v);
@@ -2691,189 +2693,100 @@ function renderInteractiveCorrida(r, model, overrides) {
   };
   const fmtPct = (v) => (v * 100).toFixed(1) + '%';
   const valClass = (v) => v >= 0 ? 'corrida-positive' : 'corrida-negative';
-  
-  // Determine which months to show: all 60 + annual summaries
-  const colMonths = months.map(m => m.month);
-  
-  // Build header
-  let thead = '<tr><th>Concepto</th>';
-  for (const m of months) {
-    const isYearEnd = m.month % 12 === 0;
-    thead += `<th class="${isYearEnd ? 'corrida-year-sep' : ''}">M${m.month}</th>`;
-  }
-  thead += '</tr>';
-  
-  // Fixed cost row definitions
+
   const social = fc.socialCharge != null ? fc.socialCharge : fc.payroll * 0.30;
-  // ℹ Tooltip helper
-  const tip = (text, hint) => `${text} <span class="corrida-tip" title="${hint}">ℹ</span>`;
-  
   const fixedRows = [
-    { label: tip('Renta (+7%)','Renta mensual del local. Se incrementa 7% anual por contrato.'), key: 'rent', val: fc.rent, editable: true, ovKey: 'fixedCosts.rent' },
-    { label: tip('Nómina','Sueldos y salarios del personal operativo de la sucursal.'), key: 'payroll', val: fc.payroll, editable: true, ovKey: 'fixedCosts.payroll' },
-    { label: tip('C. Social','Cargas sociales: IMSS, Infonavit, SAR (~30% de nómina).'), key: 'socialCharge', val: social, editable: true, ovKey: 'fixedCosts.socialCharge' },
-    { label: tip('Contabilidad Ext.','Honorarios del despacho contable externo.'), key: 'accounting', val: fc.accounting, editable: true, ovKey: 'fixedCosts.accounting' },
-    { label: tip('Sistemas','Licencias de software, POS, ERP y soporte técnico.'), key: 'systems', val: fc.systems, editable: true, ovKey: 'fixedCosts.systems' },
-    { label: tip('Serv. y Papelería','Servicios (luz, agua, internet) y materiales de papelería.'), key: 'servPap', val: fc.servPap?.m3 || 0, editable: true, ovKey: 'fixedCosts.servPap' },
+    { label: 'Renta (+7%)', val: fc.rent, ovKey: 'fixedCosts.rent' },
+    { label: 'Nómina', val: fc.payroll, ovKey: 'fixedCosts.payroll' },
+    { label: 'C. Social', val: social, ovKey: 'fixedCosts.socialCharge' },
+    { label: 'Contabilidad', val: fc.accounting, ovKey: 'fixedCosts.accounting' },
+    { label: 'Sistemas', val: fc.systems, ovKey: 'fixedCosts.systems' },
+    { label: 'Serv/Papelería', val: fc.servPap?.m3 || 0, ovKey: 'fixedCosts.servPap' },
   ];
-  
-  // Variable cost row definitions (percentages)
   const varRows = [
-    { label: tip('Inventario (COGS)','Cost of Goods Sold — costo de adquisición de mercancía vendida.'), key: 'cogs', pct: effVc.cogs, editable: true, ovKey: 'variableCosts.cogs' },
-    { label: tip('Com. de venta','Comisiones pagadas al personal por cada venta realizada.'), key: 'comVenta', pct: effVc.comVenta, editable: true, ovKey: 'variableCosts.comVenta' },
-    { label: tip('Merma','Pérdida de inventario por caducidad, robo o daño.'), key: 'merma', pct: effVc.merma, editable: true, ovKey: 'variableCosts.merma' },
-    { label: tip('Publicidad directa','Inversión en publicidad local: volantes, redes, promociones.'), key: 'pubDir', pct: effVc.pubDir, editable: true, ovKey: 'variableCosts.pubDir' },
-    { label: tip('Regalías','Pago al franquiciante por uso de marca y know-how.'), key: 'regalia', pct: effVc.regalia, editable: true, ovKey: 'variableCosts.regalia' },
-    { label: tip('Com. bancarias','Comisiones por cobro con terminal bancaria y transferencias.'), key: 'bancario', pct: effVc.bancario, editable: true, ovKey: 'variableCosts.bancario' },
+    { label: 'COGS (Inventario)', pct: effVc.cogs, ovKey: 'variableCosts.cogs' },
+    { label: 'Com. de venta', pct: effVc.comVenta, ovKey: 'variableCosts.comVenta' },
+    { label: 'Merma', pct: effVc.merma, ovKey: 'variableCosts.merma' },
+    { label: 'Publicidad', pct: effVc.pubDir, ovKey: 'variableCosts.pubDir' },
+    { label: 'Regalías', pct: effVc.regalia, ovKey: 'variableCosts.regalia' },
+    { label: 'Com. bancarias', pct: effVc.bancario, ovKey: 'variableCosts.bancario' },
   ];
-  
-  const isOverridden = (ovKey) => {
-    const parts = ovKey.split('.');
-    if (parts[0] === 'fixedCosts') return (overrides.fixedCosts && overrides.fixedCosts[parts[1]] != null);
-    if (parts[0] === 'variableCosts') return (vcOv[parts[1]] != null);
-    return false;
-  };
-  
-  // Build rows
+  const isOv = (k) => { const p=k.split('.'); return p[0]==='fixedCosts'?(overrides.fixedCosts&&overrides.fixedCosts[p[1]]!=null):(vcOv[p[1]]!=null); };
+
+  /* ── Header: Concepto | Base | M1..M60 ── */
+  let thead = '<tr><th class="corrida-sticky">Concepto</th><th class="corrida-sticky-base">Base</th>';
+  for (const m of months) thead += `<th class="${m.month%12===0?'corrida-year-sep':''}">M${m.month}</th>`;
+  thead += '</tr>';
+
   let tbody = '';
-  
-  // ── GASTOS FIJOS SECTION ──
-  tbody += `<tr class="corrida-row-header"><td>Gastos Fijos</td>${months.map(()=>'<td></td>').join('')}</tr>`;
+  const monthCells = (valFn) => months.map(m => `<td class="${m.month%12===0?'corrida-year-sep':''}">${valFn(m)}</td>`).join('');
+  const monthCellsColored = (valFn, colorFn) => months.map(m => `<td class="${colorFn(m)}${m.month%12===0?' corrida-year-sep':''}">${valFn(m)}</td>`).join('');
+
+  /* ─── GASTOS FIJOS ─── */
+  tbody += `<tr class="corrida-row-header"><td class="corrida-sticky">Gastos Fijos</td><td class="corrida-sticky-base"></td>${months.map(()=>'<td></td>').join('')}</tr>`;
   for (const row of fixedRows) {
-    const modified = isOverridden(row.ovKey);
-    tbody += '<tr class="corrida-row-item">';
-    tbody += `<td>${row.label}${modified ? ' <span style="color:#d97706">●</span>' : ''}</td>`;
-    for (const m of months) {
-      const val = row.val;
-      const isYearEnd = m.month % 12 === 0;
-      tbody += `<td class="corrida-editable${modified ? ' corrida-modified' : ''}${isYearEnd ? ' corrida-year-sep' : ''}" data-ovkey="${row.ovKey}" data-type="fixed" data-val="${val}">${fmtN(val)}</td>`;
-    }
+    const mod = isOv(row.ovKey);
+    tbody += `<tr class="corrida-row-item">`;
+    tbody += `<td class="corrida-sticky">${row.label}${mod?' <span class="corrida-dot">●</span>':''}</td>`;
+    tbody += `<td class="corrida-sticky-base corrida-editable" data-ovkey="${row.ovKey}" data-type="fixed" data-val="${row.val}">${fmtN(row.val)}</td>`;
+    tbody += monthCells(() => fmtN(row.val));
     tbody += '</tr>';
   }
-  // Total CF row
-  tbody += `<tr class="corrida-row-total"><td>TOTAL COSTOS FIJOS</td>`;
-  for (const m of months) {
-    const isYearEnd = m.month % 12 === 0;
-    tbody += `<td class="${isYearEnd ? 'corrida-year-sep' : ''}">${fmtN(m.totalFixedCosts)}</td>`;
-  }
-  tbody += '</tr>';
-  
-  // ── GASTOS VARIABLES SECTION ──
-  tbody += `<tr class="corrida-row-header"><td>Gastos Variables</td>${months.map(()=>'<td></td>').join('')}</tr>`;
+  tbody += `<tr class="corrida-row-total"><td class="corrida-sticky">Total C. Fijos</td><td class="corrida-sticky-base">${fmtN(months[2]?.totalFixedCosts||0)}</td>`;
+  tbody += monthCells(m => fmtN(m.totalFixedCosts)) + '</tr>';
+
+  /* ─── GASTOS VARIABLES ─── */
+  tbody += `<tr class="corrida-row-header"><td class="corrida-sticky">Gastos Variables</td><td class="corrida-sticky-base"></td>${months.map(()=>'<td></td>').join('')}</tr>`;
   for (const row of varRows) {
-    const modified = isOverridden(row.ovKey);
-    tbody += '<tr class="corrida-row-item">';
-    tbody += `<td>${row.label} <span style="opacity:0.5;font-size:0.65rem">${fmtPct(row.pct)}</span>${modified ? ' <span style="color:#d97706">●</span>' : ''}</td>`;
-    for (const m of months) {
-      const val = m.revenue * row.pct;
-      const isYearEnd = m.month % 12 === 0;
-      tbody += `<td class="corrida-editable${modified ? ' corrida-modified' : ''}${isYearEnd ? ' corrida-year-sep' : ''}" data-ovkey="${row.ovKey}" data-type="variable" data-pct="${row.pct}" data-val="${val}">${fmtN(val)}</td>`;
-    }
+    const mod = isOv(row.ovKey);
+    tbody += `<tr class="corrida-row-item">`;
+    tbody += `<td class="corrida-sticky">${row.label}${mod?' <span class="corrida-dot">●</span>':''}</td>`;
+    tbody += `<td class="corrida-sticky-base corrida-editable" data-ovkey="${row.ovKey}" data-type="variable" data-pct="${row.pct}">${fmtPct(row.pct)}</td>`;
+    tbody += monthCells(m => fmtN(m.revenue * row.pct));
     tbody += '</tr>';
   }
-  // Total CV row
-  tbody += `<tr class="corrida-row-total"><td>TOTAL COSTOS VARIABLES</td>`;
-  for (const m of months) {
-    const isYearEnd = m.month % 12 === 0;
-    tbody += `<td class="${isYearEnd ? 'corrida-year-sep' : ''}">${fmtN(m.variableCosts)}</td>`;
-  }
-  tbody += '</tr>';
-  
-  // ── INGRESOS ──
-  tbody += `<tr class="corrida-row-revenue"><td>${tip('Venta Mensual','Ingreso bruto proyectado por ventas de la sucursal.')}</td>`;
-  for (const m of months) {
-    const isYearEnd = m.month % 12 === 0;
-    tbody += `<td class="${isYearEnd ? 'corrida-year-sep' : ''}">${fmtN(m.revenue)}</td>`;
-  }
-  tbody += '</tr>';
-  
-  // ── EBITDA ──
-  tbody += `<tr class="corrida-row-ebitda"><td>${tip('EBITDA','Earnings Before Interest, Taxes, Depreciation & Amortization — utilidad operativa antes de impuestos y depreciación.')}</td>`;
-  for (const m of months) {
-    const isYearEnd = m.month % 12 === 0;
-    tbody += `<td class="${valClass(m.ebitda)}${isYearEnd ? ' corrida-year-sep' : ''}">${fmtN(m.ebitda)}</td>`;
-  }
-  tbody += '</tr>';
-  
-  // ── IMPUESTOS ──
-  tbody += `<tr class="corrida-row-tax"><td>${tip('Impuestos','ISR e IVA estimados sobre la utilidad gravable.')}</td>`;
-  for (const m of months) {
-    const isYearEnd = m.month % 12 === 0;
-    tbody += `<td class="${isYearEnd ? 'corrida-year-sep' : ''}">${fmtN(m.taxes)}</td>`;
-  }
-  tbody += '</tr>';
-  
-  // ── UTILIDAD NETA ──
-  tbody += `<tr class="corrida-row-net"><td>${tip('Utilidad NETA','Ganancia final después de todos los costos e impuestos. EBITDA − Impuestos.')}</td>`;
-  for (const m of months) {
-    const isYearEnd = m.month % 12 === 0;
-    tbody += `<td class="${valClass(m.netIncome)}${isYearEnd ? ' corrida-year-sep' : ''}">${fmtN(m.netIncome)}</td>`;
-  }
-  tbody += '</tr>';
-  
-  // ── FLUJO ACUMULADO ──
-  tbody += `<tr class="corrida-row-cumcf"><td>${tip('Flujo Acumulado','Suma acumulada de utilidad neta desde el mes 1. Cuando cruza $0 indica recuperación de inversión (payback).')}</td>`;
-  for (const m of months) {
-    const isYearEnd = m.month % 12 === 0;
-    tbody += `<td class="${valClass(m.cumulativeCashFlow)}${isYearEnd ? ' corrida-year-sep' : ''}">${fmtN(m.cumulativeCashFlow)}</td>`;
-  }
-  tbody += '</tr>';
-  
+  tbody += `<tr class="corrida-row-total"><td class="corrida-sticky">Total C. Variables</td><td class="corrida-sticky-base"></td>`;
+  tbody += monthCells(m => fmtN(m.variableCosts)) + '</tr>';
+
+  /* ─── SUMMARY ROWS (read-only) ─── */
+  tbody += `<tr class="corrida-row-revenue"><td class="corrida-sticky">Venta Mensual</td><td class="corrida-sticky-base"></td>${monthCells(m=>fmtN(m.revenue))}</tr>`;
+  tbody += `<tr class="corrida-row-ebitda"><td class="corrida-sticky">EBITDA</td><td class="corrida-sticky-base"></td>${monthCellsColored(m=>fmtN(m.ebitda),m=>valClass(m.ebitda))}</tr>`;
+  tbody += `<tr class="corrida-row-tax"><td class="corrida-sticky">Impuestos</td><td class="corrida-sticky-base"></td>${monthCells(m=>fmtN(m.taxes))}</tr>`;
+  tbody += `<tr class="corrida-row-net"><td class="corrida-sticky">Utilidad NETA</td><td class="corrida-sticky-base"></td>${monthCellsColored(m=>fmtN(m.netIncome),m=>valClass(m.netIncome))}</tr>`;
+  tbody += `<tr class="corrida-row-cumcf"><td class="corrida-sticky">Flujo Acumulado</td><td class="corrida-sticky-base"></td>${monthCellsColored(m=>fmtN(m.cumulativeCashFlow),m=>valClass(m.cumulativeCashFlow))}</tr>`;
+
   container.innerHTML = `<table class="corrida-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
-  
-  // ── CLICK-TO-EDIT HANDLERS ──
+
+  /* ── CLICK-TO-EDIT on BASE column only ── */
   container.querySelectorAll('.corrida-editable').forEach(cell => {
-    cell.addEventListener('click', function(e) {
+    cell.style.cursor = 'pointer';
+    cell.addEventListener('click', function() {
       if (cell.querySelector('input')) return;
-      const ovKey = cell.dataset.ovkey;
-      const type = cell.dataset.type;
-      const currentVal = type === 'variable' ? parseFloat(cell.dataset.pct) : parseFloat(cell.dataset.val);
-      
+      const ovKey = cell.dataset.ovkey, type = cell.dataset.type;
+      const curVal = type === 'variable' ? parseFloat(cell.dataset.pct) : parseFloat(cell.dataset.val);
       const input = document.createElement('input');
-      input.type = 'number';
-      input.className = 'corrida-input';
-      input.value = type === 'variable' ? (currentVal * 100).toFixed(2) : Math.round(currentVal);
-      input.title = type === 'variable' ? 'Porcentaje (ej: 65 = 65%)' : 'Valor absoluto en MXN';
-      cell.textContent = '';
-      cell.appendChild(input);
-      input.focus();
-      input.select();
-      
+      input.type = 'number'; input.className = 'corrida-input';
+      input.value = type === 'variable' ? (curVal * 100).toFixed(2) : Math.round(curVal);
+      input.title = type === 'variable' ? 'Porcentaje (ej: 65 = 65%)' : 'Valor en MXN';
+      cell.textContent = ''; cell.appendChild(input); input.focus(); input.select();
       const commit = () => {
-        const newVal = parseFloat(input.value);
-        if (isNaN(newVal)) { renderCurrentView(); return; }
-        
+        const nv = parseFloat(input.value);
+        if (isNaN(nv)) { state.activeTab='corrida'; renderCurrentView(); return; }
         const branch = getBranch(state.activeBranchId);
         if (!branch) return;
         if (!branch.overrides) branch.overrides = {};
-        
         const parts = ovKey.split('.');
-        if (parts[0] === 'fixedCosts') {
-          if (!branch.overrides.fixedCosts) branch.overrides.fixedCosts = {};
-          branch.overrides.fixedCosts[parts[1]] = newVal;
-        } else if (parts[0] === 'variableCosts') {
-          if (!branch.overrides.variableCosts) branch.overrides.variableCosts = {};
-          branch.overrides.variableCosts[parts[1]] = newVal / 100;
-        }
-        
+        if (parts[0]==='fixedCosts') { if(!branch.overrides.fixedCosts) branch.overrides.fixedCosts={}; branch.overrides.fixedCosts[parts[1]]=nv; }
+        else if (parts[0]==='variableCosts') { if(!branch.overrides.variableCosts) branch.overrides.variableCosts={}; branch.overrides.variableCosts[parts[1]]=nv/100; }
         updateBranch(state.activeBranchId, { overrides: branch.overrides });
-        renderCurrentView();
-        // Re-open the <details> section after re-render
-        requestAnimationFrame(() => {
-          const details = container.closest('details');
-          if (details) details.open = true;
-        });
+        state.activeTab = 'corrida'; renderCurrentView();
       };
-      
       input.addEventListener('blur', commit);
-      input.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
-        if (ev.key === 'Escape') { renderCurrentView(); }
-      });
+      input.addEventListener('keydown', ev => { if(ev.key==='Enter'){ev.preventDefault();commit();} if(ev.key==='Escape'){state.activeTab='corrida';renderCurrentView();} });
     });
   });
-  
-  // ── RESET BUTTON ──
+
+  /* ── RESET BUTTON ── */
   const resetBtn = $('btn-reset-overrides');
   if (resetBtn) {
     resetBtn.onclick = () => {
@@ -2884,11 +2797,7 @@ function renderInteractiveCorrida(r, model, overrides) {
         delete branch.overrides.variableCosts;
         updateBranch(state.activeBranchId, { overrides: branch.overrides });
         showToast('🔄 Valores restaurados al modelo base', 'success');
-        renderCurrentView();
-        requestAnimationFrame(() => {
-          const details = container.closest('details');
-          if (details) details.open = true;
-        });
+        state.activeTab = 'corrida'; renderCurrentView();
       }
     };
   }

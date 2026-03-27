@@ -129,11 +129,14 @@ export async function queryMultiRadius(lat, lng) {
     (
       // Pharmacies
       node["amenity"="pharmacy"](around:${radius},${lat},${lng});
+      node["healthcare"="pharmacy"](around:${radius},${lat},${lng});
       way["amenity"="pharmacy"](around:${radius},${lat},${lng});
 
       // Health facilities
       node["amenity"~"clinic|hospital|doctors|dentist|veterinary"](around:${radius},${lat},${lng});
+      node["healthcare"~"clinic|hospital|doctor|dentist"](around:${radius},${lat},${lng});
       way["amenity"~"clinic|hospital|doctors|dentist|veterinary"](around:${radius},${lat},${lng});
+      way["healthcare"~"clinic|hospital|doctor|dentist"](around:${radius},${lat},${lng});
 
       // Schools & Education
       node["amenity"~"school|university|college|kindergarten"](around:${radius},${lat},${lng});
@@ -163,6 +166,7 @@ export async function queryMultiRadius(lat, lng) {
 
       // Public transport
       node["highway"="bus_stop"](around:${radius},${lat},${lng});
+      node["public_transport"~"station|stop_position|platform"](around:${radius},${lat},${lng});
       node["railway"~"station|halt"](around:${radius},${lat},${lng});
       node["station"="subway"](around:${radius},${lat},${lng});
 
@@ -222,14 +226,15 @@ export async function queryMultiRadius(lat, lng) {
 
     const amenity = el.tags?.amenity;
     const shop = el.tags?.shop;
+    const healthcare = el.tags?.healthcare;
 
-    if (amenity === 'pharmacy') {
+    if (amenity === 'pharmacy' || healthcare === 'pharmacy') {
       const chain = detectChain(name);
       classified.farmacias.push({ ...item, ...chain });
-    } else if (['clinic', 'hospital', 'doctors', 'dentist'].includes(amenity)) {
+    } else if (['clinic', 'hospital', 'doctors', 'dentist'].includes(amenity) || ['clinic', 'hospital', 'doctor', 'dentist'].includes(healthcare)) {
       const operator = el.tags?.operator || '';
       const isPublic = /imss|issste|ssa|secretar[ií]a.*salud|centro.*salud|dif\b/i.test(operator) || /imss|issste/i.test(name);
-      const type = amenity === 'hospital' ? 'Hospital' : amenity === 'clinic' ? 'Clínica' : amenity === 'dentist' ? 'Dentista' : 'Consultorio';
+      const type = (amenity === 'hospital' || healthcare === 'hospital') ? 'Hospital' : (amenity === 'clinic' || healthcare === 'clinic') ? 'Clínica' : (amenity === 'dentist' || healthcare === 'dentist') ? 'Dentista' : 'Consultorio';
       classified.salud.push({ ...item, type, operator, isPublic });
       if (isPublic) classified.publicHealth.push({ ...item, type, operator });
     } else if (amenity === 'veterinary') {
@@ -586,7 +591,7 @@ async function queryDENUE(lat, lng, radiusMeters = 1000) {
 /* ══════════════════════════════════════════
    FULL LOCATION STUDY (enhanced v3)
    ══════════════════════════════════════════ */
-export async function runLocationStudy(addressQuery, preGeocodedObject) {
+export async function runLocationStudy(addressQuery, preGeocodedObject, forceRefresh = false) {
   const errors = [];
   let geocode = null;
   let multiRadius = null;
@@ -597,7 +602,7 @@ export async function runLocationStudy(addressQuery, preGeocodedObject) {
     if (preGeocodedObject && preGeocodedObject.lat && preGeocodedObject.lng) {
       geocode = preGeocodedObject;
     } else {
-      geocode = await geocodeAddress(addressQuery);
+      geocode = await geocodeAddress(addressQuery, forceRefresh);
     }
   } catch (e) {
     errors.push({ step: 'geocoding', error: e.message });
