@@ -2851,7 +2851,7 @@ function renderInteractiveCorrida(r, model, overrides) {
           branch.overrides.variableCosts[parts[1]] = newVal / 100;
         }
         
-        saveBranch(branch);
+        updateBranch(state.activeBranchId, { overrides: branch.overrides });
         renderCurrentView();
         // Re-open the <details> section after re-render
         requestAnimationFrame(() => {
@@ -2877,7 +2877,7 @@ function renderInteractiveCorrida(r, model, overrides) {
       if (branch.overrides) {
         delete branch.overrides.fixedCosts;
         delete branch.overrides.variableCosts;
-        saveBranch(branch);
+        updateBranch(state.activeBranchId, { overrides: branch.overrides });
         showToast('🔄 Valores restaurados al modelo base', 'success');
         renderCurrentView();
         requestAnimationFrame(() => {
