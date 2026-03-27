@@ -774,7 +774,7 @@ function bindBW2Events(){
 function renderPortfolioSummary(empresa){
   const el=$('portfolio-summary'); if(!el) return;
   if(!empresa){ el.style.display='none'; return; }
-  const proj = empresa.proyectos?.find(p => p.id === state.activeProyectoId);
+  const proj = getActiveProyecto();
   if(!proj){ el.style.display='none'; return; }
 
   const pseudoEmpresa = {
@@ -2667,15 +2667,232 @@ function renderBranchPnL(r,model,overrides){
   const btnExpAnnual = `<button class="btn-sm" style="display:none" onclick="exportCSV('resumen_anual.csv',['Año','Ingresos','Ut.Neta','Flujo'],[${ys.map((y,i)=>`['Año ${i+1}',${as[y].revenue},${as[y].netIncome},${as[y].cashFlow}]`).join(',')}])">📥 CSV</button>`;
   $('branch-annual-table').innerHTML=`${btnExpAnnual}<table class="data-table"><thead><tr><th>Año</th><th class="num">Ingresos</th><th class="num">Ut.Neta</th><th class="num">Flujo</th></tr></thead><tbody>${ys.map((y,i)=>`<tr><td>Año ${i+1}</td><td class="num">${fmt.m(as[y].revenue)}</td><td class="num ${as[y].netIncome>=0?'positive':'negative'}">${fmt.m(as[y].netIncome)}</td><td class="num ${as[y].cashFlow>=0?'positive':'negative'}">${fmt.m(as[y].cashFlow)}</td></tr>`).join('')}</tbody></table>`;
   
-  const cols=['Mes','Venta','COGS','Ut.Br','CF','CV','EBITDA','Imp','Ut.Net','Acum'];
-  for(let i=1; i<=5; i++) {
-    const el = $(`branch-pnl-y${i}`);
-    if(!el) continue;
-    const mStart = (i-1)*12 + 1;
-    const mEnd = i*12;
-    const yMonths = r.months.filter(m => m.month >= mStart && m.month <= mEnd);
-    if(yMonths.length === 0) { el.innerHTML = ''; continue; }
-    el.innerHTML=`<table class="data-table"><thead><tr>${cols.map(c=>`<th class="${c!=='Mes'?'num':''}">${c}</th>`).join('')}</tr></thead><tbody>${yMonths.map(m=>`<tr><td>M${m.month}</td><td class="num">${fmt.m(m.revenue)}</td><td class="num">${fmt.m(m.cogs)}</td><td class="num">${fmt.m(m.grossProfit)}</td><td class="num">${fmt.m(m.totalFixedCosts)}</td><td class="num">${fmt.m(m.variableCosts)}</td><td class="num ${m.ebitda>=0?'positive':'negative'}">${fmt.m(m.ebitda)}</td><td class="num">${fmt.m(m.taxes)}</td><td class="num ${m.netIncome>=0?'positive':'negative'}">${fmt.m(m.netIncome)}</td><td class="num ${m.cumulativeCashFlow>=0?'positive':'negative'}">${fmt.m(m.cumulativeCashFlow)}</td></tr>`).join('')}</tbody></table>`;
+  // ═══ INTERACTIVE CORRIDA FINANCIERA TABLE ═══
+  renderInteractiveCorrida(r, model, overrides);
+}
+
+/* ── Interactive Corrida Financiera ── */
+function renderInteractiveCorrida(r, model, overrides) {
+  const container = $('branch-pnl-table-full');
+  if (!container) return;
+  
+  const months = r.months;
+  const fc = { ...model.fixedCosts, ...(overrides.fixedCosts || {}) };
+  const vcModel = model.variableCosts;
+  const vcOv = overrides.variableCosts || {};
+  const effVc = { ...vcModel, ...vcOv };
+  
+  const fmtN = (v) => {
+    if (v == null || isNaN(v)) return '—';
+    const abs = Math.abs(v);
+    if (abs >= 1000) return (v < 0 ? '-' : '') + '$' + Math.round(abs).toLocaleString('en-US');
+    return (v < 0 ? '-' : '') + '$' + abs.toFixed(0);
+  };
+  const fmtPct = (v) => (v * 100).toFixed(1) + '%';
+  const valClass = (v) => v >= 0 ? 'corrida-positive' : 'corrida-negative';
+  
+  // Determine which months to show: all 60 + annual summaries
+  const colMonths = months.map(m => m.month);
+  
+  // Build header
+  let thead = '<tr><th>Concepto</th>';
+  for (const m of months) {
+    const isYearEnd = m.month % 12 === 0;
+    thead += `<th class="${isYearEnd ? 'corrida-year-sep' : ''}">M${m.month}</th>`;
+  }
+  thead += '</tr>';
+  
+  // Fixed cost row definitions
+  const social = fc.socialCharge != null ? fc.socialCharge : fc.payroll * 0.30;
+  const fixedRows = [
+    { label: 'Renta (+7%)', key: 'rent', val: fc.rent, editable: true, ovKey: 'fixedCosts.rent' },
+    { label: 'Nómina', key: 'payroll', val: fc.payroll, editable: true, ovKey: 'fixedCosts.payroll' },
+    { label: 'C. Social', key: 'socialCharge', val: social, editable: true, ovKey: 'fixedCosts.socialCharge' },
+    { label: 'Contabilidad Externa', key: 'accounting', val: fc.accounting, editable: true, ovKey: 'fixedCosts.accounting' },
+    { label: 'Sistemas', key: 'systems', val: fc.systems, editable: true, ovKey: 'fixedCosts.systems' },
+    { label: 'Servicios y Papelería', key: 'servPap', val: fc.servPap?.m3 || 0, editable: true, ovKey: 'fixedCosts.servPap' },
+  ];
+  
+  // Variable cost row definitions (percentages)
+  const varRows = [
+    { label: 'Inventario (COGS)', key: 'cogs', pct: effVc.cogs, editable: true, ovKey: 'variableCosts.cogs' },
+    { label: 'Comisiones de venta', key: 'comVenta', pct: effVc.comVenta, editable: true, ovKey: 'variableCosts.comVenta' },
+    { label: 'Merma del inventario', key: 'merma', pct: effVc.merma, editable: true, ovKey: 'variableCosts.merma' },
+    { label: 'Publicidad directa', key: 'pubDir', pct: effVc.pubDir, editable: true, ovKey: 'variableCosts.pubDir' },
+    { label: 'Regalías', key: 'regalia', pct: effVc.regalia, editable: true, ovKey: 'variableCosts.regalia' },
+    { label: 'Comisiones bancarias', key: 'bancario', pct: effVc.bancario, editable: true, ovKey: 'variableCosts.bancario' },
+  ];
+  
+  const isOverridden = (ovKey) => {
+    const parts = ovKey.split('.');
+    if (parts[0] === 'fixedCosts') return (overrides.fixedCosts && overrides.fixedCosts[parts[1]] != null);
+    if (parts[0] === 'variableCosts') return (vcOv[parts[1]] != null);
+    return false;
+  };
+  
+  // Build rows
+  let tbody = '';
+  
+  // ── GASTOS FIJOS SECTION ──
+  tbody += `<tr class="corrida-row-header"><td>Gastos Fijos</td>${months.map(()=>'<td></td>').join('')}</tr>`;
+  for (const row of fixedRows) {
+    const modified = isOverridden(row.ovKey);
+    tbody += '<tr>';
+    tbody += `<td style="padding-left:1.2rem;font-weight:500">${row.label} ${modified ? '<span style="color:#d97706;font-size:0.6rem">●</span>' : ''}</td>`;
+    for (const m of months) {
+      // Fixed costs: same every month (simplified — m1/m2/m3 logic is in engine)
+      const val = row.val;
+      const isYearEnd = m.month % 12 === 0;
+      tbody += `<td class="corrida-editable ${modified ? 'corrida-modified' : ''} ${isYearEnd ? 'corrida-year-sep' : ''}" data-ovkey="${row.ovKey}" data-type="fixed" data-val="${val}">${fmtN(val)}</td>`;
+    }
+    tbody += '</tr>';
+  }
+  // Total CF row
+  const totalFC = fixedRows.reduce((s, r) => s + r.val, 0);
+  tbody += `<tr class="corrida-row-total"><td style="padding-left:0.5rem">TOTAL COSTOS FIJOS</td>`;
+  for (const m of months) {
+    const cfActual = m.totalFixedCosts;
+    const isYearEnd = m.month % 12 === 0;
+    tbody += `<td class="${isYearEnd ? 'corrida-year-sep' : ''}">${fmtN(cfActual)}</td>`;
+  }
+  tbody += '</tr>';
+  
+  // ── GASTOS VARIABLES SECTION ──
+  tbody += `<tr class="corrida-row-header"><td>Gastos Variables</td>${months.map(()=>'<td></td>').join('')}</tr>`;
+  for (const row of varRows) {
+    const modified = isOverridden(row.ovKey);
+    tbody += '<tr>';
+    tbody += `<td style="padding-left:1.2rem;font-weight:500">${row.label} <span style="color:var(--text-3);font-size:0.65rem">${fmtPct(row.pct)}</span> ${modified ? '<span style="color:#d97706;font-size:0.6rem">●</span>' : ''}</td>`;
+    for (const m of months) {
+      const val = m.revenue * row.pct;
+      const isYearEnd = m.month % 12 === 0;
+      tbody += `<td class="corrida-editable ${modified ? 'corrida-modified' : ''} ${isYearEnd ? 'corrida-year-sep' : ''}" data-ovkey="${row.ovKey}" data-type="variable" data-pct="${row.pct}" data-val="${val}">${fmtN(val)}</td>`;
+    }
+    tbody += '</tr>';
+  }
+  // Total CV row
+  tbody += `<tr class="corrida-row-total"><td style="padding-left:0.5rem">TOTAL COSTOS VARIABLES</td>`;
+  for (const m of months) {
+    const isYearEnd = m.month % 12 === 0;
+    tbody += `<td class="${isYearEnd ? 'corrida-year-sep' : ''}">${fmtN(m.variableCosts)}</td>`;
+  }
+  tbody += '</tr>';
+  
+  // ── INGRESOS ──
+  tbody += `<tr class="corrida-row-revenue"><td style="font-weight:700">💰 Venta Mensual Proyectada</td>`;
+  for (const m of months) {
+    const isYearEnd = m.month % 12 === 0;
+    tbody += `<td class="${isYearEnd ? 'corrida-year-sep' : ''}" style="font-weight:700">${fmtN(m.revenue)}</td>`;
+  }
+  tbody += '</tr>';
+  
+  // ── EBITDA ──
+  tbody += `<tr><td style="font-weight:700">EBITDA</td>`;
+  for (const m of months) {
+    const isYearEnd = m.month % 12 === 0;
+    tbody += `<td class="${valClass(m.ebitda)} ${isYearEnd ? 'corrida-year-sep' : ''}">${fmtN(m.ebitda)}</td>`;
+  }
+  tbody += '</tr>';
+  
+  // ── IMPUESTOS ──
+  tbody += `<tr><td style="padding-left:1rem;color:var(--text-3)">Impuestos</td>`;
+  for (const m of months) {
+    const isYearEnd = m.month % 12 === 0;
+    tbody += `<td class="${isYearEnd ? 'corrida-year-sep' : ''}" style="color:var(--text-3)">${fmtN(m.taxes)}</td>`;
+  }
+  tbody += '</tr>';
+  
+  // ── UTILIDAD NETA ──
+  tbody += `<tr class="corrida-row-net"><td style="font-weight:800">✅ Utilidad NETA</td>`;
+  for (const m of months) {
+    const isYearEnd = m.month % 12 === 0;
+    tbody += `<td class="${valClass(m.netIncome)} ${isYearEnd ? 'corrida-year-sep' : ''}">${fmtN(m.netIncome)}</td>`;
+  }
+  tbody += '</tr>';
+  
+  // ── FLUJO ACUMULADO ──
+  tbody += `<tr><td style="font-weight:700;border-top:2px solid var(--border)">📈 Flujo Acumulado</td>`;
+  for (const m of months) {
+    const isYearEnd = m.month % 12 === 0;
+    tbody += `<td class="${valClass(m.cumulativeCashFlow)} ${isYearEnd ? 'corrida-year-sep' : ''}" style="font-weight:700;border-top:2px solid var(--border)">${fmtN(m.cumulativeCashFlow)}</td>`;
+  }
+  tbody += '</tr>';
+  
+  container.innerHTML = `<table class="corrida-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+  
+  // ── CLICK-TO-EDIT HANDLERS ──
+  container.querySelectorAll('.corrida-editable').forEach(cell => {
+    cell.addEventListener('click', function(e) {
+      if (cell.querySelector('input')) return; // already editing
+      const ovKey = cell.dataset.ovkey;
+      const type = cell.dataset.type;
+      const currentVal = type === 'variable' ? parseFloat(cell.dataset.pct) : parseFloat(cell.dataset.val);
+      
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.className = 'corrida-input';
+      input.value = type === 'variable' ? (currentVal * 100).toFixed(2) : Math.round(currentVal);
+      input.title = type === 'variable' ? 'Porcentaje (ej: 65 = 65%)' : 'Valor absoluto en MXN';
+      cell.textContent = '';
+      cell.appendChild(input);
+      input.focus();
+      input.select();
+      
+      const commit = () => {
+        const newVal = parseFloat(input.value);
+        if (isNaN(newVal)) { renderCurrentView(); return; }
+        
+        const branch = getBranch(state.activeBranchId);
+        if (!branch) return;
+        if (!branch.overrides) branch.overrides = {};
+        
+        const parts = ovKey.split('.');
+        if (parts[0] === 'fixedCosts') {
+          if (!branch.overrides.fixedCosts) branch.overrides.fixedCosts = {};
+          branch.overrides.fixedCosts[parts[1]] = newVal;
+        } else if (parts[0] === 'variableCosts') {
+          if (!branch.overrides.variableCosts) branch.overrides.variableCosts = {};
+          branch.overrides.variableCosts[parts[1]] = newVal / 100; // convert % to decimal
+        }
+        
+        // Save and re-render
+        saveBranch(branch);
+        // Expand the table before re-render
+        const wasExpanded = !container.classList.contains('collapsed');
+        renderCurrentView();
+        // Re-expand after render
+        if (wasExpanded) {
+          requestAnimationFrame(() => {
+            const tbl = $('branch-pnl-table-full');
+            if (tbl) tbl.classList.remove('collapsed');
+            const tb = $('branch-toggle-pnl');
+            if (tb) tb.innerHTML = 'Colapsar <span style="font-size:0.7rem">▲</span>';
+          });
+        }
+      };
+      
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+        if (ev.key === 'Escape') { renderCurrentView(); }
+      });
+    });
+  });
+  
+  // ── RESET BUTTON ──
+  const resetBtn = $('btn-reset-overrides');
+  if (resetBtn) {
+    resetBtn.onclick = () => {
+      const branch = getBranch(state.activeBranchId);
+      if (!branch) return;
+      if (branch.overrides) {
+        delete branch.overrides.fixedCosts;
+        delete branch.overrides.variableCosts;
+        saveBranch(branch);
+        showToast('🔄 Valores restaurados al modelo base', 'success');
+        renderCurrentView();
+      }
+    };
   }
 }
 
@@ -3546,7 +3763,7 @@ function renderLocationExtras(study, c, s, sug) {
 /* ═══ CONSOLIDATED VIEW ═══ */
 async function renderConsolidated(empresa){
   await ensureChartJS();
-  const proj = empresa.proyectos?.find(p => p.id === state.activeProyectoId);
+  const proj = getActiveProyecto();
   const pseudoEmpresa = proj ? {
     ...empresa,
     proyectos: [proj],
@@ -3671,7 +3888,7 @@ async function renderConsolidated(empresa){
 /* ═══ COMPARADOR VIEW ═══ */
 async function renderComparador(empresa){
   await ensureChartJS();
-  const proj = empresa.proyectos?.find(p => p.id === state.activeProyectoId);
+  const proj = getActiveProyecto();
   const branchList = proj ? (proj.branches || []) : [];
   const activeBranches = branchList.filter(b=>b.status!=='paused' && b.status!=='archived');
   const results=activeBranches.map(b=>({branch:b,result:runBranchProjection(b, getActiveEmpresa())}));

@@ -451,11 +451,14 @@
               <div class="chart-box" style="height:220px"><canvas id="chart-branch-tornado"></canvas></div>
             </div>
 
-            <!-- Full P&L Table -->
+            <!-- Interactive Corrida Financiera -->
             <div class="dash-card dash-12">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-                <h3 class="section-title" style="margin:0">P&L Detallado Mensual</h3>
-                <button class="expand-btn" id="branch-toggle-pnl" style="font-weight:600;background:none;border:none;color:var(--text-2);cursor:pointer;display:flex;align-items:center;gap:0.5rem">Ver Desglose <span style="font-size:0.7rem">▼</span></button>
+                <h3 class="section-title" style="margin:0">📊 Corrida Financiera Interactiva</h3>
+                <div style="display:flex;gap:0.5rem;align-items:center">
+                  <button class="btn-sm" id="btn-reset-overrides" title="Restaurar valores del modelo base" style="background:var(--surface);border:1px solid var(--border);color:var(--text-2);cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-weight:600;font-size:0.75rem">🔄 Reset</button>
+                  <button class="btn-sm" id="branch-toggle-pnl" style="font-weight:600;background:none;border:none;color:var(--text-2);cursor:pointer;display:flex;align-items:center;gap:0.5rem">Expandir <span style="font-size:0.7rem">▼</span></button>
+                </div>
               </div>
               <div class="table-scroll collapsible collapsed" id="branch-pnl-table-full"></div>
             </div>
