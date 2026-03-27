@@ -671,8 +671,9 @@ function renderBW2Home(){
   h += `<div class="empresa-proyectos-grid">`;
   empresas.forEach(emp => {
     const pCount = emp.proyectos.length;
-    let bCount=0, ebitda=0, score=0, scored=0, payback=0;
+    let bCount=0, ebitda=0, score=0, scored=0, payback=0, totalCap=0, totalComm=0;
     (emp.proyectos||[]).forEach(proj => {
+      totalCap += proj.totalCapital || 0;
       (proj.branches||[]).forEach(b => {
         if(b.status==='archived') return;
         bCount++;
@@ -680,6 +681,7 @@ function renderBW2Home(){
           const r = runBranchProjection(b, getActiveEmpresa());
           if(r){
             ebitda += r.avgMonthlyEBITDA||0;
+            totalComm += r.totalInvestment||0;
             if(r.paybackMonth > payback) payback = r.paybackMonth;
             if(r.viabilityScore){ score += r.viabilityScore; scored++; }
           }
@@ -713,7 +715,7 @@ function renderBW2Home(){
           ${logo}
           <div>
             <div class="emp-dash-proj-name">${esc(emp.name)}</div>
-            <div class="emp-dash-proj-meta">${pCount} proyecto${pCount!==1?'s':''} · ${bCount} sucursal${bCount!==1?'es':''}</div>
+            <div class="emp-dash-proj-meta">Capital: ${fmt.m(totalCap)} · ${pCount} proy.</div>
           </div>
         </div>
         <div style="display:flex;gap:0.25rem">
@@ -728,7 +730,7 @@ function renderBW2Home(){
       </div>
       ${sparkData.length >= 2 ? sparklineSVG(sparkData) : ''}
       <div class="emp-dash-proj-footer">
-        <div class="emp-dash-proj-meta-foot">${pCount} proyecto${pCount!==1?'s':''} · ${bCount} sucursal${bCount!==1?'es':''}</div>
+        <div class="emp-dash-proj-meta-foot">Inv: ${fmt.m(totalComm)} · ${bCount} uds.</div>
         <button class="btn-open-empresa btn-compact-open" data-emp-id="${emp.id}">Abrir →</button>
       </div>
     </div>`;
