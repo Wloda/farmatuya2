@@ -876,6 +876,7 @@ function renderEmpresaDashboard(empresa){
   (empresa.proyectos||[]).forEach(proj => {
     const activeBranches = (proj.branches||[]).filter(b=>b.status!=='archived');
     let projEBITDA=0, projScore=0, projScored=0, projPayback=0;
+    let sparkData = [];
     activeBranches.forEach(b => {
       try {
         const r = runBranchProjection(b, getActiveEmpresa());
@@ -883,6 +884,10 @@ function renderEmpresaDashboard(empresa){
           projEBITDA += r.avgMonthlyEBITDA||0;
           if(r.paybackMonth > projPayback) projPayback = r.paybackMonth;
           if(r.viabilityScore){ projScore += r.viabilityScore; projScored++; }
+          if (r.months) {
+            const last12 = r.months.slice(-12);
+            last12.forEach((m,i) => { sparkData[i] = (sparkData[i]||0) + (m.ebitda||0); });
+          }
         }
       } catch(e){}
     });
@@ -911,7 +916,10 @@ function renderEmpresaDashboard(empresa){
         <div class="emp-dash-kpi"><span class="emp-dash-kpi-label">Recuperación</span><span class="emp-dash-kpi-value">${projPayback?projPayback+' m':'—'}</span></div>
         <div class="emp-dash-kpi" style="display:flex;align-items:center;gap:0.4rem"><span class="emp-dash-kpi-label">Score</span>${scoreRing(pScore, 36)}</div>
       </div>
-      <button class="btn-open-proyecto-dash" data-emp-id="${empresa.id}" data-proj-id="${proj.id}">Abrir Proyecto →</button>
+      ${sparkData.length >= 2 ? sparklineSVG(sparkData) : ''}
+      <div class="emp-dash-proj-footer" style="margin-top:0.25rem">
+        <button class="btn-open-proyecto-dash btn-compact-open" data-emp-id="${empresa.id}" data-proj-id="${proj.id}">Abrir Proyecto →</button>
+      </div>
     </div>`;
   });
 
