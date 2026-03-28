@@ -3189,29 +3189,32 @@ function renderBranchLocation(branch) {
       if (emptyEl) emptyEl.style.display = 'none'; // hide while loading
       statusEl.innerHTML = '<span class="loc-loading">Geocodificando → Buscando establecimientos → Calculando scores...</span>';
       try {
-        const result = await runLocationStudy(query);
+        const result = await runLocationStudy(query, null, true); // forceRefresh
         _suppressFullRender = true;
         updateBranchLocation(branch.id, result);
         _suppressFullRender = false;
         
-        renderLocationResults(result);
-        // Update market indicators and panels without full re-render
-        const freshBranch = getBranch(branch.id);
-        if (freshBranch) {
-          renderMarketStudyPanel(freshBranch);
-          updateMarketIndicators(freshBranch);
-        }
-        if (result.errors && result.errors.length) {
-          statusEl.innerHTML = '<span class="loc-warning">⚠️ Estudio parcial: ' + result.errors.map(e => e.error).join('; ') + '</span>';
-        } else {
-          statusEl.innerHTML = '<span class="loc-success">✅ Estudio completo — ' + new Date(result.lastUpdated).toLocaleString('es-MX') + '</span>';
+        // This completely updates Corrida Financiera and Context lines to reflect Market changes
+        renderBranchDetail(getEmpresa());
+        
+        const freshStatusEl = $('loc-status');
+        if (freshStatusEl) {
+          if (result.errors && result.errors.length) {
+            freshStatusEl.innerHTML = '<span class="loc-warning">⚠️ Estudio parcial: ' + result.errors.map(e => e.error).join('; ') + '</span>';
+          } else {
+            freshStatusEl.innerHTML = '<span class="loc-success">✅ ¡Estudio actualizado! — ' + new Date(result.lastUpdated).toLocaleString('es-MX') + '</span>';
+            setTimeout(() => { if ($('loc-status')) $('loc-status').innerHTML = ''; }, 6000);
+          }
         }
       } catch (e) {
-        statusEl.innerHTML = '<span class="loc-error">❌ Error: ' + e.message + '</span>';
+        console.error('Study error:', e);
+        const freshStatusEl = $('loc-status');
+        if (freshStatusEl) freshStatusEl.innerHTML = '<span class="loc-error">❌ No se pudo completar: ' + e.message + '</span>';
         if (emptyEl && (!study || !study.coordinates)) emptyEl.style.display = 'block';
+      } finally {
+        const freshBtn = $('btn-run-location-study');
+        if (freshBtn) { freshBtn.disabled = false; freshBtn.textContent = '📍 Evaluar'; }
       }
-      btn.disabled = false;
-      btn.textContent = '📍 Evaluar';
     };
   }
 
@@ -4090,7 +4093,7 @@ window._removePartner = (id) => {
         if (b.colonia && (b.locationStudy?.nearby || b.locationStudy?.rezago || b.locationStudy?.scores)) {
           try {
             const opts = b.locationStudy?.lat ? { lat: b.locationStudy.lat, lng: b.locationStudy.lng, colonia: b.colonia, display_name: b.locationStudy.address } : undefined;
-            const res = await runLocationStudy(b.colonia, opts);
+            const res = await runLocationStudy(b.colonia, opts, true);
             if (res && res.scores) {
               updateBranch(emp.id, p.id, b.id, { locationStudy: res });
               updated++;
