@@ -52,12 +52,12 @@ export function runBranchProjection(branch, empresa, activeEmpresa) {
 }
 
 /* ── Enterprise Consolidation ── */
-export function runConsolidation(empresa) {
+export function runConsolidation(empresa, activeEmpresa) {
   const activeBranches = empresa.branches.filter(b => b.status !== 'paused' && b.status !== 'archived');
 
   const branchResults = activeBranches.map(branch => ({
     branch,
-    result: runBranchProjection(branch, empresa)
+    result: runBranchProjection(branch, empresa, activeEmpresa)
   }));
 
   // Totals

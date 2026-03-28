@@ -785,7 +785,7 @@ function renderPortfolioSummary(empresa){
     corporateReserve: proj.corporateReserve || 0,
     corporateExpenses: proj.corporateExpenses || 0
   };
-  const consol = runConsolidation(pseudoEmpresa);
+  const consol = runConsolidation(pseudoEmpresa, empresa);
   
   el.style.display='';
   el.innerHTML=`
@@ -3823,7 +3823,7 @@ async function renderComparador(empresa){
 
 /* ═══ EMPRESA SETTINGS VIEW ═══ */
 function renderEmpresaSettings(empresa){
-  const consol = runConsolidation(empresa);
+  const consol = runConsolidation(empresa, getActiveEmpresa());
 
   // ── KPI strip at top ──
   const kpiEl = $('empresa-kpis');
