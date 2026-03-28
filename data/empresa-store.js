@@ -4,7 +4,7 @@
  * Backward-compatible: getEmpresa() returns the active proyecto (same shape as before).
  * Persists to localStorage.
  */
-import { MODELS } from './model-registry.js?v=bw34';
+import { MODELS } from './model-registry.js?v=bw36';
 
 const STORAGE_KEY = 'bw2_workspace';
 const LEGACY_KEY  = 'farmatuya_empresa';

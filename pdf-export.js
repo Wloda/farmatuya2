@@ -3,9 +3,9 @@
  * Generates a professional 5-page investment report PDF.
  * Uses jsPDF (global) + html2canvas (global) loaded via CDN.
  */
-import { MODELS, SCENARIOS } from './data/model-registry.js?v=bw34';
-import { runBranchProjection } from './engine/enterprise-engine.js?v=bw34';
-import { generateChecklist, evaluateAlerts, calcStress, runSensitivity } from './engine/financial-model.js?v=bw34';
+import { MODELS, SCENARIOS } from './data/model-registry.js?v=bw36';
+import { runBranchProjection } from './engine/enterprise-engine.js?v=bw36';
+import { generateChecklist, evaluateAlerts, calcStress, runSensitivity } from './engine/financial-model.js?v=bw36';
 
 /* ── Helpers ── */
 const fm = v => '$' + Math.round(v).toLocaleString('es-MX');

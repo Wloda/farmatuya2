@@ -2,7 +2,7 @@
  * FarmaTuya — Multi-Model Financial Engine (v6.1)
  * Uses documented socialCharge per model (not hardcoded 30% rule).
  */
-import { MODELS, SEASONALITY } from '../data/model-registry.js?v=bw34';
+import { MODELS, SEASONALITY } from '../data/model-registry.js?v=bw36';
 
 /* ── Ramp Interpolation ── */
 function buildRamp(salesData, horizonMonths, factor=1) {
@@ -342,7 +342,7 @@ export function generateChecklist(r) {
   const pm = r.paybackMetrics;
   const pbSimpleMid = pm.simple.min!=null ? (pm.simple.min+pm.simple.max)/2 : null;
   return [
-    {item:'Capital ≥ Inv.+reserva',pass:r.capitalRemaining>=r.recommendedReserve,detail:`$${Math.round(r.capitalRemaining).toLocaleString()} vs $${Math.round(r.recommendedReserve).toLocaleString()}`},
+    {item:'Cap. Libre ≥ Reserva',pass:r.capitalRemaining>=r.recommendedReserve,detail:`$${Math.round(r.capitalRemaining).toLocaleString()} vs $${Math.round(r.recommendedReserve).toLocaleString()}`},
     {item:'VPN positivo',pass:r.npv>0,detail:`$${Math.round(r.npv).toLocaleString()}`},
     {item:'PB Simple ≤ 24m',pass:pbSimpleMid!=null&&pbSimpleMid<=24,detail:`${pbSimpleMid!=null?pbSimpleMid.toFixed(0):'∞'}m (${pm.simple.min?.toFixed(0)||'?'}–${pm.simple.max?.toFixed(0)||'?'})`},
     {item:'PB Rampa ≤ 48m',pass:pm.rampa.month!=null&&pm.rampa.month<=48,detail:`${pm.rampa.month||'∞'}m`},

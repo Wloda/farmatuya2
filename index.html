@@ -49,7 +49,7 @@
       return Promise.all(promises);
     };
   </script>
-  <link rel="stylesheet" href="styles.css?v=bw34">
+  <link rel="stylesheet" href="styles.css?v=bw36">
   <script>
     window.addEventListener('error',e=>document.title='ERR:'+e.message);
     window.addEventListener('unhandledrejection',e=>document.title='REJ:'+e.reason);
@@ -443,12 +443,15 @@
 
       <!-- ═══ TAB: CORRIDA FINANCIERA ═══ -->
       <div id="btab-corrida" class="branch-tab-panel">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:1rem">
           <div>
             <h2 style="margin:0;font-size:1.25rem;display:flex;align-items:center;gap:0.75rem">📊 Corrida Financiera</h2>
             <p style="margin:0.25rem 0 0;font-size:0.8rem;color:var(--text-3)">Edita los <strong>valores base</strong> (columna izquierda) · La proyección a 60 meses se recalcula automáticamente · <span style="color:#d97706">●</span> = modificado</p>
           </div>
-          <button class="btn-sm" id="btn-reset-overrides" title="Restaurar valores del modelo base" style="background:var(--surface);border:1px solid var(--border);color:var(--text-2);cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-weight:600;font-size:0.75rem;border-radius:6px;padding:0.35rem 0.75rem">🔄 Restablecer</button>
+          <button class="btn-secondary" id="btn-reset-overrides" title="Restaurar valores del modelo base" style="padding:0.45rem 0.85rem;font-size:0.75rem;display:flex;align-items:center;gap:0.4rem;height:fit-content;white-space:nowrap;box-shadow:var(--shadow-neu-sm)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Restablecer
+          </button>
         </div>
         <div id="branch-pnl-table-full" style="overflow:auto;max-height:calc(100vh - 200px);border:1px solid var(--border);border-radius:8px"></div>
       </div>
@@ -884,6 +887,6 @@
   </div>
 
   <footer id="app-footer"><p>BW² — Dashboard de Inversión · v8.0 · Multi-Empresa</p></footer>
-  <script type="module" src="app.js?v=bw34"></script>
+  <script type="module" src="app.js?v=bw36"></script>
 </body>
 </html>
