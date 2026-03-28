@@ -49,7 +49,7 @@
       return Promise.all(promises);
     };
   </script>
-  <link rel="stylesheet" href="styles.css?v=bw37">
+  <link rel="stylesheet" href="styles.css?v=bw38">
   <script>
     window.addEventListener('error',e=>document.title='ERR:'+e.message);
     window.addEventListener('unhandledrejection',e=>document.title='REJ:'+e.reason);
@@ -219,6 +219,63 @@
       <div class="branch-context-line" id="branch-context-line">
         <!-- JS fills: Sucursal 1 · 🏪 Súper · 🟡 Base · 📍 -1.3% -->
       </div>
+      
+      <!-- ═══ THIN FILTER BAR (subordinated to KPIs) ═══ -->
+      <div class="filter-bar">
+        <div class="filter-bar-group">
+          <select class="filter-select" id="branch-scenario-select">
+            <option value="conservative">🔴 Conservador</option>
+            <option value="base" selected>🟡 Base</option>
+            <option value="upside">🟢 Upside</option>
+          </select>
+        </div>
+        <div class="filter-bar-group">
+          <select class="filter-select" id="branch-timeline-select">
+            <option value="0" selected>📊 Desde Apertura</option>
+            <option value="2">💰 Desde Capital</option>
+          </select>
+        </div>
+        <div class="filter-bar-group" id="res-royalty-panel" style="display:none">
+          <select class="filter-select" id="res-royalty-select">
+            <option value="variable_2_5" selected>💳 Variable 2.5%</option>
+            <option value="condonacion_6m">🎁 Condonación 6m</option>
+            <option value="pago_unico">💰 Pago Único</option>
+          </select>
+        </div>
+        <div class="filter-bar-group" style="margin-left:auto">
+          <button class="btn-sm" title="Descargar flujo completo a 60 meses en formato CSV" style="background:var(--surface);border:1px solid var(--border);color:var(--text-2);cursor:pointer;display:flex;align-items:center;gap:0.4rem;height:32px;transition:all 0.2s;font-weight:600" onclick="if(window._exportPnL) window._exportPnL()"><span>📥</span> P&L 60m (CSV)</button>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="branch-kpi-strip">
+        <div class="kpi-strip-item">
+          <span class="kpi-strip-label">Pto. Equilibrio <span class="kpi-help">?<span class="kpi-tip">Ventas mínimas mensuales para no perder dinero. Si vendes menos que esto, la sucursal opera a pérdida.</span></span></span>
+          <span class="kpi-strip-value" id="branch-kpi-equilibrio">-</span>
+          <span class="kpi-strip-detail" id="kpi-be-pct"></span>
+        </div>
+        <div class="kpi-strip-divider"></div>
+        <div class="kpi-strip-item">
+          <span class="kpi-strip-label">Ganancia / Mes <span class="kpi-help">?<span class="kpi-tip">Lo que gana la sucursal cada mes después de pagar todos los costos operativos (EBITDA). Es tu utilidad real mensual.</span></span></span>
+          <span class="kpi-strip-value" id="branch-kpi-profit">-</span>
+        </div>
+        <div class="kpi-strip-divider"></div>
+        <div class="kpi-strip-item">
+          <span class="kpi-strip-label">Recuperación <span class="kpi-help">?<span class="kpi-tip">Cuántos meses necesitas para recuperar toda tu inversión inicial. Menor es mejor. Óptimo: menos de 24 meses.</span></span></span>
+          <span class="kpi-strip-value" id="branch-kpi-payback">-</span>
+          <span class="kpi-strip-detail" id="kpi-payback-sub"></span>
+        </div>
+        <div class="kpi-strip-divider"></div>
+        <div class="kpi-strip-item">
+          <span class="kpi-strip-label">ROI 12m <span class="kpi-help">?<span class="kpi-tip">Porcentaje de tu dinero que recuperas en el primer año. Si es positivo, ya estás ganando desde el año 1.</span></span></span>
+          <span class="kpi-strip-value" id="kpi-roi-value">-</span>
+        </div>
+        <div class="kpi-strip-divider"></div>
+        <div class="kpi-strip-item">
+          <span class="kpi-strip-label">Factor Mercado <span class="kpi-help">?<span class="kpi-tip">Multiplicador basado en la ubicación real. Analiza competencia, densidad poblacional y tráfico. 1.0 = sin ajuste.</span></span></span>
+          <span class="kpi-strip-value" id="branch-kpi-factor" style="color:var(--text-2)">—</span>
+          <span class="kpi-strip-detail" id="kpi-factor-label"></span>
+        </div>
+      </div>
 
       <!-- Branch tabs are now in the sidebar, no horizontal tab nav needed -->
 
@@ -292,32 +349,7 @@
 
       <!-- ═══ TAB 2: RESULTADOS (default active) ═══ -->
       <div id="btab-resultados" class="branch-tab-panel active">
-        <!-- ═══ THIN FILTER BAR (subordinated to KPIs) ═══ -->
-        <div class="filter-bar">
-          <div class="filter-bar-group">
-            <select class="filter-select" id="branch-scenario-select">
-              <option value="conservative">🔴 Conservador</option>
-              <option value="base" selected>🟡 Base</option>
-              <option value="upside">🟢 Upside</option>
-            </select>
-          </div>
-          <div class="filter-bar-group">
-            <select class="filter-select" id="branch-timeline-select">
-              <option value="0" selected>📊 Desde Apertura</option>
-              <option value="2">💰 Desde Capital</option>
-            </select>
-          </div>
-          <div class="filter-bar-group" id="res-royalty-panel" style="display:none">
-            <select class="filter-select" id="res-royalty-select">
-              <option value="variable_2_5" selected>💳 Variable 2.5%</option>
-              <option value="condonacion_6m">🎁 Condonación 6m</option>
-              <option value="pago_unico">💰 Pago Único</option>
-            </select>
-          </div>
-          <div class="filter-bar-group" style="margin-left:auto">
-            <button class="btn-sm" title="Descargar flujo completo a 60 meses en formato CSV" style="background:var(--surface);border:1px solid var(--border);color:var(--text-2);cursor:pointer;display:flex;align-items:center;gap:0.4rem;height:32px;transition:all 0.2s;font-weight:600" onclick="if(window._exportPnL) window._exportPnL()"><span>📥</span> P&L 60m (CSV)</button>
-          </div>
-        </div>
+
         <div class="edit-layout-toolbar" id="toolbar-branch-resultados" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:1rem">
              <span style="font-weight:600">Modo Edición:</span>
@@ -325,36 +357,6 @@
           </div>
           <div style="display:flex;gap:0.5rem">
              <button class="btn-sm primary btn-save-layout" data-target="branch-resultados">Guardar Layout</button>
-          </div>
-        </div>
-
-        <div class="kpi-strip" id="branch-kpi-strip">
-          <div class="kpi-strip-item">
-            <span class="kpi-strip-label">Pto. Equilibrio <span class="kpi-help">?<span class="kpi-tip">Ventas mínimas mensuales para no perder dinero. Si vendes menos que esto, la sucursal opera a pérdida.</span></span></span>
-            <span class="kpi-strip-value" id="branch-kpi-equilibrio">-</span>
-            <span class="kpi-strip-detail" id="kpi-be-pct"></span>
-          </div>
-          <div class="kpi-strip-divider"></div>
-          <div class="kpi-strip-item">
-            <span class="kpi-strip-label">Ganancia / Mes <span class="kpi-help">?<span class="kpi-tip">Lo que gana la sucursal cada mes después de pagar todos los costos operativos (EBITDA). Es tu utilidad real mensual.</span></span></span>
-            <span class="kpi-strip-value" id="branch-kpi-profit">-</span>
-          </div>
-          <div class="kpi-strip-divider"></div>
-          <div class="kpi-strip-item">
-            <span class="kpi-strip-label">Recuperación <span class="kpi-help">?<span class="kpi-tip">Cuántos meses necesitas para recuperar toda tu inversión inicial. Menor es mejor. Óptimo: menos de 24 meses.</span></span></span>
-            <span class="kpi-strip-value" id="branch-kpi-payback">-</span>
-            <span class="kpi-strip-detail" id="kpi-payback-sub"></span>
-          </div>
-          <div class="kpi-strip-divider"></div>
-          <div class="kpi-strip-item">
-            <span class="kpi-strip-label">ROI 12m <span class="kpi-help">?<span class="kpi-tip">Porcentaje de tu dinero que recuperas en el primer año. Si es positivo, ya estás ganando desde el año 1.</span></span></span>
-            <span class="kpi-strip-value" id="kpi-roi-value">-</span>
-          </div>
-          <div class="kpi-strip-divider"></div>
-          <div class="kpi-strip-item">
-            <span class="kpi-strip-label">Factor Mercado <span class="kpi-help">?<span class="kpi-tip">Multiplicador basado en la ubicación real. Analiza competencia, densidad poblacional y tráfico. 1.0 = sin ajuste.</span></span></span>
-            <span class="kpi-strip-value" id="branch-kpi-factor" style="color:var(--text-2)">—</span>
-            <span class="kpi-strip-detail" id="kpi-factor-label"></span>
           </div>
         </div>
 
@@ -549,10 +551,20 @@
             <div id="loc-indicators"></div>
           </div>
           <div class="neu-card" style="margin-bottom:0.75rem">
-          <div class="neu-card loc-meta">
+            <h3 class="card-title">Análisis de Factores (Radar)</h3>
+            <div style="height:350px;width:100%"><canvas id="loc-radar-chart"></canvas></div>
+          </div>
+          <div class="neu-card" style="margin-bottom:0.75rem">
+            <h3 class="card-title">Cobertura Multi-Radio (POIs)</h3>
+            <div id="loc-multiradius" style="overflow-x:auto"></div>
+          </div>
+          <div class="neu-card" style="margin-bottom:0.75rem">
+            <h3 class="card-title">Matriz de Competencia Directa</h3>
+            <div id="loc-competition" style="overflow-x:auto"></div>
+          </div>
+          <div class="neu-card loc-meta" style="margin-bottom:0.75rem">
             <div id="loc-sources"></div>
           </div>
-        </div>
       </div>
     </section>
 
@@ -887,6 +899,6 @@
   </div>
 
   <footer id="app-footer"><p>BW² — Dashboard de Inversión · v8.0 · Multi-Empresa</p></footer>
-  <script type="module" src="app.js?v=bw37"></script>
+  <script type="module" src="app.js?v=bw38"></script>
 </body>
 </html>
