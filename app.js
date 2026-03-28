@@ -1,14 +1,14 @@
 /**
  * BW² — Multi-Empresa Multi-Proyecto Dashboard v8
  */
-import { MODELS, SCENARIOS } from './data/model-registry.js?v=bw31';
-import { runProjection, runSensitivity, calcStress, generateChecklist, evaluateAlerts } from './engine/financial-model.js?v=bw31';
-import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js?v=bw31';
-import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js?v=bw31';
-import { runLocationStudy, calcCombinedMarketFactor, geocodeAddress } from './engine/location-engine.js?v=bw31';
-import { generateBranchPDF } from './pdf-export.js?v=bw31';
-import { setGoogleApiKey, loadGoogleMaps, attachPlacesAutocomplete, createGoogleMap, buildStudyMarkers, isGoogleMapsLoaded, getGoogleApiKey } from './engine/google-places.js?v=bw31';
-import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated, updateUserProfile, updateUserEmail, changePassword } from './auth.js?v=bw31';
+import { MODELS, SCENARIOS } from './data/model-registry.js';
+import { runProjection, runSensitivity, calcStress, generateChecklist, evaluateAlerts } from './engine/financial-model.js';
+import { runBranchProjection, runConsolidation } from './engine/enterprise-engine.js';
+import { getWorkspace, getEmpresas, getEmpresaById, getActiveEmpresa, setActiveEmpresa, addEmpresa, updateEmpresaData, removeEmpresa, getProyectos, getProyectoById, getActiveProyecto, setActiveProyecto, addProyecto, updateProyecto, removeProyecto, getEmpresa, updateEmpresa, addBranch, updateBranch, updateBranchOverrides, dupBranch, archiveBranch, activateBranch, restoreBranch, removeBranch, getBranch, getActiveBranches, addPartner, updatePartner, removePartner, resetEmpresa, resetBranchToDefaults, buildDefaultOverrides, updateBranchLocation, onEmpresaChange } from './data/empresa-store.js';
+import { runLocationStudy, calcCombinedMarketFactor, geocodeAddress } from './engine/location-engine.js';
+import { generateBranchPDF } from './pdf-export.js';
+import { setGoogleApiKey, loadGoogleMaps, attachPlacesAutocomplete, createGoogleMap, buildStudyMarkers, isGoogleMapsLoaded, getGoogleApiKey } from './engine/google-places.js';
+import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated, updateUserProfile, updateUserEmail, changePassword } from './auth.js';
 
 /* ═══ SVG ICON SYSTEM (Lucide-style stroked icons) ═══ */
 const _ICO = {
@@ -785,7 +785,7 @@ function renderPortfolioSummary(empresa){
     corporateReserve: proj.corporateReserve || 0,
     corporateExpenses: proj.corporateExpenses || 0
   };
-  const consol = runConsolidation(pseudoEmpresa, empresa);
+  const consol = runConsolidation(pseudoEmpresa, getActiveEmpresa());
   
   el.style.display='';
   el.innerHTML=`

@@ -3,9 +3,9 @@
  * Wraps the core financial-model.js for multi-branch projections.
  * Core engine is NOT modified — this is a pure wrapper.
  */
-import { MODELS, SCENARIOS } from '../data/model-registry.js?v=bw31';
-import { runProjection } from './financial-model.js?v=bw31';
-import { calcCombinedMarketFactor } from './location-engine.js?v=bw31';
+import { MODELS, SCENARIOS } from '../data/model-registry.js';
+import { runProjection } from './financial-model.js';
+import { calcCombinedMarketFactor } from './location-engine.js';
 
 /* ── Single Branch Projection ── */
 export function runBranchProjection(branch, empresa, activeEmpresa) {
