@@ -2,7 +2,7 @@
  * FarmaTuya — Multi-Model Financial Engine (v6.1)
  * Uses documented socialCharge per model (not hardcoded 30% rule).
  */
-import { MODELS, SEASONALITY } from '../data/model-registry.js?v=bw33';
+import { MODELS, SEASONALITY } from '../data/model-registry.js?v=bw34';
 
 /* ── Ramp Interpolation ── */
 function buildRamp(salesData, horizonMonths, factor=1) {
